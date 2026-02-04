@@ -214,7 +214,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
             // No more questions, finish game
             _engine.FinishGame(state);
             await BroadcastStateAsync(roomCode, state);
-            await UpdateRoomStatusAsync(roomCode, RoomStatus.Finished);
+            UpdateRoomStatus(roomCode, RoomStatus.Finished);
             return;
         }
 
@@ -253,7 +253,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         await BroadcastStateAsync(roomCode, state);
 
         // Update player scores in room
-        await UpdatePlayerScoresAsync(roomCode, state);
+        UpdatePlayerScores(roomCode, state);
 
         // Schedule transition to Scoreboard
         SchedulePhaseTransition(roomCode, RevealSeconds, async () =>
@@ -280,7 +280,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
                     return;
                 _engine.FinishGame(s);
                 await BroadcastStateAsync(roomCode, s);
-                await UpdateRoomStatusAsync(roomCode, RoomStatus.Finished);
+                UpdateRoomStatus(roomCode, RoomStatus.Finished);
             });
         }
         else
@@ -378,7 +378,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         );
     }
 
-    private async Task UpdatePlayerScoresAsync(string roomCode, QuizGameState state)
+    private void UpdatePlayerScores(string roomCode, QuizGameState state)
     {
         if (!_roomStore.TryGetRoom(roomCode, out var room) || room == null)
             return;
@@ -394,7 +394,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         _roomStore.Update(room);
     }
 
-    private async Task UpdateRoomStatusAsync(string roomCode, RoomStatus status)
+    private void UpdateRoomStatus(string roomCode, RoomStatus status)
     {
         if (!_roomStore.TryGetRoom(roomCode, out var room) || room == null)
             return;
