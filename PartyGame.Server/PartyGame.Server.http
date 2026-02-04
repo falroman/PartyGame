@@ -1,0 +1,6 @@
+@PartyGame.Server_HostAddress = http://localhost:5253
+
+GET {{PartyGame.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

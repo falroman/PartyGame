@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PartyGame</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .landing-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .landing-card {
+            background: white;
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .landing-logo {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+        
+        .landing-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+        
+        .landing-subtitle {
+            color: #6b7280;
+            font-size: 1.125rem;
+            margin-bottom: 32px;
+        }
+        
+        .landing-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .landing-divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: #9ca3af;
+        }
+        
+        .landing-divider::before,
+        .landing-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+        
+        .landing-divider span {
+            padding: 0 16px;
+            font-size: 0.875rem;
+        }
+        
+        .landing-footer {
+            margin-top: 32px;
+            color: #9ca3af;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-container">
+        <div class="landing-card">
+            <div class="landing-logo">🎮</div>
+            <h1 class="landing-title">PartyGame</h1>
+            <p class="landing-subtitle">Real-time multiplayer party games for everyone!</p>
+            
+            <div class="landing-buttons">
+                <a href="/tv" class="btn btn-primary btn-large" style="width: 100%;">
+                    📺 Host a Game (TV)
+                </a>
+                
+                <div class="landing-divider">
+                    <span>or</span>
+                </div>
+                
+                <a href="/join" class="btn btn-secondary btn-large" style="width: 100%;">
+                    📱 Join a Game (Phone)
+                </a>
+            </div>
+            
+            <p class="landing-footer">
+                Open <strong>/tv</strong> on a big screen, then scan the QR code with your phone to join!
+            </p>
+        </div>
+    </div>
+</body>
+</html>

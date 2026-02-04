@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PartyGame - TV Host</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="tv-layout">
+        <!-- Main Content -->
+        <div class="tv-main">
+            <div class="tv-header">
+                <h1>🎮 PartyGame</h1>
+                <p>Scan the QR code or enter the room code to join!</p>
+            </div>
+
+            <!-- Connection Status -->
+            <div id="connectionStatus" class="status status-connecting" style="align-self: flex-start; margin-bottom: 16px;">
+                <span class="status-dot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message card"></div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="card" style="text-align: center; padding: 60px;">
+                <div class="spinner" style="margin: 0 auto 20px;"></div>
+                <p>Creating room...</p>
+            </div>
+
+            <!-- Room Info Card -->
+            <div id="roomCard" class="card" style="display: none;">
+                <div style="text-align: center;">
+                    <p style="color: var(--text-light); margin-bottom: 8px;">ROOM CODE</p>
+                    <div class="room-code" id="roomCode">----</div>
+                    <p style="color: var(--text-light);">
+                        Join at: <strong id="joinUrl"></strong>
+                    </p>
+                </div>
+            </div>
+
+            <!-- QR Code Card -->
+            <div id="qrCard" class="card qr-container" style="display: none;">
+                <div class="qr-code">
+                    <img id="qrCodeImage" alt="QR Code" width="200" height="200">
+                </div>
+                <p class="qr-hint">Scan with your phone camera to join</p>
+            </div>
+        </div>
+
+        <!-- Sidebar: Player List -->
+        <div class="tv-sidebar">
+            <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+                <h2 style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                    Players
+                    <span id="playerCount" style="background: var(--bg-color); padding: 4px 12px; border-radius: 20px; font-size: 0.875rem;">0/8</span>
+                </h2>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="empty-state">
+                    <div class="empty-state-icon">👥</div>
+                    <p class="empty-state-text">Waiting for players to join...</p>
+                </div>
+
+                <!-- Player List -->
+                <ul id="playerList" class="player-list" style="display: none;"></ul>
+
+                <!-- Start Game Button (future) -->
+                <div style="margin-top: auto; padding-top: 20px;">
+                    <button id="startGameBtn" class="btn btn-success btn-large" style="width: 100%;" disabled>
+                        Start Game
+                    </button>
+                    <p style="text-align: center; margin-top: 8px; color: var(--text-light); font-size: 0.875rem;">
+                        Need at least 2 players to start
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="/js/config.js"></script>
+    <script src="/js/game-client.js"></script>
+    <script>
+        // Get server URL from config
+        const SERVER_URL = GameConfig.getServerUrl();
+        console.log('Using Server URL:', SERVER_URL || '(same origin)');
+        
+        // DOM Elements
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusText = document.getElementById('statusText');
+        const errorMessage = document.getElementById('errorMessage');
+        const loadingState = document.getElementById('loadingState');
+        const roomCard = document.getElementById('roomCard');
+        const qrCard = document.getElementById('qrCard');
+        const roomCodeEl = document.getElementById('roomCode');
+        const joinUrlEl = document.getElementById('joinUrl');
+        const qrCodeImage = document.getElementById('qrCodeImage');
+        const playerCount = document.getElementById('playerCount');
+        const emptyState = document.getElementById('emptyState');
+        const playerList = document.getElementById('playerList');
+        const startGameBtn = document.getElementById('startGameBtn');
+
+        // Game client
+        const client = new GameClient(SERVER_URL);
+        let currentRoomCode = null;
+
+        // Initialize
+        async function init() {
+            try {
+                // Set up callbacks
+                client.on('onConnected', onConnected);
+                client.on('onDisconnected', onDisconnected);
+                client.on('onReconnecting', onReconnecting);
+                client.on('onLobbyUpdated', onLobbyUpdated);
+                client.on('onError', onError);
+
+                // Connect to SignalR
+                await client.connect();
+
+                // Create room
+                await createAndJoinRoom();
+
+            } catch (error) {
+                console.error('Initialization failed:', error);
+                showError('Failed to initialize. Please refresh the page.');
+            }
+        }
+
+        async function createAndJoinRoom() {
+            try {
+                // Create room via REST API
+                const roomData = await GameUtils.createRoom(SERVER_URL);
+                currentRoomCode = roomData.roomCode;
+
+                // Register as host via SignalR
+                await client.registerHost(currentRoomCode);
+
+                // Update UI
+                showRoomInfo(currentRoomCode);
+
+            } catch (error) {
+                console.error('Failed to create room:', error);
+                showError('Failed to create room. Please refresh the page.');
+            }
+        }
+
+        function showRoomInfo(code) {
+            loadingState.style.display = 'none';
+            roomCard.style.display = 'block';
+            qrCard.style.display = 'flex';
+
+            roomCodeEl.textContent = code;
+            
+            // Join URL should point to the Web server, not the API server
+            const webOrigin = window.location.origin;
+            const joinUrl = `${webOrigin}/join/${code}`;
+            joinUrlEl.textContent = joinUrl;
+            
+            // Generate QR code
+            qrCodeImage.src = GameUtils.getQRCodeUrl(joinUrl, 200);
+        }
+
+        function onConnected() {
+            connectionStatus.className = 'status status-connected';
+            statusText.textContent = 'Connected';
+        }
+
+        function onDisconnected() {
+            connectionStatus.className = 'status status-disconnected';
+            statusText.textContent = 'Disconnected';
+        }
+
+        function onReconnecting() {
+            connectionStatus.className = 'status status-connecting';
+            statusText.textContent = 'Reconnecting...';
+        }
+
+        function onLobbyUpdated(roomState) {
+            console.log('Lobby updated:', roomState);
+            
+            const players = roomState.players || [];
+            const maxPlayers = 8;
+
+            // Update player count
+            playerCount.textContent = `${players.length}/${maxPlayers}`;
+
+            // Update player list
+            if (players.length === 0) {
+                emptyState.style.display = 'block';
+                playerList.style.display = 'none';
+            } else {
+                emptyState.style.display = 'none';
+                playerList.style.display = 'block';
+                
+                playerList.innerHTML = players.map(player => `
+                    <li class="player-item fade-in">
+                        <div class="player-info">
+                            <div class="player-avatar">${GameUtils.getInitials(player.displayName)}</div>
+                            <div>
+                                <div class="player-name">${escapeHtml(player.displayName)}</div>
+                                <div class="player-status ${player.isConnected ? 'connected' : 'disconnected'}">
+                                    ${player.isConnected ? '● Connected' : '○ Disconnected'}
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                `).join('');
+            }
+
+            // Enable/disable start button
+            startGameBtn.disabled = players.length < 2;
+
+            // Hide error on successful update
+            hideError();
+        }
+
+        function onError(error) {
+            showError(GameUtils.formatError(error));
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('visible');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('visible');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Start game (placeholder for future)
+        startGameBtn.addEventListener('click', () => {
+            alert('Game start functionality coming in a future iteration!');
+        });
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

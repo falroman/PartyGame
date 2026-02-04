@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PartyGame - Join</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="phone-layout">
+        <div class="card phone-card">
+            <h1 style="text-align: center; margin-bottom: 8px;">🎮 PartyGame</h1>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 24px;">Join the fun!</p>
+
+            <!-- Connection Status -->
+            <div id="connectionStatus" class="status status-connecting" style="margin-bottom: 16px;">
+                <span class="status-dot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message"></div>
+
+            <!-- Join Form -->
+            <form id="joinForm">
+                <div class="input-group">
+                    <label for="roomCode">Room Code</label>
+                    <input 
+                        type="text" 
+                        id="roomCode" 
+                        class="input input-large" 
+                        maxlength="4" 
+                        placeholder="ABCD"
+                        autocomplete="off"
+                        autocapitalize="characters"
+                        required
+                    >
+                </div>
+
+                <div class="input-group">
+                    <label for="displayName">Your Name</label>
+                    <input 
+                        type="text" 
+                        id="displayName" 
+                        class="input" 
+                        maxlength="20" 
+                        placeholder="Enter your name"
+                        autocomplete="off"
+                        required
+                    >
+                </div>
+
+                <button type="submit" id="joinBtn" class="btn btn-primary btn-large" style="width: 100%;">
+                    Join Game
+                </button>
+            </form>
+        </div>
+
+        <!-- Waiting State (shown after joining) -->
+        <div id="waitingCard" class="card phone-card" style="display: none;">
+            <div style="text-align: center;">
+                <h2 style="margin-bottom: 8px;">You're in! 🎉</h2>
+                <p style="color: var(--text-light); margin-bottom: 24px;">Waiting for the host to start the game...</p>
+                
+                <div class="player-avatar" style="width: 80px; height: 80px; font-size: 2rem; margin: 0 auto 16px;">
+                    <span id="playerInitials">??</span>
+                </div>
+                
+                <p style="font-size: 1.25rem; font-weight: 600;" id="playerName">-</p>
+                <p style="color: var(--text-light);">Room: <strong id="roomCodeDisplay">----</strong></p>
+                
+                <div style="margin-top: 24px;">
+                    <p style="color: var(--text-light); font-size: 0.875rem; margin-bottom: 8px;">
+                        Players in lobby:
+                    </p>
+                    <div id="playerCountBadge" style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);">
+                        0
+                    </div>
+                </div>
+
+                <button id="leaveBtn" class="btn btn-secondary" style="margin-top: 24px;">
+                    Leave Room
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="/js/config.js"></script>
+    <script src="/js/game-client.js"></script>
+    <script>
+        // Get server URL from config
+        const SERVER_URL = GameConfig.getServerUrl();
+        console.log('Using Server URL:', SERVER_URL || '(same origin)');
+
+        // DOM Elements
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusText = document.getElementById('statusText');
+        const errorMessage = document.getElementById('errorMessage');
+        const joinForm = document.getElementById('joinForm');
+        const roomCodeInput = document.getElementById('roomCode');
+        const displayNameInput = document.getElementById('displayName');
+        const joinBtn = document.getElementById('joinBtn');
+        const waitingCard = document.getElementById('waitingCard');
+        const playerInitials = document.getElementById('playerInitials');
+        const playerNameEl = document.getElementById('playerName');
+        const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+        const playerCountBadge = document.getElementById('playerCountBadge');
+        const leaveBtn = document.getElementById('leaveBtn');
+
+        // Game client
+        const client = new GameClient(SERVER_URL);
+        let playerId = GameUtils.getPlayerId();
+        let hasJoined = false;
+
+        // Get room code from URL if present
+        function getRoomCodeFromUrl() {
+            const path = window.location.pathname;
+            const match = path.match(/\/join\/([A-Za-z0-9]{4})/);
+            return match ? match[1].toUpperCase() : null;
+        }
+
+        // Initialize
+        async function init() {
+            // Pre-fill room code from URL
+            const urlRoomCode = getRoomCodeFromUrl();
+            if (urlRoomCode) {
+                roomCodeInput.value = urlRoomCode;
+            }
+
+            // Pre-fill stored name
+            const storedName = GameUtils.getStoredName();
+            if (storedName) {
+                displayNameInput.value = storedName;
+            }
+
+            // Set up callbacks
+            client.on('onConnected', onConnected);
+            client.on('onDisconnected', onDisconnected);
+            client.on('onReconnecting', onReconnecting);
+            client.on('onLobbyUpdated', onLobbyUpdated);
+            client.on('onError', onError);
+
+            try {
+                await client.connect();
+            } catch (error) {
+                console.error('Connection failed:', error);
+            }
+        }
+
+        function onConnected() {
+            connectionStatus.className = 'status status-connected';
+            statusText.textContent = 'Connected';
+            joinBtn.disabled = false;
+        }
+
+        function onDisconnected() {
+            connectionStatus.className = 'status status-disconnected';
+            statusText.textContent = 'Disconnected';
+        }
+
+        function onReconnecting() {
+            connectionStatus.className = 'status status-connecting';
+            statusText.textContent = 'Reconnecting...';
+        }
+
+        function onLobbyUpdated(roomState) {
+            console.log('Lobby updated:', roomState);
+            
+            // If we haven't shown the waiting card yet, show it now
+            if (!hasJoined) {
+                hasJoined = true;
+                showWaitingState(roomState);
+            }
+
+            // Update player count
+            const players = roomState.players || [];
+            playerCountBadge.textContent = players.length;
+
+            // Hide error on success
+            hideError();
+        }
+
+        function onError(error) {
+            showError(GameUtils.formatError(error));
+            joinBtn.disabled = false;
+            joinBtn.textContent = 'Join Game';
+        }
+
+        function showWaitingState(roomState) {
+            const name = displayNameInput.value.trim();
+            
+            joinForm.parentElement.style.display = 'none';
+            waitingCard.style.display = 'block';
+            
+            playerInitials.textContent = GameUtils.getInitials(name);
+            playerNameEl.textContent = name;
+            roomCodeDisplay.textContent = roomState.roomCode;
+            
+            const players = roomState.players || [];
+            playerCountBadge.textContent = players.length;
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('visible');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('visible');
+        }
+
+        // Form submission
+        joinForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const roomCode = roomCodeInput.value.trim().toUpperCase();
+            const displayName = displayNameInput.value.trim();
+
+            // Validate
+            if (roomCode.length !== 4) {
+                showError('Please enter a 4-character room code.');
+                return;
+            }
+
+            if (!displayName || displayName.length > 20) {
+                showError('Please enter a name (1-20 characters).');
+                return;
+            }
+
+            hideError();
+            joinBtn.disabled = true;
+            joinBtn.textContent = 'Joining...';
+
+            try {
+                await client.joinRoom(roomCode, playerId, displayName);
+                GameUtils.setStoredRoomCode(roomCode);
+            } catch (error) {
+                console.error('Join failed:', error);
+                showError('Failed to join room. Please try again.');
+                joinBtn.disabled = false;
+                joinBtn.textContent = 'Join Game';
+            }
+        });
+
+        // Leave button
+        leaveBtn.addEventListener('click', async () => {
+            try {
+                await client.leaveRoom();
+            } catch (error) {
+                console.error('Leave failed:', error);
+            }
+            
+            // Reset UI
+            hasJoined = false;
+            waitingCard.style.display = 'none';
+            joinForm.parentElement.style.display = 'block';
+            joinBtn.disabled = false;
+            joinBtn.textContent = 'Join Game';
+            GameUtils.setStoredRoomCode(null);
+        });
+
+        // Auto-uppercase room code input
+        roomCodeInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase();
+        });
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
