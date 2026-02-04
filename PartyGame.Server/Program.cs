@@ -18,25 +18,16 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Add CORS for development (when Web runs separately)
+// Add CORS for development (when Web runs separately or on LAN)
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(
-                // Visual Studio HTTPS ports
-                "https://localhost:7147",
-                "http://localhost:5041",
-                // dotnet run ports
-                "https://localhost:5002",
-                "http://localhost:5002",
-                // IIS Express ports
-                "https://localhost:44328",
-                "http://localhost:22775"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        // In development, allow any origin for LAN testing
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -62,7 +53,12 @@ if (app.Environment.IsDevelopment())
 // Use CORS before other middleware
 app.UseCors();
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection in production
+// In development/LAN mode, we use HTTP to avoid certificate issues
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthorization();
 

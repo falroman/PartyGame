@@ -155,9 +155,8 @@
 
             roomCodeEl.textContent = code;
             
-            // Join URL should point to the Web server, not the API server
-            const webOrigin = window.location.origin;
-            const joinUrl = `${webOrigin}/join/${code}`;
+            // Join URL uses the current origin (works for both localhost and LAN)
+            const joinUrl = `${GameConfig.getJoinBaseUrl()}/join/${code}`;
             joinUrlEl.textContent = joinUrl;
             
             // Generate QR code

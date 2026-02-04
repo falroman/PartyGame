@@ -18,6 +18,12 @@
                 <span id="statusText">Connecting...</span>
             </div>
 
+            <!-- Debug Info (helpful for troubleshooting) -->
+            <div id="debugInfo" style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 16px; padding: 8px; background: var(--bg-color); border-radius: 4px;">
+                <div>Server: <span id="debugServerUrl">-</span></div>
+                <div>Status: <span id="debugStatus">Loading scripts...</span></div>
+            </div>
+
             <!-- Error Message -->
             <div id="errorMessage" class="error-message"></div>
 
@@ -50,10 +56,15 @@
                     >
                 </div>
 
-                <button type="submit" id="joinBtn" class="btn btn-primary btn-large" style="width: 100%;">
+                <button type="submit" id="joinBtn" class="btn btn-primary btn-large" style="width: 100%;" disabled>
                     Join Game
                 </button>
             </form>
+            
+            <!-- Show debug toggle -->
+            <p style="text-align: center; margin-top: 16px;">
+                <a href="#" id="toggleDebug" style="font-size: 0.75rem; color: var(--text-light);">Hide debug info</a>
+            </p>
         </div>
 
         <!-- Waiting State (shown after joining) -->
@@ -85,19 +96,21 @@
         </div>
     </div>
 
-    <!-- SignalR -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <!-- Scripts -->
     <script src="/js/config.js"></script>
     <script src="/js/game-client.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script>
-        // Get server URL from config
-        const SERVER_URL = GameConfig.getServerUrl();
-        console.log('Using Server URL:', SERVER_URL || '(same origin)');
-
-        // DOM Elements
+        // ===========================================
+        // DOM Elements - declare ALL elements first
+        // ===========================================
+        const debugInfo = document.getElementById('debugInfo');
+        const debugServerUrl = document.getElementById('debugServerUrl');
+        const debugStatus = document.getElementById('debugStatus');
+        const toggleDebug = document.getElementById('toggleDebug');
+        const errorMessage = document.getElementById('errorMessage');
         const connectionStatus = document.getElementById('connectionStatus');
         const statusText = document.getElementById('statusText');
-        const errorMessage = document.getElementById('errorMessage');
         const joinForm = document.getElementById('joinForm');
         const roomCodeInput = document.getElementById('roomCode');
         const displayNameInput = document.getElementById('displayName');
@@ -109,80 +122,78 @@
         const playerCountBadge = document.getElementById('playerCountBadge');
         const leaveBtn = document.getElementById('leaveBtn');
 
-        // Game client
-        const client = new GameClient(SERVER_URL);
-        let playerId = GameUtils.getPlayerId();
+        // ===========================================
+        // State variables
+        // ===========================================
+        let client = null;
+        let playerId = null;
         let hasJoined = false;
-
-        // Get room code from URL if present
+        
+        // Get server URL
+        const SERVER_URL = GameConfig.getServerUrl();
+        debugServerUrl.textContent = SERVER_URL || '(same origin)';
+        
+        // ===========================================
+        // Helper functions
+        // ===========================================
+        function updateDebug(message) {
+            console.log('[DEBUG]', message);
+            debugStatus.textContent = message;
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('visible');
+        }
+        
+        function hideError() {
+            errorMessage.classList.remove('visible');
+        }
+        
         function getRoomCodeFromUrl() {
             const path = window.location.pathname;
             const match = path.match(/\/join\/([A-Za-z0-9]{4})/);
             return match ? match[1].toUpperCase() : null;
         }
 
-        // Initialize
-        async function init() {
-            // Pre-fill room code from URL
-            const urlRoomCode = getRoomCodeFromUrl();
-            if (urlRoomCode) {
-                roomCodeInput.value = urlRoomCode;
-            }
-
-            // Pre-fill stored name
-            const storedName = GameUtils.getStoredName();
-            if (storedName) {
-                displayNameInput.value = storedName;
-            }
-
-            // Set up callbacks
-            client.on('onConnected', onConnected);
-            client.on('onDisconnected', onDisconnected);
-            client.on('onReconnecting', onReconnecting);
-            client.on('onLobbyUpdated', onLobbyUpdated);
-            client.on('onError', onError);
-
-            try {
-                await client.connect();
-            } catch (error) {
-                console.error('Connection failed:', error);
-            }
-        }
-
+        // ===========================================
+        // Event handlers
+        // ===========================================
         function onConnected() {
             connectionStatus.className = 'status status-connected';
             statusText.textContent = 'Connected';
             joinBtn.disabled = false;
+            updateDebug('Connected and ready!');
         }
 
         function onDisconnected() {
             connectionStatus.className = 'status status-disconnected';
             statusText.textContent = 'Disconnected';
+            updateDebug('Disconnected');
         }
 
         function onReconnecting() {
             connectionStatus.className = 'status status-connecting';
             statusText.textContent = 'Reconnecting...';
+            updateDebug('Reconnecting...');
         }
 
         function onLobbyUpdated(roomState) {
             console.log('Lobby updated:', roomState);
+            updateDebug('Lobby updated - ' + (roomState.players?.length || 0) + ' players');
             
-            // If we haven't shown the waiting card yet, show it now
             if (!hasJoined) {
                 hasJoined = true;
                 showWaitingState(roomState);
             }
 
-            // Update player count
             const players = roomState.players || [];
             playerCountBadge.textContent = players.length;
-
-            // Hide error on success
             hideError();
         }
 
         function onError(error) {
+            updateDebug('Server error: ' + (error.code || error.message || error));
             showError(GameUtils.formatError(error));
             joinBtn.disabled = false;
             joinBtn.textContent = 'Join Game';
@@ -202,14 +213,79 @@
             playerCountBadge.textContent = players.length;
         }
 
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.classList.add('visible');
+        // ===========================================
+        // Main initialization
+        // ===========================================
+        async function initApp() {
+            updateDebug('Initializing...');
+            
+            try {
+                // Check if SignalR is loaded
+                if (typeof signalR === 'undefined') {
+                    updateDebug('ERROR: SignalR not loaded!');
+                    showError('Failed to load SignalR library. Check your internet connection.');
+                    return;
+                }
+                updateDebug('SignalR library loaded OK');
+
+                // Pre-fill room code from URL
+                const urlRoomCode = getRoomCodeFromUrl();
+                if (urlRoomCode) {
+                    roomCodeInput.value = urlRoomCode;
+                    updateDebug('Room code from URL: ' + urlRoomCode);
+                }
+
+                // Pre-fill stored name
+                const storedName = GameUtils.getStoredName();
+                if (storedName) {
+                    displayNameInput.value = storedName;
+                }
+
+                // Get player ID
+                playerId = GameUtils.getPlayerId();
+                updateDebug('Player ID: ' + playerId.substring(0, 8) + '...');
+
+                // Test server connection first
+                updateDebug('Testing server...');
+                const testResult = await GameConfig.testServerConnection();
+                
+                if (!testResult.success) {
+                    updateDebug('Server FAILED: ' + testResult.error);
+                    showError('Cannot reach server: ' + testResult.error);
+                    return;
+                }
+                
+                updateDebug('Server OK! Connecting SignalR...');
+
+                // Create client and set up callbacks
+                client = new GameClient(SERVER_URL);
+                client.on('onConnected', onConnected);
+                client.on('onDisconnected', onDisconnected);
+                client.on('onReconnecting', onReconnecting);
+                client.on('onLobbyUpdated', onLobbyUpdated);
+                client.on('onError', onError);
+
+                // Connect
+                await client.connect();
+                updateDebug('SignalR connected!');
+                
+            } catch (error) {
+                console.error('Init failed:', error);
+                updateDebug('ERROR: ' + (error.message || String(error)));
+                showError('Connection failed: ' + (error.message || String(error)));
+            }
         }
 
-        function hideError() {
-            errorMessage.classList.remove('visible');
-        }
+        // ===========================================
+        // UI Event listeners
+        // ===========================================
+        
+        // Toggle debug info
+        toggleDebug.addEventListener('click', (e) => {
+            e.preventDefault();
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+            toggleDebug.textContent = debugInfo.style.display === 'none' ? 'Show debug info' : 'Hide debug info';
+        });
 
         // Form submission
         joinForm.addEventListener('submit', async (e) => {
@@ -218,7 +294,6 @@
             const roomCode = roomCodeInput.value.trim().toUpperCase();
             const displayName = displayNameInput.value.trim();
 
-            // Validate
             if (roomCode.length !== 4) {
                 showError('Please enter a 4-character room code.');
                 return;
@@ -232,12 +307,14 @@
             hideError();
             joinBtn.disabled = true;
             joinBtn.textContent = 'Joining...';
+            updateDebug('Joining room ' + roomCode + '...');
 
             try {
                 await client.joinRoom(roomCode, playerId, displayName);
                 GameUtils.setStoredRoomCode(roomCode);
             } catch (error) {
                 console.error('Join failed:', error);
+                updateDebug('Join failed: ' + (error.message || error));
                 showError('Failed to join room. Please try again.');
                 joinBtn.disabled = false;
                 joinBtn.textContent = 'Join Game';
@@ -252,13 +329,13 @@
                 console.error('Leave failed:', error);
             }
             
-            // Reset UI
             hasJoined = false;
             waitingCard.style.display = 'none';
             joinForm.parentElement.style.display = 'block';
             joinBtn.disabled = false;
             joinBtn.textContent = 'Join Game';
             GameUtils.setStoredRoomCode(null);
+            updateDebug('Left room');
         });
 
         // Auto-uppercase room code input
@@ -266,8 +343,11 @@
             e.target.value = e.target.value.toUpperCase();
         });
 
-        // Initialize on load
-        init();
+        // ===========================================
+        // Start the app when DOM is ready
+        // ===========================================
+        updateDebug('Scripts loaded, starting...');
+        initApp();
     </script>
 </body>
 </html>
