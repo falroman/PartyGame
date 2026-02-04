@@ -354,6 +354,15 @@ public interface IClock
 - [x] Integration tests for StartGame (4 tests)
 - [x] 94 total tests passing
 
+### ? Quiz Question Bank (Content System)
+- [x] Core models: `QuizOption`, `QuizQuestion`, `QuestionPack`, `SourceInfo`
+- [x] Interface: `IQuizQuestionBank` with `GetAll`, `GetRandom`, `TryGetById`
+- [x] Implementation: `JsonQuizQuestionBank` loads from JSON files
+- [x] Validation: Fail-fast with `QuestionPackValidationException`
+- [x] Content: `questions.nl-BE.json` with 15 sample questions
+- [x] Unit tests: 24 tests covering loading, validation, filtering
+- [x] 118 total tests passing
+
 ### ?? Iteration 7 - Quiz Questions (Planned)
 - [ ] Question model and storage
 - [ ] Question phases (Show, Answer, Results)
@@ -362,93 +371,87 @@ public interface IClock
 
 ---
 
-## 9. Running the Project
+## Quiz Question Bank
 
-### Build
-```bash
-dotnet build
+### JSON Schema
+
+Question packs are stored in `PartyGame.Server/Content/questions.{locale}.json`.
+
+```json
+{
+  "schemaVersion": 1,
+  "packId": "general-knowledge-nl-be",
+  "title": "Algemene Kennis",
+  "locale": "nl-BE",
+  "tags": ["general", "trivia"],
+  "questions": [
+    {
+      "id": "geo-001",
+      "category": "Geografie",
+      "difficulty": 1,
+      "question": "Wat is de hoofdstad van België?",
+      "options": [
+        { "key": "A", "text": "Antwerpen" },
+        { "key": "B", "text": "Brussel" },
+        { "key": "C", "text": "Gent" },
+        { "key": "D", "text": "Luik" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "Brussel is de hoofdstad van België.",
+      "timeLimitSeconds": 15,
+      "shuffleOptions": true,
+      "tags": ["belgium", "capitals"],
+      "source": { "type": "original", "ref": null }
+    }
+  ]
+}
 ```
 
-### Run Tests
-```bash
-dotnet test
+### Validation Rules
+
+| Rule | Error |
+|------|-------|
+| `packId` required | "PackId is required" |
+| `locale` required | "Pack Locale is required" |
+| `questions` not empty | "Pack must contain at least one question" |
+| `id` unique per pack | "Duplicate Id '{id}'" |
+| `question` text required | "Question text is required" |
+| `difficulty` 1-5 | "Difficulty must be between 1 and 5" |
+| Exactly 4 options | "Must have exactly 4 options" |
+| Option keys unique | "Duplicate option key '{key}'" |
+| `correctOptionKey` valid | "CorrectOptionKey does not match any option" |
+
+### Content Location
+
+```
+PartyGame.Server/
+??? Content/
+?   ??? questions.nl-BE.json    # Dutch (Belgium) questions
+?   ??? questions.en-US.json    # (future) English questions
 ```
 
-### Run Server (API + SignalR)
-```bash
-cd PartyGame.Server
-dotnet run
-# API: https://localhost:7213
-# Swagger: https://localhost:7213/swagger
-# SignalR: wss://localhost:7213/hub/game
+### Adding New Question Packs
+
+1. Create a new JSON file: `Content/questions.{locale}.json`
+2. Follow the schema above with unique `packId`
+3. Each question needs:
+   - Unique `id` within the pack
+   - Exactly 4 options with keys A, B, C, D
+   - Valid `correctOptionKey` matching one option
+   - `difficulty` between 1 and 5
+4. Restart the server to load new content
+
+### IQuizQuestionBank Interface
+
+```csharp
+IEnumerable<QuizQuestion> GetAll(string locale);
+QuizQuestion? GetRandom(string locale, string? category, int? difficulty, 
+                        IEnumerable<string>? tags, IEnumerable<string>? excludeIds);
+bool TryGetById(string questionId, out QuizQuestion? question);
+IReadOnlySet<string> GetAvailableLocales();
+IReadOnlySet<string> GetAvailableCategories(string locale);
+int GetCount(string locale);
 ```
-
-### Run Web (Static files)
-```bash
-cd PartyGame.Web
-dotnet run
-# Web: https://localhost:7147
-# TV: https://localhost:7147/tv
-# Join: https://localhost:7147/join/{code}
-```
-
-### Run Both for LAN Testing
-Use the `lan` profile for testing with mobile devices:
-```bash
-# Terminal 1 - Server
-cd PartyGame.Server && dotnet run --launch-profile lan
-# Listens on http://0.0.0.0:5000
-
-# Terminal 2 - Web
-cd PartyGame.Web && dotnet run --launch-profile lan
-# Listens on http://0.0.0.0:5002
-```
-
-Then open `http://<your-ip>:5002/tv` in a browser and scan the QR code with your phone.
-
----
-
-## 10. Manual Testing Checklist
-
-### Iteration 6: Start Game
-
-1. **Start both projects** using `lan` profile
-2. **Open TV view** at `http://<your-ip>:5002/tv`
-3. **Verify** "Start Game" button is disabled (0 players)
-4. **Join with first phone** - button still disabled (1 player)
-5. **Join with second phone** - button becomes enabled with "Ready to start!"
-6. **Click "Start Game"** on TV
-7. **Verify TV shows**:
-   - "Game Starting!" overlay appears briefly
-   - Green "Game In Progress" card visible
-   - Header shows "Game in progress!"
-   - Start button container hidden
-8. **Verify both phones show** "Game Started!" with phase badge
-9. **Try joining with new phone** - should get "ROOM_LOCKED" error
-10. **Try starting game with only 1 player** - should get "NOT_ENOUGH_PLAYERS" error
-
-### Iteration 5: Room Cleanup
-
-1. Create room via `/api/rooms`, don't register host
-2. Wait 10+ minutes
-3. Verify room is removed (GET returns 404)
-4. Create room, register host, add player
-5. Disconnect player (close browser)
-6. Wait 2+ minutes
-7. Verify player removed from lobby (host receives LobbyUpdated)
-
-### Iteration 4: Room Locking
-
-1. **Start both projects** using `lan` profile
-2. **Open TV view** at `http://<your-ip>:5002/tv`
-3. **Verify** room shows "Room Open" with ?? icon
-4. **Click lock toggle** - should change to "Room Locked" with ?? icon
-5. **On phone**, scan QR code or navigate to join URL
-6. **Try to join locked room** - should see error "This room is locked and not accepting new players"
-7. **On TV**, click lock toggle to unlock
-8. **On phone**, join the unlocked room - should succeed
-9. **On TV**, lock room again after player joined
-10. **On phone**, disconnect (close browser) then reconnect - should succeed (reconnect allowed even when locked)
 
 ---
 
@@ -512,69 +515,11 @@ Then open `http://<your-ip>:5002/tv` in a browser and scan the QR code with your
 - Phone UI: Game active state display
 - 94 total tests passing (10 new for start game)
 
----
-
-## Appendix: SignalR Contract Reference
-
-### Hub Methods (Client ? Server)
-
-| Method | Parameters | Who | Description |
-|--------|------------|-----|-------------|
-| `RegisterHost` | `roomCode: string` | Host | Register as host for room |
-| `JoinRoom` | `roomCode: string, playerId: Guid, displayName: string` | Player | Join room as player |
-| `LeaveRoom` | `roomCode: string, playerId: Guid` | Player | Leave room voluntarily |
-| `SetRoomLocked` | `roomCode: string, isLocked: bool` | Host | Lock/unlock room |
-| `StartGame` | `roomCode: string, gameType: string` | Host | Start game (requires ?2 players) |
-
-### Events (Server ? Client)
-
-| Event | Payload | Description |
-|-------|---------|-------------|
-| `LobbyUpdated` | `RoomStateDto` | Room state changed |
-| `GameStarted` | `GameSessionDto` | Game has started |
-| `Error` | `ErrorDto` | Error occurred |
-
-### DTOs
-
-```typescript
-interface RoomStateDto {
-  roomCode: string;
-  status: 'Lobby' | 'InGame' | 'Finished';
-  isLocked: boolean;
-  players: PlayerDto[];
-  currentGame: GameSessionDto | null;
-}
-
-interface GameSessionDto {
-  gameType: string;
-  phase: string;
-  startedUtc: string; // ISO 8601
-}
-
-interface PlayerDto {
-  playerId: string;
-  displayName: string;
-  isConnected: boolean;
-  score: number;
-}
-
-interface ErrorDto {
-  code: string;
-  message: string;
-}
-```
-
-### Error Codes
-
-| Code | Description |
-|------|-------------|
-| `ROOM_NOT_FOUND` | Room does not exist |
-| `ROOM_LOCKED` | Room is locked |
-| `ROOM_FULL` | Room at capacity |
-| `NAME_INVALID` | Invalid display name |
-| `NAME_TAKEN` | Name already in use |
-| `ALREADY_HOST` | Already hosting another room |
-| `NOT_HOST` | Requires host privileges |
-| `CONNECTION_FAILED` | Connection error |
-| `INVALID_STATE` | Invalid room state for action |
-| `NOT_ENOUGH_PLAYERS` | Need ?2 players |
+### v0.8.0 (Quiz Question Bank)
+- Added `QuizQuestion`, `QuizOption`, `QuestionPack`, `SourceInfo` models
+- Added `IQuizQuestionBank` interface
+- Added `JsonQuizQuestionBank` implementation with JSON file loading
+- Added `QuestionPackValidationException` for validation errors
+- Added 15 sample questions in `questions.nl-BE.json`
+- Added 24 unit tests for question bank functionality
+- 118 total tests passing

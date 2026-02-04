@@ -46,6 +46,9 @@ builder.Services.AddSingleton<IRoomStore, InMemoryRoomStore>();
 builder.Services.AddSingleton<IConnectionIndex, ConnectionIndex>();
 builder.Services.AddSingleton<ILobbyService, LobbyService>();
 
+// Add quiz question bank
+builder.Services.AddSingleton<IQuizQuestionBank, JsonQuizQuestionBank>();
+
 // Add hosted services
 builder.Services.AddHostedService<RoomCleanupHostedService>();
 

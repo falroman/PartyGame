@@ -15,4 +15,11 @@
     <ProjectReference Include="..\PartyGame.Core\PartyGame.Core.csproj" />
   </ItemGroup>
 
+  <!-- Ensure Content folder JSON files are copied to output -->
+  <ItemGroup>
+    <None Update="Content\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "packId": "general-knowledge-nl-be",
+  "title": "Algemene Kennis - België & Wereld",
+  "locale": "nl-BE",
+  "tags": ["general", "trivia", "belgium"],
+  "questions": [
+    {
+      "id": "geo-001",
+      "category": "Geografie",
+      "difficulty": 1,
+      "question": "Wat is de hoofdstad van België?",
+      "options": [
+        { "key": "A", "text": "Antwerpen" },
+        { "key": "B", "text": "Brussel" },
+        { "key": "C", "text": "Gent" },
+        { "key": "D", "text": "Luik" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "Brussel is de hoofdstad van België en tevens de zetel van de Europese Unie.",
+      "timeLimitSeconds": 15,
+      "shuffleOptions": true,
+      "tags": ["belgium", "capitals"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "geo-002",
+      "category": "Geografie",
+      "difficulty": 2,
+      "question": "Hoeveel provincies heeft België?",
+      "options": [
+        { "key": "A", "text": "8" },
+        { "key": "B", "text": "9" },
+        { "key": "C", "text": "10" },
+        { "key": "D", "text": "11" }
+      ],
+      "correctOptionKey": "C",
+      "explanation": "België heeft 10 provincies: 5 in Vlaanderen en 5 in Wallonië.",
+      "shuffleOptions": true,
+      "tags": ["belgium", "provinces"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "geo-003",
+      "category": "Geografie",
+      "difficulty": 2,
+      "question": "Welke rivier stroomt door Antwerpen?",
+      "options": [
+        { "key": "A", "text": "De Maas" },
+        { "key": "B", "text": "De Schelde" },
+        { "key": "C", "text": "De Leie" },
+        { "key": "D", "text": "De Dender" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "De Schelde is een belangrijke rivier die door Antwerpen stroomt naar de Noordzee.",
+      "shuffleOptions": true,
+      "tags": ["belgium", "rivers"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "history-001",
+      "category": "Geschiedenis",
+      "difficulty": 2,
+      "question": "In welk jaar werd België onafhankelijk?",
+      "options": [
+        { "key": "A", "text": "1815" },
+        { "key": "B", "text": "1830" },
+        { "key": "C", "text": "1839" },
+        { "key": "D", "text": "1848" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "De Belgische Revolutie vond plaats in 1830, waarna België onafhankelijk werd van Nederland.",
+      "shuffleOptions": true,
+      "tags": ["belgium", "independence"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "history-002",
+      "category": "Geschiedenis",
+      "difficulty": 3,
+      "question": "Wie was de eerste koning van België?",
+      "options": [
+        { "key": "A", "text": "Leopold I" },
+        { "key": "B", "text": "Leopold II" },
+        { "key": "C", "text": "Albert I" },
+        { "key": "D", "text": "Boudewijn" }
+      ],
+      "correctOptionKey": "A",
+      "explanation": "Leopold I van Saksen-Coburg werd in 1831 de eerste koning van België.",
+      "shuffleOptions": true,
+      "tags": ["belgium", "royalty"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "science-001",
+      "category": "Wetenschap",
+      "difficulty": 1,
+      "question": "Wat is het chemische symbool voor water?",
+      "options": [
+        { "key": "A", "text": "WA" },
+        { "key": "B", "text": "H2O" },
+        { "key": "C", "text": "O2" },
+        { "key": "D", "text": "HO" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "H2O staat voor 2 waterstofatomen (H) en 1 zuurstofatoom (O).",
+      "shuffleOptions": true,
+      "tags": ["chemistry", "basic"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "science-002",
+      "category": "Wetenschap",
+      "difficulty": 2,
+      "question": "Hoeveel planeten heeft ons zonnestelsel?",
+      "options": [
+        { "key": "A", "text": "7" },
+        { "key": "B", "text": "8" },
+        { "key": "C", "text": "9" },
+        { "key": "D", "text": "10" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "Sinds 2006 telt ons zonnestelsel officieel 8 planeten. Pluto werd gedegradeerd tot dwergplaneet.",
+      "shuffleOptions": true,
+      "tags": ["astronomy", "planets"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "science-003",
+      "category": "Wetenschap",
+      "difficulty": 3,
+      "question": "Welk gas vormt het grootste deel van de atmosfeer van de Aarde?",
+      "options": [
+        { "key": "A", "text": "Zuurstof" },
+        { "key": "B", "text": "Koolstofdioxide" },
+        { "key": "C", "text": "Stikstof" },
+        { "key": "D", "text": "Waterstof" }
+      ],
+      "correctOptionKey": "C",
+      "explanation": "Stikstof (N2) vormt ongeveer 78% van de atmosfeer, gevolgd door zuurstof met 21%.",
+      "shuffleOptions": true,
+      "tags": ["chemistry", "atmosphere"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "sport-001",
+      "category": "Sport",
+      "difficulty": 1,
+      "question": "Hoeveel spelers staan er in een voetbalteam op het veld?",
+      "options": [
+        { "key": "A", "text": "9" },
+        { "key": "B", "text": "10" },
+        { "key": "C", "text": "11" },
+        { "key": "D", "text": "12" }
+      ],
+      "correctOptionKey": "C",
+      "explanation": "Een voetbalteam bestaat uit 11 spelers, inclusief de keeper.",
+      "shuffleOptions": true,
+      "tags": ["football", "basic"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "sport-002",
+      "category": "Sport",
+      "difficulty": 2,
+      "question": "Welke Belgische wielrenner won de Tour de France twee keer?",
+      "options": [
+        { "key": "A", "text": "Tom Boonen" },
+        { "key": "B", "text": "Eddy Merckx" },
+        { "key": "C", "text": "Philippe Gilbert" },
+        { "key": "D", "text": "Johan Museeuw" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "Eddy Merckx won de Tour de France zelfs 5 keer (1969-1972, 1974) - een record dat hij deelt met anderen.",
+      "shuffleOptions": true,
+      "tags": ["cycling", "belgium", "tour"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "culture-001",
+      "category": "Cultuur",
+      "difficulty": 1,
+      "question": "Welk stripfiguur werd door de Belg Hergé gecreëerd?",
+      "options": [
+        { "key": "A", "text": "Asterix" },
+        { "key": "B", "text": "Kuifje" },
+        { "key": "C", "text": "Lucky Luke" },
+        { "key": "D", "text": "De Smurfen" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "Kuifje (Tintin) werd gecreëerd door de Belgische striptekenaar Hergé in 1929.",
+      "shuffleOptions": true,
+      "tags": ["comics", "belgium", "herge"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "culture-002",
+      "category": "Cultuur",
+      "difficulty": 2,
+      "question": "Welke Belgische zanger scoorde een wereldhit met 'Alors on danse'?",
+      "options": [
+        { "key": "A", "text": "Stromae" },
+        { "key": "B", "text": "Arno" },
+        { "key": "C", "text": "Helmut Lotti" },
+        { "key": "D", "text": "Plastic Bertrand" }
+      ],
+      "correctOptionKey": "A",
+      "explanation": "Stromae (Paul Van Haver) brak internationaal door met 'Alors on danse' in 2010.",
+      "shuffleOptions": true,
+      "tags": ["music", "belgium", "pop"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "food-001",
+      "category": "Eten & Drinken",
+      "difficulty": 1,
+      "question": "Welk gerecht wordt traditioneel in België met frieten gegeten?",
+      "options": [
+        { "key": "A", "text": "Currywurst" },
+        { "key": "B", "text": "Moules-frites" },
+        { "key": "C", "text": "Fish and chips" },
+        { "key": "D", "text": "Paella" }
+      ],
+      "correctOptionKey": "B",
+      "explanation": "Moules-frites (mosselen met frieten) is een klassiek Belgisch gerecht.",
+      "shuffleOptions": true,
+      "tags": ["food", "belgium", "traditional"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "geo-004",
+      "category": "Geografie",
+      "difficulty": 4,
+      "question": "Wat is de hoogste berg van België?",
+      "options": [
+        { "key": "A", "text": "Signal de Botrange" },
+        { "key": "B", "text": "Baraque Michel" },
+        { "key": "C", "text": "Kemmelberg" },
+        { "key": "D", "text": "Kluisberg" }
+      ],
+      "correctOptionKey": "A",
+      "explanation": "Signal de Botrange in de Hoge Venen is met 694 meter het hoogste punt van België.",
+      "shuffleOptions": true,
+      "tags": ["belgium", "mountains"],
+      "source": { "type": "original" }
+    },
+    {
+      "id": "science-004",
+      "category": "Wetenschap",
+      "difficulty": 4,
+      "question": "Wat is de snelheid van het licht in vacuüm (afgerond)?",
+      "options": [
+        { "key": "A", "text": "300.000 km/s" },
+        { "key": "B", "text": "150.000 km/s" },
+        { "key": "C", "text": "500.000 km/s" },
+        { "key": "D", "text": "1.000.000 km/s" }
+      ],
+      "correctOptionKey": "A",
+      "explanation": "De lichtsnelheid is exact 299.792.458 m/s, vaak afgerond naar 300.000 km/s.",
+      "shuffleOptions": true,
+      "tags": ["physics", "light"],
+      "source": { "type": "original" }
+    }
+  ]
+}

@@ -383,7 +383,7 @@
             // Update lock state
             updateLockUI(roomState.isLocked);
 
-            // Update room status
+            // Update room status (can be string "Lobby" or int 0)
             currentRoomStatus = roomState.status;
             updateGameStatusUI(roomState);
 
@@ -411,11 +411,13 @@
             }
 
             // Enable/disable start button based on player count and game status
-            const canStart = players.length >= 2 && currentRoomStatus === 'Lobby';
+            // Status can be string "Lobby" or int 0
+            const isLobby = currentRoomStatus === 'Lobby' || currentRoomStatus === 0;
+            const canStart = players.length >= 2 && isLobby;
             startGameBtn.disabled = !canStart;
             
             // Update hint text
-            if (currentRoomStatus !== 'Lobby') {
+            if (!isLobby) {
                 startGameHint.textContent = 'Game is in progress';
             } else if (players.length < 2) {
                 startGameHint.textContent = 'Need at least 2 players to start';
@@ -498,11 +500,6 @@
             div.textContent = text;
             return div.innerHTML;
         }
-
-        // Start game (placeholder for future)
-        startGameBtn.addEventListener('click', () => {
-            alert('Game start functionality coming in a future iteration!');
-        });
 
         // Initialize on load
         init();
