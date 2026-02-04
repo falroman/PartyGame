@@ -47,3 +47,34 @@ public enum GameType
     /// </summary>
     Quiz
 }
+
+/// <summary>
+/// Represents the phases of a quiz game.
+/// </summary>
+public enum QuizPhase
+{
+    /// <summary>
+    /// Displaying the question to players (pre-answer phase).
+    /// </summary>
+    Question,
+
+    /// <summary>
+    /// Players can submit their answers.
+    /// </summary>
+    Answering,
+
+    /// <summary>
+    /// Revealing the correct answer.
+    /// </summary>
+    Reveal,
+
+    /// <summary>
+    /// Showing the scoreboard between questions or at game end.
+    /// </summary>
+    Scoreboard,
+
+    /// <summary>
+    /// Game has finished.
+    /// </summary>
+    Finished
+}

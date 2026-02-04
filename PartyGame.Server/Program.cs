@@ -44,10 +44,16 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IRoomCodeGenerator, RoomCodeGenerator>();
 builder.Services.AddSingleton<IRoomStore, InMemoryRoomStore>();
 builder.Services.AddSingleton<IConnectionIndex, ConnectionIndex>();
-builder.Services.AddSingleton<ILobbyService, LobbyService>();
 
 // Add quiz question bank
 builder.Services.AddSingleton<IQuizQuestionBank, JsonQuizQuestionBank>();
+
+// Add quiz game engine and orchestrator
+builder.Services.AddSingleton<IQuizGameEngine, QuizGameEngine>();
+builder.Services.AddSingleton<IQuizGameOrchestrator, QuizGameOrchestrator>();
+
+// Add lobby service (depends on orchestrator)
+builder.Services.AddSingleton<ILobbyService, LobbyService>();
 
 // Add hosted services
 builder.Services.AddHostedService<RoomCleanupHostedService>();

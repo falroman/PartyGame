@@ -19,19 +19,22 @@ public class LobbyService : ILobbyService
     private readonly IClock _clock;
     private readonly IHubContext<GameHub> _hubContext;
     private readonly ILogger<LobbyService> _logger;
+    private readonly IQuizGameOrchestrator? _quizOrchestrator;
 
     public LobbyService(
         IRoomStore roomStore,
         IConnectionIndex connectionIndex,
         IClock clock,
         IHubContext<GameHub> hubContext,
-        ILogger<LobbyService> logger)
+        ILogger<LobbyService> logger,
+        IQuizGameOrchestrator? quizOrchestrator = null)
     {
         _roomStore = roomStore;
         _connectionIndex = connectionIndex;
         _clock = clock;
         _hubContext = hubContext;
         _logger = logger;
+        _quizOrchestrator = quizOrchestrator;
     }
 
     /// <inheritdoc />
@@ -416,6 +419,7 @@ public class LobbyService : ILobbyService
     public void RemoveRoom(string roomCode)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
+        _quizOrchestrator?.StopGame(normalizedCode);
         _roomStore.Remove(normalizedCode);
         _logger.LogInformation("Room {RoomCode} removed by cleanup", normalizedCode);
     }
@@ -487,6 +491,22 @@ public class LobbyService : ILobbyService
                 gameSession.StartedUtc
             );
             await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("GameStarted", gameSessionDto);
+        }
+
+        // Start quiz game if applicable
+        if (gameType == GameType.Quiz && _quizOrchestrator != null)
+        {
+            var (quizSuccess, quizError) = await _quizOrchestrator.StartGameAsync(room);
+            if (!quizSuccess)
+            {
+                _logger.LogError("Failed to start quiz game: {Error}", quizError?.Message);
+                // Revert room state
+                room.Status = RoomStatus.Lobby;
+                room.IsLocked = false;
+                room.CurrentGame = null;
+                _roomStore.Update(room);
+                return (false, quizError);
+            }
         }
 
         return (true, null);

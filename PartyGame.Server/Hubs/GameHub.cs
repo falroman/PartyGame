@@ -12,11 +12,16 @@ namespace PartyGame.Server.Hubs;
 public class GameHub : Hub
 {
     private readonly ILobbyService _lobbyService;
+    private readonly IQuizGameOrchestrator _quizOrchestrator;
     private readonly ILogger<GameHub> _logger;
 
-    public GameHub(ILobbyService lobbyService, ILogger<GameHub> logger)
+    public GameHub(
+        ILobbyService lobbyService, 
+        IQuizGameOrchestrator quizOrchestrator,
+        ILogger<GameHub> logger)
     {
         _lobbyService = lobbyService;
+        _quizOrchestrator = quizOrchestrator;
         _logger = logger;
     }
 
@@ -61,6 +66,14 @@ public class GameHub : Hub
         {
             await Clients.Caller.SendAsync("LobbyUpdated", roomState);
         }
+
+        // Send current quiz state if game is in progress
+        var quizState = _quizOrchestrator.GetState(roomCode);
+        if (quizState != null)
+        {
+            // The orchestrator will have already broadcasted, but send to newly connected host
+            await Clients.Caller.SendAsync("QuizStateUpdated", CreateSafeQuizDto(quizState));
+        }
     }
 
     /// <summary>
@@ -87,6 +100,13 @@ public class GameHub : Hub
         if (roomState != null)
         {
             await Clients.Caller.SendAsync("LobbyUpdated", roomState);
+        }
+
+        // Send current quiz state if game is in progress
+        var quizState = _quizOrchestrator.GetState(roomCode);
+        if (quizState != null)
+        {
+            await Clients.Caller.SendAsync("QuizStateUpdated", CreateSafeQuizDto(quizState));
         }
     }
 
@@ -147,5 +167,79 @@ public class GameHub : Hub
         {
             await Clients.Caller.SendAsync("Error", error);
         }
+    }
+
+    /// <summary>
+    /// Player submits their answer for the current question.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="playerId">The player's ID.</param>
+    /// <param name="optionKey">The selected option key (A, B, C, D).</param>
+    public async Task SubmitAnswer(string roomCode, Guid playerId, string optionKey)
+    {
+        _logger.LogInformation("SubmitAnswer called for room {RoomCode} by player {PlayerId} with option {OptionKey}", 
+            roomCode, playerId, optionKey);
+
+        var (success, error) = await _quizOrchestrator.SubmitAnswerAsync(roomCode, playerId, optionKey);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+        }
+    }
+
+    /// <summary>
+    /// Host triggers the next question (optional - game auto-advances by default).
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    public async Task NextQuestion(string roomCode)
+    {
+        _logger.LogInformation("NextQuestion called for room {RoomCode} by {ConnectionId}", 
+            roomCode, Context.ConnectionId);
+
+        var (success, error) = await _quizOrchestrator.NextQuestionAsync(roomCode, Context.ConnectionId);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+        }
+    }
+
+    private QuizGameStateDto CreateSafeQuizDto(Core.Models.Quiz.QuizGameState state)
+    {
+        var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.Scoreboard or QuizPhase.Finished;
+        var remainingSeconds = Math.Max(0, (int)(state.PhaseEndsUtc - DateTime.UtcNow).TotalSeconds);
+
+        var answerStatuses = state.Scoreboard
+            .Select(p => new PlayerAnswerStatusDto(
+                p.PlayerId,
+                p.DisplayName,
+                state.Answers.TryGetValue(p.PlayerId, out var a) && a != null
+            ))
+            .ToList();
+
+        return new QuizGameStateDto(
+            Phase: state.Phase,
+            QuestionNumber: state.QuestionNumber,
+            TotalQuestions: state.TotalQuestions,
+            QuestionId: state.QuestionId,
+            QuestionText: state.QuestionText,
+            Options: state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList(),
+            CorrectOptionKey: showCorrectAnswer ? state.CorrectOptionKey : null,
+            Explanation: showCorrectAnswer ? state.Explanation : null,
+            RemainingSeconds: remainingSeconds,
+            AnswerStatuses: answerStatuses,
+            Scoreboard: state.Scoreboard
+                .Select(p => new PlayerScoreDto(
+                    p.PlayerId,
+                    p.DisplayName,
+                    p.Score,
+                    p.Position,
+                    showCorrectAnswer ? p.AnsweredCorrectly : null,
+                    showCorrectAnswer ? p.SelectedOption : null
+                ))
+                .OrderBy(p => p.Position)
+                .ToList()
+        );
     }
 }

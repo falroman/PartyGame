@@ -16,6 +16,7 @@ class GameClient {
             onReconnecting: () => {},
             onLobbyUpdated: () => {},
             onGameStarted: () => {},
+            onQuizStateUpdated: () => {},
             onError: () => {}
         };
     }
@@ -41,6 +42,11 @@ class GameClient {
         this.connection.on('GameStarted', (gameSession) => {
             console.log('GameStarted:', gameSession);
             this.callbacks.onGameStarted(gameSession);
+        });
+
+        this.connection.on('QuizStateUpdated', (quizState) => {
+            console.log('QuizStateUpdated:', quizState);
+            this.callbacks.onQuizStateUpdated(quizState);
         });
 
         this.connection.on('Error', (error) => {
@@ -156,6 +162,33 @@ class GameClient {
             throw new Error('Only the host can start the game');
         }
         await this.connection.invoke('StartGame', this.roomCode, gameType);
+    }
+
+    /**
+     * Submit answer for current quiz question (player only)
+     * @param {string} optionKey - The selected option (A, B, C, D)
+     */
+    async submitAnswer(optionKey) {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.playerId) {
+            throw new Error('No player ID set');
+        }
+        await this.connection.invoke('SubmitAnswer', this.roomCode, this.playerId, optionKey);
+    }
+
+    /**
+     * Advance to next question (host only)
+     */
+    async nextQuestion() {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.isHost) {
+            throw new Error('Only the host can advance the game');
+        }
+        await this.connection.invoke('NextQuestion', this.roomCode);
     }
 
     /**

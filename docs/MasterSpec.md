@@ -354,16 +354,7 @@ public interface IClock
 - [x] Integration tests for StartGame (4 tests)
 - [x] 94 total tests passing
 
-### ? Quiz Question Bank (Content System)
-- [x] Core models: `QuizOption`, `QuizQuestion`, `QuestionPack`, `SourceInfo`
-- [x] Interface: `IQuizQuestionBank` with `GetAll`, `GetRandom`, `TryGetById`
-- [x] Implementation: `JsonQuizQuestionBank` loads from JSON files
-- [x] Validation: Fail-fast with `QuestionPackValidationException`
-- [x] Content: `questions.nl-BE.json` with 15 sample questions
-- [x] Unit tests: 24 tests covering loading, validation, filtering
-- [x] 118 total tests passing
-
-### ?? Iteration 7 - Quiz Questions (Planned)
+### ? Iteration 7 - Quiz Questions (Planned)
 - [ ] Question model and storage
 - [ ] Question phases (Show, Answer, Results)
 - [ ] Player answer submission
@@ -523,3 +514,145 @@ int GetCount(string locale);
 - Added 15 sample questions in `questions.nl-BE.json`
 - Added 24 unit tests for question bank functionality
 - 118 total tests passing
+
+### v0.9.0 (Iteration 7 - Quiz Gameplay)
+- **Domain Models**:
+  - Added `QuizPhase` enum: Question, Answering, Reveal, Scoreboard, Finished
+  - Added `QuizGameState` model with full game state tracking
+  - Added `QuizOptionState`, `PlayerScoreState` supporting models
+
+- **Engine & Orchestrator**:
+  - Added `IQuizGameEngine` interface for pure game logic functions
+  - Added `QuizGameEngine` implementation with:
+    - `InitializeGame`, `StartNewQuestion`, `StartAnsweringPhase`
+    - `SubmitAnswer` (idempotent - first answer wins)
+    - `RevealAnswer` (calculates scores), `ShowScoreboard`, `FinishGame`
+    - `AllPlayersAnswered`, `HasMoreQuestions`, `IsValidOptionKey` helpers
+  - Added `IQuizGameOrchestrator` interface for timer management
+  - Added `QuizGameOrchestrator` with:
+    - Auto-advancing phase timers (Question: 3s, Answering: 15s, Reveal: 5s, Scoreboard: 5s)
+    - Early advance when all players answered
+    - `QuizStateUpdated` event broadcasting
+    - Concurrent room timer management
+
+- **DTOs**:
+  - Added `QuizGameStateDto` (safe for clients - hides correct answer during Answering)
+  - Added `QuizOptionDto`, `PlayerAnswerStatusDto`, `PlayerScoreDto`
+
+- **SignalR Hub Methods**:
+  - Added `SubmitAnswer(roomCode, playerId, optionKey)` - validates phase and option
+  - Added `NextQuestion(roomCode)` - host-triggered advance (optional, auto-advances)
+  - Updated `StartGame` to initialize quiz orchestrator
+
+- **Web UI**:
+  - Added `quiz-tv.html` - TV view for quiz gameplay:
+    - Question display with options grid
+    - Timer with warning animation
+    - Answer status badges
+    - Correct answer highlighting in Reveal phase
+    - Scoreboard with positions and deltas
+    - Winner celebration on finish
+  - Added `quiz-phone.html` - Phone controller for quiz:
+    - Large A/B/C/D answer buttons
+    - Visual feedback on selection
+    - Waiting/Submitted states
+    - Result display (correct/incorrect)
+    - Personal scoreboard view
+  - Updated `game-client.js` with `submitAnswer()`, `nextQuestion()`, `onQuizStateUpdated` callback
+  - Updated `tv.html` to navigate to `quiz-tv.html` on game start
+  - Updated `join.html` to navigate to `quiz-phone.html` on game start
+
+- **Tests**:
+  - Added 19 unit tests for `QuizGameEngine`
+  - Added 8 integration tests for quiz gameplay
+  - 145 total tests passing
+
+---
+
+## 12. Quiz Game Flow
+
+### 12.1 Phase Sequence
+
+```
+StartGame -> Question (3s) -> Answering (15s) -> Reveal (5s) -> Scoreboard (5s) -> [repeat or Finished]
+```
+
+### 12.2 QuizPhase Enum
+
+| Phase | Value | Description |
+|-------|-------|-------------|
+| Question | 0 | Display question, players watch TV |
+| Answering | 1 | Players can submit answers |
+| Reveal | 2 | Show correct answer, calculate scores |
+| Scoreboard | 3 | Display current standings |
+| Finished | 4 | Game complete, show final results |
+
+### 12.3 QuizGameStateDto
+
+```typescript
+interface QuizGameStateDto {
+    phase: QuizPhase;
+    questionNumber: number;
+    totalQuestions: number;
+    questionId: string;
+    questionText: string;
+    options: QuizOptionDto[];
+    correctOptionKey?: string;   // Only in Reveal/Scoreboard/Finished
+    explanation?: string;        // Only in Reveal/Scoreboard/Finished
+    remainingSeconds: number;
+    answerStatuses: PlayerAnswerStatusDto[];
+    scoreboard: PlayerScoreDto[];
+}
+
+interface QuizOptionDto {
+    key: string;  // "A", "B", "C", "D"
+    text: string;
+}
+
+interface PlayerAnswerStatusDto {
+    playerId: string;
+    displayName: string;
+    hasAnswered: boolean;
+}
+
+interface PlayerScoreDto {
+    playerId: string;
+    displayName: string;
+    score: number;
+    position: number;
+    answeredCorrectly?: boolean;  // Only in Reveal/Scoreboard
+    selectedOption?: string;      // Only in Reveal/Scoreboard
+}
+```
+
+### 12.4 SignalR Events
+
+| Event | Direction | Payload | When |
+|-------|-----------|---------|------|
+| `QuizStateUpdated` | Server ? Client | `QuizGameStateDto` | Every phase change, answer submission |
+| `SubmitAnswer` | Client ? Server | `roomCode, playerId, optionKey` | Player taps answer button |
+| `NextQuestion` | Client ? Server | `roomCode` | Host manually advances (optional) |
+
+### 12.5 Scoring Rules
+
+| Rule | Points |
+|------|--------|
+| Correct answer | +100 |
+| Wrong answer | +0 |
+| No answer | +0 |
+
+### 12.6 Manual Test Checklist
+
+- [ ] Create room on TV, 2+ players join
+- [ ] Start game, TV shows first question
+- [ ] Phone shows "Watch the screen" during Question phase
+- [ ] Phone shows answer buttons during Answering phase
+- [ ] Timer counts down on both TV and phone
+- [ ] Submitting answer shows "Answer Received" on phone
+- [ ] All players answering advances early to Reveal
+- [ ] Reveal phase highlights correct answer in green
+- [ ] Phone shows ? or ? based on answer
+- [ ] Scoreboard shows positions with +100 or +0 deltas
+- [ ] After 10 questions, game shows "Finished" with winner
+- [ ] Phone shows final position and "Play Again" button
+- [ ] TV "Back to Lobby" returns to tv.html

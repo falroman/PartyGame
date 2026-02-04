@@ -247,8 +247,18 @@
                 hasJoined = true;
             }
             
-            // Check if game is in progress
-            if (roomState.status === 'InGame' || roomState.status === 1) {
+            // Check if game is in progress - navigate to quiz phone view
+            const isInGame = roomState.status === 'InGame' || roomState.status === 1;
+            if (isInGame && roomState.currentGame) {
+                if (roomState.currentGame.gameType === 'Quiz') {
+                    const roomCode = roomState.roomCode;
+                    window.location.href = `/quiz-phone.html?room=${roomCode}&playerId=${playerId}`;
+                    return;
+                }
+            }
+            
+            // Show appropriate state based on game status
+            if (isInGame) {
                 showGameActiveState(roomState);
             } else {
                 showWaitingState(roomState);
@@ -302,8 +312,10 @@
             console.log('Game started event:', gameSession);
             updateDebug('Game started: ' + gameSession.phase);
             
-            if (gameSession.phase) {
-                currentPhase.textContent = gameSession.phase;
+            // Navigate to quiz phone view
+            if (gameSession.gameType === 'Quiz') {
+                const roomCode = roomCodeInput.value.trim().toUpperCase() || GameUtils.getStoredRoomCode();
+                window.location.href = `/quiz-phone.html?room=${roomCode}&playerId=${playerId}`;
             }
         }
 

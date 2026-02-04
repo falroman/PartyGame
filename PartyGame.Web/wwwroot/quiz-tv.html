@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PartyGame - Quiz</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .quiz-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .quiz-progress {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .question-counter {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .timer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 20px;
+            border-radius: 30px;
+        }
+
+        .timer.warning {
+            background: var(--warning-color);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .phase-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .quiz-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Question Card */
+        .question-card {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .question-text {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 32px;
+            line-height: 1.4;
+        }
+
+        /* Options Grid */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .option-card {
+            background: var(--bg-color);
+            border: 3px solid transparent;
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s;
+        }
+
+        .option-card.correct {
+            background: #d4edda;
+            border-color: var(--success-color);
+        }
+
+        .option-card.incorrect {
+            background: #f8d7da;
+            border-color: var(--danger-color);
+        }
+
+        .option-key {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .option-key.a { background: #e74c3c; }
+        .option-key.b { background: #3498db; }
+        .option-key.c { background: #f1c40f; color: #333; }
+        .option-key.d { background: #2ecc71; }
+
+        .option-text {
+            font-size: 1.25rem;
+            font-weight: 500;
+            text-align: left;
+            flex: 1;
+        }
+
+        .option-indicator {
+            font-size: 1.5rem;
+        }
+
+        /* Explanation */
+        .explanation-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 16px;
+            padding: 20px 24px;
+            display: none;
+        }
+
+        .explanation-card.visible {
+            display: block;
+        }
+
+        .explanation-title {
+            font-weight: 600;
+            color: var(--success-color);
+            margin-bottom: 8px;
+        }
+
+        /* Answer Status */
+        .answer-status {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .player-answer-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-answer-badge.answered {
+            background: rgba(46, 204, 113, 0.3);
+        }
+
+        .player-answer-badge.waiting {
+            opacity: 0.6;
+        }
+
+        /* Scoreboard */
+        .scoreboard-container {
+            display: none;
+        }
+
+        .scoreboard-container.visible {
+            display: block;
+        }
+
+        .scoreboard-card {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .scoreboard-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 24px;
+            color: var(--text-color);
+        }
+
+        .scoreboard-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .scoreboard-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            background: var(--bg-color);
+        }
+
+        .scoreboard-item.first {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+            color: #333;
+        }
+
+        .scoreboard-item.second {
+            background: linear-gradient(135deg, #c0c0c0 0%, #a0a0a0 100%);
+        }
+
+        .scoreboard-item.third {
+            background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);
+            color: white;
+        }
+
+        .scoreboard-position {
+            font-size: 1.5rem;
+            font-weight: bold;
+            width: 50px;
+            text-align: center;
+        }
+
+        .scoreboard-player {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .scoreboard-name {
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .scoreboard-score {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .scoreboard-delta {
+            font-size: 0.875rem;
+            margin-left: 8px;
+        }
+
+        .scoreboard-delta.positive {
+            color: var(--success-color);
+        }
+
+        /* Finished State */
+        .game-finished {
+            text-align: center;
+            padding: 60px 40px;
+            background: white;
+            border-radius: 24px;
+        }
+
+        .winner-crown {
+            font-size: 6rem;
+            margin-bottom: 24px;
+        }
+
+        .winner-name {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 8px;
+        }
+
+        .winner-score {
+            font-size: 1.5rem;
+            color: var(--text-light);
+        }
+
+        /* Hidden states */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <!-- Header -->
+        <div class="quiz-header">
+            <div class="quiz-progress">
+                <span class="question-counter">Question <span id="questionNumber">1</span>/<span id="totalQuestions">10</span></span>
+                <span class="phase-badge" id="phaseBadge">Question</span>
+            </div>
+            <div class="timer" id="timer">
+                <span>??</span>
+                <span id="timerValue">15</span>
+            </div>
+            <div>
+                Room: <strong id="roomCode">----</strong>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="quiz-main">
+            <!-- Question View -->
+            <div id="questionView">
+                <div class="question-card">
+                    <div class="question-text" id="questionText">Loading question...</div>
+                    
+                    <div class="options-grid" id="optionsGrid">
+                        <!-- Options will be inserted here -->
+                    </div>
+                </div>
+
+                <div class="explanation-card" id="explanationCard">
+                    <div class="explanation-title">?? Explanation</div>
+                    <div id="explanationText"></div>
+                </div>
+
+                <!-- Answer Status (who has answered) -->
+                <div class="answer-status" id="answerStatus">
+                    <!-- Player badges will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Scoreboard View -->
+            <div class="scoreboard-container" id="scoreboardView">
+                <div class="scoreboard-card">
+                    <div class="scoreboard-title" id="scoreboardTitle">?? Scoreboard</div>
+                    <ul class="scoreboard-list" id="scoreboardList">
+                        <!-- Scores will be inserted here -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Game Finished View -->
+            <div class="game-finished hidden" id="finishedView">
+                <div class="winner-crown">??</div>
+                <div class="winner-name" id="winnerName">Winner!</div>
+                <div class="winner-score" id="winnerScore">0 points</div>
+                <button class="btn btn-primary btn-large" style="margin-top: 32px;" onclick="window.location.href='/tv.html'">
+                    Back to Lobby
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="/js/config.js"></script>
+    <script src="/js/game-client.js"></script>
+    <script>
+        // Get room code from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomCode = urlParams.get('room');
+        
+        if (!roomCode) {
+            window.location.href = '/tv.html';
+        }
+
+        const SERVER_URL = GameConfig.getServerUrl();
+        const client = new GameClient(SERVER_URL);
+
+        // DOM Elements
+        const questionNumberEl = document.getElementById('questionNumber');
+        const totalQuestionsEl = document.getElementById('totalQuestions');
+        const phaseBadgeEl = document.getElementById('phaseBadge');
+        const timerEl = document.getElementById('timer');
+        const timerValueEl = document.getElementById('timerValue');
+        const roomCodeEl = document.getElementById('roomCode');
+        const questionTextEl = document.getElementById('questionText');
+        const optionsGridEl = document.getElementById('optionsGrid');
+        const explanationCardEl = document.getElementById('explanationCard');
+        const explanationTextEl = document.getElementById('explanationText');
+        const answerStatusEl = document.getElementById('answerStatus');
+        const questionViewEl = document.getElementById('questionView');
+        const scoreboardViewEl = document.getElementById('scoreboardView');
+        const scoreboardTitleEl = document.getElementById('scoreboardTitle');
+        const scoreboardListEl = document.getElementById('scoreboardList');
+        const finishedViewEl = document.getElementById('finishedView');
+        const winnerNameEl = document.getElementById('winnerName');
+        const winnerScoreEl = document.getElementById('winnerScore');
+
+        // Timer interval
+        let timerInterval = null;
+
+        // Phase names
+        const phaseNames = {
+            0: 'Question',
+            1: 'Answering', 
+            2: 'Reveal',
+            3: 'Scoreboard',
+            4: 'Finished',
+            'Question': 'Question',
+            'Answering': 'Answering',
+            'Reveal': 'Reveal',
+            'Scoreboard': 'Scoreboard',
+            'Finished': 'Finished'
+        };
+
+        // Initialize
+        async function init() {
+            roomCodeEl.textContent = roomCode;
+
+            client.on('onConnected', () => console.log('Connected'));
+            client.on('onQuizStateUpdated', onQuizStateUpdated);
+            client.on('onError', (error) => console.error('Error:', error));
+
+            await client.connect();
+            await client.registerHost(roomCode);
+        }
+
+        function onQuizStateUpdated(state) {
+            console.log('Quiz state:', state);
+
+            // Update header
+            questionNumberEl.textContent = state.questionNumber;
+            totalQuestionsEl.textContent = state.totalQuestions;
+            phaseBadgeEl.textContent = phaseNames[state.phase] || state.phase;
+
+            // Update timer
+            updateTimer(state.remainingSeconds);
+
+            // Handle different phases
+            const phase = typeof state.phase === 'number' ? state.phase : 
+                ['Question', 'Answering', 'Reveal', 'Scoreboard', 'Finished'].indexOf(state.phase);
+
+            if (phase === 4) { // Finished
+                showFinished(state);
+            } else if (phase === 3) { // Scoreboard
+                showScoreboard(state);
+            } else { // Question, Answering, Reveal
+                showQuestion(state);
+            }
+        }
+
+        function updateTimer(seconds) {
+            timerValueEl.textContent = seconds;
+            
+            if (seconds <= 5) {
+                timerEl.classList.add('warning');
+            } else {
+                timerEl.classList.remove('warning');
+            }
+        }
+
+        function showQuestion(state) {
+            questionViewEl.classList.remove('hidden');
+            scoreboardViewEl.classList.remove('visible');
+            finishedViewEl.classList.add('hidden');
+
+            // Update question text
+            questionTextEl.textContent = state.questionText;
+
+            // Update options
+            const optionColors = { A: 'a', B: 'b', C: 'c', D: 'd' };
+            optionsGridEl.innerHTML = state.options.map(opt => {
+                let classes = 'option-card';
+                let indicator = '';
+
+                // In Reveal phase, highlight correct/incorrect
+                if (state.correctOptionKey) {
+                    if (opt.key === state.correctOptionKey) {
+                        classes += ' correct';
+                        indicator = '?';
+                    } else {
+                        classes += ' incorrect';
+                    }
+                }
+
+                return `
+                    <div class="${classes}">
+                        <div class="option-key ${optionColors[opt.key]}">${opt.key}</div>
+                        <div class="option-text">${escapeHtml(opt.text)}</div>
+                        <div class="option-indicator">${indicator}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Show/hide explanation
+            if (state.explanation && state.correctOptionKey) {
+                explanationCardEl.classList.add('visible');
+                explanationTextEl.textContent = state.explanation;
+            } else {
+                explanationCardEl.classList.remove('visible');
+            }
+
+            // Update answer status
+            answerStatusEl.innerHTML = state.answerStatuses.map(status => {
+                const answered = status.hasAnswered;
+                return `
+                    <div class="player-answer-badge ${answered ? 'answered' : 'waiting'}">
+                        ${answered ? '?' : '?'} ${escapeHtml(status.displayName)}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showScoreboard(state) {
+            questionViewEl.classList.add('hidden');
+            scoreboardViewEl.classList.add('visible');
+            finishedViewEl.classList.add('hidden');
+
+            scoreboardTitleEl.textContent = state.questionNumber >= state.totalQuestions 
+                ? '?? Final Scores' 
+                : '?? Scores';
+
+            scoreboardListEl.innerHTML = state.scoreboard.map((player, idx) => {
+                let positionClass = '';
+                if (player.position === 1) positionClass = 'first';
+                else if (player.position === 2) positionClass = 'second';
+                else if (player.position === 3) positionClass = 'third';
+
+                const positionEmoji = player.position === 1 ? '??' : 
+                                     player.position === 2 ? '??' : 
+                                     player.position === 3 ? '??' : `#${player.position}`;
+
+                let delta = '';
+                if (player.answeredCorrectly === true) {
+                    delta = '<span class="scoreboard-delta positive">+100</span>';
+                } else if (player.answeredCorrectly === false) {
+                    delta = '<span class="scoreboard-delta">+0</span>';
+                }
+
+                return `
+                    <li class="scoreboard-item ${positionClass}">
+                        <div class="scoreboard-position">${positionEmoji}</div>
+                        <div class="scoreboard-player">
+                            <div class="player-avatar">${GameUtils.getInitials(player.displayName)}</div>
+                            <div class="scoreboard-name">${escapeHtml(player.displayName)}</div>
+                        </div>
+                        <div class="scoreboard-score">${player.score}${delta}</div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function showFinished(state) {
+            questionViewEl.classList.add('hidden');
+            scoreboardViewEl.classList.remove('visible');
+            finishedViewEl.classList.remove('hidden');
+
+            const winner = state.scoreboard[0];
+            if (winner) {
+                winnerNameEl.textContent = winner.displayName;
+                winnerScoreEl.textContent = `${winner.score} points`;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

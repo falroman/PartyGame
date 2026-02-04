@@ -436,10 +436,12 @@
             overlayPlayerCount.textContent = playerCount.textContent.split('/')[0];
             gameOverlay.classList.add('visible');
             
-            // Hide overlay after 3 seconds
-            setTimeout(() => {
-                gameOverlay.classList.remove('visible');
-            }, 3000);
+            // Navigate to quiz TV view after short delay
+            if (gameSession.gameType === 'Quiz') {
+                setTimeout(() => {
+                    window.location.href = `/quiz-tv.html?room=${currentRoomCode}`;
+                }, 2000);
+            }
         }
 
         function updateGameStatusUI(roomState) {
