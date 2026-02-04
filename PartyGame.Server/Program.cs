@@ -1,6 +1,7 @@
 using PartyGame.Core.Interfaces;
 using PartyGame.Core.Services;
 using PartyGame.Server.Hubs;
+using PartyGame.Server.Options;
 using PartyGame.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,12 +35,19 @@ builder.Services.AddCors(options =>
 // Add SignalR
 builder.Services.AddSignalR();
 
+// Configure room cleanup options
+builder.Services.Configure<RoomCleanupOptions>(
+    builder.Configuration.GetSection(RoomCleanupOptions.SectionName));
+
 // Add game services
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IRoomCodeGenerator, RoomCodeGenerator>();
 builder.Services.AddSingleton<IRoomStore, InMemoryRoomStore>();
 builder.Services.AddSingleton<IConnectionIndex, ConnectionIndex>();
 builder.Services.AddSingleton<ILobbyService, LobbyService>();
+
+// Add hosted services
+builder.Services.AddHostedService<RoomCleanupHostedService>();
 
 var app = builder.Build();
 

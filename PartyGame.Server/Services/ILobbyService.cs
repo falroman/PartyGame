@@ -62,4 +62,27 @@ public interface ILobbyService
     /// <param name="connectionId">The connection ID to check.</param>
     /// <returns>True if the connection is the host of the room.</returns>
     bool IsHostOfRoom(string roomCode, string connectionId);
+
+    /// <summary>
+    /// Removes disconnected players from a room who have been disconnected longer than the grace period.
+    /// Broadcasts LobbyUpdated if any players were removed.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="gracePeriod">The grace period after which disconnected players are removed.</param>
+    /// <returns>The number of players removed.</returns>
+    Task<int> RemoveDisconnectedPlayersAsync(string roomCode, TimeSpan gracePeriod);
+
+    /// <summary>
+    /// Gets all room codes that should be removed because they have no active host
+    /// and the host has been disconnected longer than the TTL.
+    /// </summary>
+    /// <param name="ttl">The time-to-live for hostless rooms.</param>
+    /// <returns>List of room codes that should be removed.</returns>
+    IReadOnlyList<string> GetHostlessRoomsForCleanup(TimeSpan ttl);
+
+    /// <summary>
+    /// Removes a room completely.
+    /// </summary>
+    /// <param name="roomCode">The room code to remove.</param>
+    void RemoveRoom(string roomCode);
 }

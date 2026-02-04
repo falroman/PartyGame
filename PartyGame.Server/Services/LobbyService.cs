@@ -59,6 +59,7 @@ public class LobbyService : ILobbyService
 
         // Update room with host connection
         room.HostConnectionId = connectionId;
+        room.HostDisconnectedAtUtc = null; // Clear disconnect timestamp when host connects
         _roomStore.Update(room);
 
         // Bind connection to room
@@ -223,12 +224,14 @@ public class LobbyService : ILobbyService
 
         if (binding.Role == ClientRole.Host)
         {
-            // Host disconnected - clear host connection but keep room
+            // Host disconnected - clear host connection and track disconnect time
             if (room.HostConnectionId == connectionId)
             {
                 room.HostConnectionId = null;
+                room.HostDisconnectedAtUtc = _clock.UtcNow;
                 _roomStore.Update(room);
-                _logger.LogInformation("Host disconnected from room {RoomCode}", roomCode);
+                _logger.LogInformation("Host disconnected from room {RoomCode} at {DisconnectTime}", 
+                    roomCode, room.HostDisconnectedAtUtc);
             }
         }
         else if (binding.Role == ClientRole.Player && binding.PlayerId.HasValue)
@@ -241,8 +244,8 @@ public class LobbyService : ILobbyService
                 player.LastSeenUtc = _clock.UtcNow;
                 _roomStore.Update(room);
 
-                _logger.LogInformation("Player {PlayerId} disconnected from room {RoomCode}",
-                    binding.PlayerId.Value, roomCode);
+                _logger.LogInformation("Player {PlayerId} disconnected from room {RoomCode} at {DisconnectTime}",
+                    binding.PlayerId.Value, roomCode, player.LastSeenUtc);
             }
         }
 
@@ -322,5 +325,87 @@ public class LobbyService : ILobbyService
             .ToList();
 
         return new RoomStateDto(room.Code, room.Status, room.IsLocked, players);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> RemoveDisconnectedPlayersAsync(string roomCode, TimeSpan gracePeriod)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+        {
+            return 0;
+        }
+
+        var now = _clock.UtcNow;
+        var playersToRemove = room.Players.Values
+            .Where(p => !p.IsConnected && (now - p.LastSeenUtc) > gracePeriod)
+            .Select(p => p.PlayerId)
+            .ToList();
+
+        if (playersToRemove.Count == 0)
+        {
+            return 0;
+        }
+
+        foreach (var playerId in playersToRemove)
+        {
+            room.Players.Remove(playerId);
+        }
+
+        _roomStore.Update(room);
+
+        _logger.LogInformation("Removed {Count} disconnected player(s) from room {RoomCode}: {PlayerIds}",
+            playersToRemove.Count, normalizedCode, string.Join(", ", playersToRemove));
+
+        // Broadcast lobby update
+        var roomState = GetRoomState(normalizedCode);
+        if (roomState != null)
+        {
+            await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("LobbyUpdated", roomState);
+        }
+
+        return playersToRemove.Count;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> GetHostlessRoomsForCleanup(TimeSpan ttl)
+    {
+        var now = _clock.UtcNow;
+        var roomsToRemove = new List<string>();
+
+        foreach (var room in _roomStore.GetAll())
+        {
+            // Room has no host connection
+            if (room.HostConnectionId == null)
+            {
+                // Check if host has been disconnected longer than TTL
+                if (room.HostDisconnectedAtUtc.HasValue)
+                {
+                    if ((now - room.HostDisconnectedAtUtc.Value) > ttl)
+                    {
+                        roomsToRemove.Add(room.Code);
+                    }
+                }
+                else
+                {
+                    // Host never registered - check room creation time
+                    if ((now - room.CreatedUtc) > ttl)
+                    {
+                        roomsToRemove.Add(room.Code);
+                    }
+                }
+            }
+        }
+
+        return roomsToRemove;
+    }
+
+    /// <inheritdoc />
+    public void RemoveRoom(string roomCode)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+        _roomStore.Remove(normalizedCode);
+        _logger.LogInformation("Room {RoomCode} removed by cleanup", normalizedCode);
     }
 }

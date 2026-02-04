@@ -28,9 +28,15 @@ public class Room
     public bool IsLocked { get; set; }
 
     /// <summary>
-    /// SignalR connection ID of the host. Null if host hasn't registered yet.
+    /// SignalR connection ID of the host. Null if host hasn't registered or has disconnected.
     /// </summary>
     public string? HostConnectionId { get; set; }
+
+    /// <summary>
+    /// When the host disconnected. Null if host is connected or never registered.
+    /// Used to determine if room should be cleaned up after TTL.
+    /// </summary>
+    public DateTime? HostDisconnectedAtUtc { get; set; }
 
     /// <summary>
     /// Players in the room, keyed by PlayerId.
