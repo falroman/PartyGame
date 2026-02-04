@@ -5,6 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PartyGame - TV Host</title>
     <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        /* Lock toggle styles */
+        .lock-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-color);
+            border-radius: 12px;
+            margin-top: 16px;
+        }
+        
+        .lock-toggle-switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            background: #ccc;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .lock-toggle-switch.locked {
+            background: var(--warning-color);
+        }
+        
+        .lock-toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .lock-toggle-switch.locked::after {
+            transform: translateX(24px);
+        }
+        
+        .lock-toggle-label {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .lock-toggle-label .icon {
+            font-size: 1.25rem;
+        }
+        
+        .lock-status {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        
+        .lock-status.locked {
+            color: var(--warning-color);
+        }
+    </style>
 </head>
 <body>
     <div class="tv-layout">
@@ -38,6 +101,18 @@
                     <p style="color: var(--text-light);">
                         Join at: <strong id="joinUrl"></strong>
                     </p>
+                </div>
+                
+                <!-- Room Lock Toggle -->
+                <div class="lock-toggle">
+                    <div id="lockSwitch" class="lock-toggle-switch" onclick="toggleRoomLock()"></div>
+                    <div>
+                        <div class="lock-toggle-label">
+                            <span class="icon" id="lockIcon">🔓</span>
+                            <span id="lockLabel">Room Open</span>
+                        </div>
+                        <div id="lockStatus" class="lock-status">New players can join</div>
+                    </div>
                 </div>
             </div>
 
@@ -103,10 +178,15 @@
         const emptyState = document.getElementById('emptyState');
         const playerList = document.getElementById('playerList');
         const startGameBtn = document.getElementById('startGameBtn');
+        const lockSwitch = document.getElementById('lockSwitch');
+        const lockIcon = document.getElementById('lockIcon');
+        const lockLabel = document.getElementById('lockLabel');
+        const lockStatusEl = document.getElementById('lockStatus');
 
         // Game client
         const client = new GameClient(SERVER_URL);
         let currentRoomCode = null;
+        let isRoomLocked = false;
 
         // Initialize
         async function init() {
@@ -163,6 +243,33 @@
             qrCodeImage.src = GameUtils.getQRCodeUrl(joinUrl, 200);
         }
 
+        function updateLockUI(locked) {
+            isRoomLocked = locked;
+            
+            if (locked) {
+                lockSwitch.classList.add('locked');
+                lockIcon.textContent = '🔒';
+                lockLabel.textContent = 'Room Locked';
+                lockStatusEl.textContent = 'No new players can join';
+                lockStatusEl.classList.add('locked');
+            } else {
+                lockSwitch.classList.remove('locked');
+                lockIcon.textContent = '🔓';
+                lockLabel.textContent = 'Room Open';
+                lockStatusEl.textContent = 'New players can join';
+                lockStatusEl.classList.remove('locked');
+            }
+        }
+
+        async function toggleRoomLock() {
+            try {
+                await client.setRoomLocked(!isRoomLocked);
+            } catch (error) {
+                console.error('Failed to toggle room lock:', error);
+                showError('Failed to change room lock state.');
+            }
+        }
+
         function onConnected() {
             connectionStatus.className = 'status status-connected';
             statusText.textContent = 'Connected';
@@ -186,6 +293,9 @@
 
             // Update player count
             playerCount.textContent = `${players.length}/${maxPlayers}`;
+
+            // Update lock state
+            updateLockUI(roomState.isLocked);
 
             // Update player list
             if (players.length === 0) {

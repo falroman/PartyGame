@@ -119,6 +119,26 @@ class GameClient {
     }
 
     /**
+     * Set the locked state of the room (host only)
+     */
+    async setRoomLocked(isLocked) {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.isHost) {
+            throw new Error('Only the host can lock/unlock the room');
+        }
+        await this.connection.invoke('SetRoomLocked', this.roomCode, isLocked);
+    }
+
+    /**
+     * Toggle the locked state of the room (host only)
+     */
+    async toggleRoomLocked(currentState) {
+        await this.setRoomLocked(!currentState);
+    }
+
+    /**
      * Disconnect from the hub
      */
     async disconnect() {
@@ -270,6 +290,7 @@ const GameUtils = {
             'NAME_INVALID': 'Please enter a valid name (1-20 characters).',
             'NAME_TAKEN': 'This name is already taken. Please choose another.',
             'ALREADY_HOST': 'You are already hosting another room.',
+            'NOT_HOST': 'Only the host can perform this action.',
             'CONNECTION_FAILED': 'Failed to connect to server. Please try again.'
         };
         

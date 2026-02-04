@@ -43,7 +43,7 @@ public class LobbyService : ILobbyService
         if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
         {
             _logger.LogWarning("RegisterHost failed: Room {RoomCode} not found", normalizedCode);
-            return (false, new ErrorDto("ROOM_NOT_FOUND", $"Room with code '{normalizedCode}' does not exist."));
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, $"Room with code '{normalizedCode}' does not exist."));
         }
 
         // Check if this connection is already host of another room
@@ -53,7 +53,7 @@ public class LobbyService : ILobbyService
             {
                 _logger.LogWarning("RegisterHost failed: Connection {ConnectionId} is already host of room {ExistingRoom}",
                     connectionId, existingBinding.RoomCode);
-                return (false, new ErrorDto("ALREADY_HOST", "This connection is already hosting another room."));
+                return (false, new ErrorDto(ErrorCodes.AlreadyHost, "This connection is already hosting another room."));
             }
         }
 
@@ -86,34 +86,36 @@ public class LobbyService : ILobbyService
         var trimmedName = displayName?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(trimmedName))
         {
-            return (false, new ErrorDto("NAME_INVALID", "Display name cannot be empty."));
+            return (false, new ErrorDto(ErrorCodes.NameInvalid, "Display name cannot be empty."));
         }
         if (trimmedName.Length > 20)
         {
-            return (false, new ErrorDto("NAME_INVALID", "Display name cannot exceed 20 characters."));
+            return (false, new ErrorDto(ErrorCodes.NameInvalid, "Display name cannot exceed 20 characters."));
         }
 
         // Check if room exists
         if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
         {
             _logger.LogWarning("JoinRoom failed: Room {RoomCode} not found", normalizedCode);
-            return (false, new ErrorDto("ROOM_NOT_FOUND", $"Room with code '{normalizedCode}' does not exist."));
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, $"Room with code '{normalizedCode}' does not exist."));
         }
 
-        // Check if room is locked
-        if (room.IsLocked)
+        // Check if this is a reconnect (existing player)
+        var isReconnect = room.Players.ContainsKey(playerId);
+
+        // Check if room is locked (only block new players, not reconnects)
+        if (room.IsLocked && !isReconnect)
         {
             _logger.LogWarning("JoinRoom failed: Room {RoomCode} is locked", normalizedCode);
-            return (false, new ErrorDto("ROOM_LOCKED", "This room is locked and not accepting new players."));
+            return (false, new ErrorDto(ErrorCodes.RoomLocked, "This room is locked and not accepting new players."));
         }
 
         // Check if room is full (only for new players, not reconnects)
-        var isReconnect = room.Players.ContainsKey(playerId);
         if (!isReconnect && room.Players.Count >= room.MaxPlayers)
         {
             _logger.LogWarning("JoinRoom failed: Room {RoomCode} is full ({Count}/{Max})",
                 normalizedCode, room.Players.Count, room.MaxPlayers);
-            return (false, new ErrorDto("ROOM_FULL", $"This room is full ({room.MaxPlayers} players maximum)."));
+            return (false, new ErrorDto(ErrorCodes.RoomFull, $"This room is full ({room.MaxPlayers} players maximum)."));
         }
 
         // Check for duplicate names (excluding reconnecting player)
@@ -122,7 +124,7 @@ public class LobbyService : ILobbyService
                       p.DisplayName.Equals(trimmedName, StringComparison.OrdinalIgnoreCase));
         if (nameTaken)
         {
-            return (false, new ErrorDto("NAME_TAKEN", "This name is already taken by another player."));
+            return (false, new ErrorDto(ErrorCodes.NameTaken, "This name is already taken by another player."));
         }
 
         // Add or update player
@@ -252,6 +254,56 @@ public class LobbyService : ILobbyService
         {
             await _hubContext.Clients.Group($"room:{roomCode}").SendAsync("LobbyUpdated", roomState);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool Success, ErrorDto? Error)> SetRoomLockedAsync(string roomCode, string connectionId, bool isLocked)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        // Check if room exists
+        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+        {
+            _logger.LogWarning("SetRoomLocked failed: Room {RoomCode} not found", normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, $"Room with code '{normalizedCode}' does not exist."));
+        }
+
+        // Check if caller is the host
+        if (!IsHostOfRoom(normalizedCode, connectionId))
+        {
+            _logger.LogWarning("SetRoomLocked failed: Connection {ConnectionId} is not host of room {RoomCode}", 
+                connectionId, normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.NotHost, "Only the host can lock or unlock the room."));
+        }
+
+        // Update room locked state
+        room.IsLocked = isLocked;
+        _roomStore.Update(room);
+
+        _logger.LogInformation("Room {RoomCode} lock state changed to {IsLocked} by host", 
+            normalizedCode, isLocked);
+
+        // Broadcast lobby update
+        var roomState = GetRoomState(normalizedCode);
+        if (roomState != null)
+        {
+            await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("LobbyUpdated", roomState);
+        }
+
+        return (true, null);
+    }
+
+    /// <inheritdoc />
+    public bool IsHostOfRoom(string roomCode, string connectionId)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+        {
+            return false;
+        }
+
+        return room.HostConnectionId == connectionId;
     }
 
     /// <inheritdoc />

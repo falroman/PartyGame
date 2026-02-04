@@ -83,7 +83,7 @@ public class GameHubTests : IClassFixture<WebApplicationFactory<Program>>, IAsyn
         // Assert
         await Task.Delay(100);
         receivedError.Should().NotBeNull();
-        receivedError!.Code.Should().Be("ROOM_NOT_FOUND");
+        receivedError!.Code.Should().Be(ErrorCodes.RoomNotFound);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class GameHubTests : IClassFixture<WebApplicationFactory<Program>>, IAsyn
         // Assert
         await Task.Delay(100);
         receivedError.Should().NotBeNull();
-        receivedError!.Code.Should().Be("ROOM_NOT_FOUND");
+        receivedError!.Code.Should().Be(ErrorCodes.RoomNotFound);
 
         await playerConnection.DisposeAsync();
     }
@@ -169,7 +169,7 @@ public class GameHubTests : IClassFixture<WebApplicationFactory<Program>>, IAsyn
         // Assert
         await Task.Delay(100);
         receivedError.Should().NotBeNull();
-        receivedError!.Code.Should().Be("NAME_INVALID");
+        receivedError!.Code.Should().Be(ErrorCodes.NameInvalid);
 
         await playerConnection.DisposeAsync();
     }
@@ -198,7 +198,7 @@ public class GameHubTests : IClassFixture<WebApplicationFactory<Program>>, IAsyn
         // Assert
         await Task.Delay(100);
         receivedError.Should().NotBeNull();
-        receivedError!.Code.Should().Be("NAME_TAKEN");
+        receivedError!.Code.Should().Be(ErrorCodes.NameTaken);
 
         await player1Connection.DisposeAsync();
         await player2Connection.DisposeAsync();
@@ -280,4 +280,216 @@ public class GameHubTests : IClassFixture<WebApplicationFactory<Program>>, IAsyn
 
         await player2Connection.DisposeAsync();
     }
+
+    #region Room Locking Tests
+
+    [Fact]
+    public async Task SetRoomLocked_ByHost_LocksRoom()
+    {
+        // Arrange - Create room and register host
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        RoomStateDto? lastState = null;
+        _hostConnection.On<RoomStateDto>("LobbyUpdated", state => lastState = state);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+        await Task.Delay(100);
+
+        // Initial state should be unlocked
+        lastState!.IsLocked.Should().BeFalse();
+
+        // Act
+        await _hostConnection.InvokeAsync("SetRoomLocked", roomCode, true);
+
+        // Assert
+        await Task.Delay(100);
+        lastState.Should().NotBeNull();
+        lastState!.IsLocked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetRoomLocked_ByHost_CanUnlockRoom()
+    {
+        // Arrange - Create room, register host, and lock room
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        RoomStateDto? lastState = null;
+        _hostConnection.On<RoomStateDto>("LobbyUpdated", state => lastState = state);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+        await _hostConnection.InvokeAsync("SetRoomLocked", roomCode, true);
+        await Task.Delay(100);
+
+        lastState!.IsLocked.Should().BeTrue();
+
+        // Act
+        await _hostConnection.InvokeAsync("SetRoomLocked", roomCode, false);
+
+        // Assert
+        await Task.Delay(100);
+        lastState!.IsLocked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SetRoomLocked_ByNonHost_ReturnsNotHostError()
+    {
+        // Arrange - Create room and register host
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        var playerConnection = CreateHubConnection();
+
+        ErrorDto? receivedError = null;
+        RoomStateDto? lastState = null;
+
+        _hostConnection.On<RoomStateDto>("LobbyUpdated", state => lastState = state);
+        playerConnection.On<ErrorDto>("Error", error => receivedError = error);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+
+        var playerId = Guid.NewGuid();
+        await playerConnection.StartAsync();
+        await playerConnection.InvokeAsync("JoinRoom", roomCode, playerId, "TestPlayer");
+        await Task.Delay(100);
+
+        // Act - Player tries to lock room
+        await playerConnection.InvokeAsync("SetRoomLocked", roomCode, true);
+
+        // Assert
+        await Task.Delay(100);
+        receivedError.Should().NotBeNull();
+        receivedError!.Code.Should().Be(ErrorCodes.NotHost);
+        lastState!.IsLocked.Should().BeFalse(); // Room should still be unlocked
+
+        await playerConnection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task JoinRoom_WhenRoomIsLocked_ReturnsRoomLockedError()
+    {
+        // Arrange - Create room, register host, and lock room
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+        await _hostConnection.InvokeAsync("SetRoomLocked", roomCode, true);
+        await Task.Delay(100);
+
+        // New player tries to join
+        var playerConnection = CreateHubConnection();
+        ErrorDto? receivedError = null;
+        playerConnection.On<ErrorDto>("Error", error => receivedError = error);
+
+        await playerConnection.StartAsync();
+
+        // Act
+        await playerConnection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "NewPlayer");
+
+        // Assert
+        await Task.Delay(100);
+        receivedError.Should().NotBeNull();
+        receivedError!.Code.Should().Be(ErrorCodes.RoomLocked);
+
+        await playerConnection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task JoinRoom_WhenRoomIsLockedButPlayerIsReconnecting_AllowsReconnect()
+    {
+        // Arrange - Create room, register host, add player, then lock room
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        RoomStateDto? lastHostState = null;
+        _hostConnection.On<RoomStateDto>("LobbyUpdated", state => lastHostState = state);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+
+        // Player joins
+        var playerId = Guid.NewGuid();
+        var player1Connection = CreateHubConnection();
+        await player1Connection.StartAsync();
+        await player1Connection.InvokeAsync("JoinRoom", roomCode, playerId, "ReconnectingPlayer");
+        await Task.Delay(100);
+
+        // Lock the room
+        await _hostConnection.InvokeAsync("SetRoomLocked", roomCode, true);
+        await Task.Delay(100);
+        lastHostState!.IsLocked.Should().BeTrue();
+
+        // Player disconnects
+        await player1Connection.DisposeAsync();
+        await Task.Delay(100);
+        lastHostState!.Players[0].IsConnected.Should().BeFalse();
+
+        // Act - Player reconnects with same playerId
+        var player2Connection = CreateHubConnection();
+        RoomStateDto? playerState = null;
+        player2Connection.On<RoomStateDto>("LobbyUpdated", state => playerState = state);
+
+        await player2Connection.StartAsync();
+        await player2Connection.InvokeAsync("JoinRoom", roomCode, playerId, "ReconnectingPlayer");
+
+        // Assert - Should succeed despite room being locked
+        await Task.Delay(100);
+        playerState.Should().NotBeNull();
+        playerState!.Players.Should().HaveCount(1);
+        playerState.Players[0].IsConnected.Should().BeTrue();
+
+        await player2Connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task SetRoomLocked_BroadcastsToAllPlayersInRoom()
+    {
+        // Arrange - Create room, register host, add player
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        var playerConnection = CreateHubConnection();
+
+        RoomStateDto? hostState = null;
+        RoomStateDto? playerState = null;
+
+        _hostConnection.On<RoomStateDto>("LobbyUpdated", state => hostState = state);
+        playerConnection.On<RoomStateDto>("LobbyUpdated", state => playerState = state);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+
+        await playerConnection.StartAsync();
+        await playerConnection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "TestPlayer");
+        await Task.Delay(100);
+
+        // Act
+        await _hostConnection.InvokeAsync("SetRoomLocked", roomCode, true);
+
+        // Assert
+        await Task.Delay(100);
+        hostState!.IsLocked.Should().BeTrue();
+        playerState!.IsLocked.Should().BeTrue();
+
+        await playerConnection.DisposeAsync();
+    }
+
+    #endregion
 }

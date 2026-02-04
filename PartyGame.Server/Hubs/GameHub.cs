@@ -102,4 +102,23 @@ public class GameHub : Hub
         // Remove from room group
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"room:{roomCode.ToUpperInvariant()}");
     }
+
+    /// <summary>
+    /// Host sets the locked state of a room.
+    /// Only the host can lock or unlock a room.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="isLocked">True to lock the room, false to unlock.</param>
+    public async Task SetRoomLocked(string roomCode, bool isLocked)
+    {
+        _logger.LogInformation("SetRoomLocked called for room {RoomCode} with isLocked={IsLocked} by {ConnectionId}", 
+            roomCode, isLocked, Context.ConnectionId);
+
+        var (success, error) = await _lobbyService.SetRoomLockedAsync(roomCode, Context.ConnectionId, isLocked);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+        }
+    }
 }

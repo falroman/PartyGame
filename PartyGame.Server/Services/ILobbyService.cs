@@ -45,4 +45,21 @@ public interface ILobbyService
     /// <param name="roomCode">The room code.</param>
     /// <returns>The room state DTO, or null if room doesn't exist.</returns>
     RoomStateDto? GetRoomState(string roomCode);
+
+    /// <summary>
+    /// Sets the locked state of a room. Only the host can perform this action.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="connectionId">The connection ID attempting the action.</param>
+    /// <param name="isLocked">Whether the room should be locked.</param>
+    /// <returns>Success if operation succeeded, error details otherwise.</returns>
+    Task<(bool Success, ErrorDto? Error)> SetRoomLockedAsync(string roomCode, string connectionId, bool isLocked);
+
+    /// <summary>
+    /// Checks if the given connection is the host of the specified room.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="connectionId">The connection ID to check.</param>
+    /// <returns>True if the connection is the host of the room.</returns>
+    bool IsHostOfRoom(string roomCode, string connectionId);
 }

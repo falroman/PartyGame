@@ -1,9 +1,9 @@
 # PartyGame - Master Specification
 
 ## ?? Document Status
-**Version:** 0.4.0  
+**Version:** 0.5.0  
 **Last Updated:** 2024-02-04  
-**Iteration:** 3 - Web UI (Complete)
+**Iteration:** 4 - Room Locking & Host-only Actions (Complete)
 
 ---
 
@@ -25,19 +25,19 @@ PartyGame/
 ?   ??? Controllers/           # REST API endpoints (RoomsController)
 ?   ??? Hubs/                  # SignalR hubs (GameHub)
 ?   ??? Services/              # InMemoryRoomStore, ConnectionIndex, LobbyService
-?   ??? DTOs/                  # CreateRoomResponseDto, RoomStateDto, PlayerDto, ErrorDto
+?   ??? DTOs/                  # CreateRoomResponseDto, RoomStateDto, PlayerDto, ErrorDto, ErrorCodes
 ?   ??? Program.cs             # Application entry point
 ??? PartyGame.Web/             # Static file hosting for TV/Phone UI
 ?   ??? wwwroot/
-?   ?   ??? css/styles.css     # Shared styles
-?   ?   ??? js/game-client.js  # SignalR client wrapper
-?   ?   ??? index.html         # Landing page
-?   ?   ??? tv.html            # TV/Host view
-?   ?   ??? join.html          # Player join view
-?   ??? Program.cs             # Static file server with routes
+?       ??? css/styles.css     # Shared styles
+?       ??? js/config.js       # Server URL configuration
+?       ??? js/game-client.js  # SignalR client wrapper
+?       ??? index.html         # Landing page
+?       ??? tv.html            # TV/Host view
+?       ??? join.html          # Player join view
 ??? PartyGame.Tests/           # xUnit tests
-    ??? Unit/                  # Unit tests
-    ??? Integration/           # Integration tests
+    ??? Unit/                  # Unit tests (LobbyServiceTests, etc.)
+    ??? Integration/           # Integration tests (GameHubTests, etc.)
 ```
 
 ### 1.2 Design Decisions
@@ -47,10 +47,11 @@ PartyGame/
 | **API Style** | Minimal APIs + Controllers | Minimal APIs for simple endpoints (/health), Controllers for complex REST (/api/rooms) |
 | **Realtime** | SignalR | Built-in .NET support, WebSocket abstraction, automatic fallback |
 | **Storage (MVP)** | InMemory (ConcurrentDictionary) | Fast iteration, easy to test, will be abstracted via interface for Redis later |
-| **Test Framework** | xUnit + FluentAssertions | Industry standard, readable assertions |
+| **Test Framework** | xUnit + FluentAssertions + NSubstitute | Industry standard, readable assertions, proper mocking |
 | **Frontend** | Static files (vanilla JS first) | Simple start, can evolve to React/Blazor |
 | **Reconnect Strategy** | playerId in localStorage | Survives page refresh, simple to implement |
 | **ILobbyService Location** | Server project | Contains SignalR-specific logic and DTO references |
+| **Host-only Actions** | Via SignalR connection ID check | Room.HostConnectionId tracks which connection is the host |
 
 ### 1.3 Project Dependencies
 
@@ -58,7 +59,7 @@ PartyGame/
 PartyGame.Core          <- No ASP.NET dependencies (pure domain)
 PartyGame.Server        <- PartyGame.Core
 PartyGame.Web           <- Standalone (static files)
-PartyGame.Tests         <- PartyGame.Core, PartyGame.Server, SignalR.Client
+PartyGame.Tests         <- PartyGame.Core, PartyGame.Server, SignalR.Client, NSubstitute
 ```
 
 ---
@@ -81,12 +82,14 @@ PartyGame.Tests         <- PartyGame.Core, PartyGame.Server, SignalR.Client
 2. **Business logic**: Lives in Services, NOT in Controllers/Hubs
 3. **DTOs**: Defined in Server project (they are API contracts)
 4. **Entities**: Defined in Core project
+5. **Error codes**: Centralized in `ErrorCodes` static class
 
 ### 2.3 Error Handling
 
 - All SignalR errors sent via `Error(ErrorDto)` event
 - REST errors return appropriate HTTP status codes with `ErrorDto` body
 - Never expose internal exceptions to clients
+- Use `ErrorCodes` constants for consistency
 
 ---
 
@@ -122,19 +125,20 @@ PartyGame.Tests         <- PartyGame.Core, PartyGame.Server, SignalR.Client
 
 ### 4.2 Client ? Server Methods
 
-| Method | Parameters | Description |
-|--------|------------|-------------|
-| `RegisterHost` | `roomCode: string` | Host registers for a room after creating via REST |
-| `JoinRoom` | `roomCode: string, playerId: Guid, displayName: string` | Player joins room |
-| `LeaveRoom` | `roomCode: string, playerId: Guid` | Player voluntarily leaves |
-| `StartGame` | `roomCode: string` | Host starts the game (future) |
-| `SubmitAnswer` | `roomCode: string, playerId: Guid, answer: object` | Player submits answer (future) |
+| Method | Parameters | Description | Host-only |
+|--------|------------|-------------|-----------|
+| `RegisterHost` | `roomCode: string` | Host registers for a room after creating via REST | - |
+| `JoinRoom` | `roomCode: string, playerId: Guid, displayName: string` | Player joins room | No |
+| `LeaveRoom` | `roomCode: string, playerId: Guid` | Player voluntarily leaves | No |
+| `SetRoomLocked` | `roomCode: string, isLocked: bool` | Lock or unlock the room | **Yes** |
+| `StartGame` | `roomCode: string` | Host starts the game (future) | **Yes** |
+| `SubmitAnswer` | `roomCode: string, playerId: Guid, answer: object` | Player submits answer (future) | No |
 
 ### 4.3 Server ? Client Events
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `LobbyUpdated` | `RoomStateDto` | Sent when lobby state changes (player join/leave/status) |
+| `LobbyUpdated` | `RoomStateDto` | Sent when lobby state changes (player join/leave/status/lock) |
 | `Error` | `ErrorDto` | Sent when an operation fails |
 | `Kicked` | `{ reason: string }` | Sent when player is removed (future) |
 | `GameStarted` | `GameStateDto` | Sent when game begins (future) |
@@ -163,7 +167,6 @@ public class Room
     public string? HostConnectionId { get; set; }
     public Dictionary<Guid, Player> Players { get; set; }
     public int MaxPlayers { get; set; } = 8;
-    // public GameSession? CurrentGame { get; set; } // Future
 }
 
 public class Player
@@ -174,7 +177,6 @@ public class Player
     public DateTime LastSeenUtc { get; set; }
     public bool IsConnected { get; set; }
     public int Score { get; set; }
-    // public Guid? TeamId { get; set; } // Future
 }
 ```
 
@@ -198,11 +200,23 @@ public record PlayerDto(
 );
 
 public record ErrorDto(string Code, string Message);
+
+public static class ErrorCodes
+{
+    public const string RoomNotFound = "ROOM_NOT_FOUND";
+    public const string RoomLocked = "ROOM_LOCKED";
+    public const string RoomFull = "ROOM_FULL";
+    public const string NameInvalid = "NAME_INVALID";
+    public const string NameTaken = "NAME_TAKEN";
+    public const string AlreadyHost = "ALREADY_HOST";
+    public const string NotHost = "NOT_HOST";
+    public const string ConnectionFailed = "CONNECTION_FAILED";
+}
 ```
 
 ---
 
-## 6. Interfaces (Core)
+## 6. Interfaces (Core/Server)
 
 ```csharp
 public interface IRoomStore
@@ -224,10 +238,12 @@ public interface IConnectionIndex
 
 public interface ILobbyService
 {
-    Task<bool> RegisterHost(string roomCode, string connectionId);
-    Task<(bool Success, ErrorDto? Error)> JoinRoom(string roomCode, Guid playerId, string displayName, string connectionId);
-    Task LeaveRoom(string roomCode, Guid playerId);
-    Task HandleDisconnect(string connectionId);
+    Task<(bool Success, ErrorDto? Error)> RegisterHostAsync(string roomCode, string connectionId);
+    Task<(bool Success, ErrorDto? Error)> JoinRoomAsync(string roomCode, Guid playerId, string displayName, string connectionId);
+    Task LeaveRoomAsync(string roomCode, Guid playerId);
+    Task HandleDisconnectAsync(string connectionId);
+    Task<(bool Success, ErrorDto? Error)> SetRoomLockedAsync(string roomCode, string connectionId, bool isLocked);
+    bool IsHostOfRoom(string roomCode, string connectionId);
     RoomStateDto? GetRoomState(string roomCode);
 }
 
@@ -250,6 +266,7 @@ public interface IClock
 | `NAME_TAKEN` | 409 | Another player in room has same name |
 | `ALREADY_HOST` | 409 | Connection is already host of another room |
 | `NOT_HOST` | 403 | Action requires host privileges |
+| `CONNECTION_FAILED` | - | Failed to connect to server (client-side) |
 
 ---
 
@@ -281,7 +298,6 @@ public interface IClock
 - [x] Reconnect logic (same playerId = update connection)
 - [x] Name validation (empty, max length, duplicates)
 - [x] Unit tests for ConnectionIndex
-- [x] Integration tests for SignalR hub (52 total tests)
 
 ### ? Iteration 3 - Web UI (Complete)
 - [x] Landing page (`/`) with navigation to TV and Join
@@ -293,12 +309,20 @@ public interface IClock
 - [x] playerId persistence in localStorage
 - [x] Auto-reconnect on page refresh
 - [x] CORS configuration for development
+- [x] LAN mode support with auto IP detection
 
-### ?? Iteration 4 - Room Locking & Max Players
-- [ ] Lock/unlock room endpoint (host-only)
-- [ ] UI for lock toggle on TV view
-- [ ] Max players enforcement (already implemented in LobbyService)
-- [ ] `NOT_HOST` error for non-host actions
+### ? Iteration 4 - Room Locking & Host-only Actions (Complete)
+- [x] `ErrorCodes` static class for centralized error codes
+- [x] `SetRoomLockedAsync` in LobbyService with host validation
+- [x] `IsHostOfRoom` method for host verification
+- [x] `SetRoomLocked` SignalR hub method (host-only)
+- [x] Join blocked when room is locked (reconnects still allowed)
+- [x] `LobbyUpdated` includes `isLocked` state
+- [x] TV UI: Lock toggle switch with visual feedback
+- [x] Join page: Shows ROOM_LOCKED error when room is locked
+- [x] Unit tests for LobbyService lock behavior (18 tests)
+- [x] Integration tests for SignalR lock operations (8 tests)
+- [x] 70 total tests passing
 
 ### ?? Iteration 5 - Room Cleanup
 - [ ] `RoomCleanupHostedService`
@@ -306,11 +330,11 @@ public interface IClock
 - [ ] Remove disconnected players after grace period
 - [ ] Configuration for timeouts
 
-### ?? Iteration 6 - Stabilization
-- [ ] Remove unused code (WeatherForecast)
-- [ ] Structured logging with correlation IDs
-- [ ] Code review checklist pass
-- [ ] Documentation update
+### ?? Iteration 6 - Game Start & State Machine
+- [ ] `StartGame` hub method (host-only)
+- [ ] Room status transitions (Lobby ? InGame ? Finished)
+- [ ] Game phase management
+- [ ] UI updates for game state
 
 ---
 
@@ -330,35 +354,54 @@ dotnet test
 ```bash
 cd PartyGame.Server
 dotnet run
-# API: https://localhost:5001
-# Swagger: https://localhost:5001/swagger
-# SignalR: wss://localhost:5001/hub/game
+# API: https://localhost:7213
+# Swagger: https://localhost:7213/swagger
+# SignalR: wss://localhost:7213/hub/game
 ```
 
 ### Run Web (Static files)
 ```bash
 cd PartyGame.Web
 dotnet run
-# Web: http://localhost:5002
-# TV: http://localhost:5002/tv
-# Join: http://localhost:5002/join/{code}
+# Web: https://localhost:7147
+# TV: https://localhost:7147/tv
+# Join: https://localhost:7147/join/{code}
 ```
 
-### Run Both (Development)
-Open two terminals:
+### Run Both for LAN Testing
+Use the `lan` profile for testing with mobile devices:
 ```bash
 # Terminal 1 - Server
-cd PartyGame.Server && dotnet run
+cd PartyGame.Server && dotnet run --launch-profile lan
+# Listens on http://0.0.0.0:5000
 
 # Terminal 2 - Web
-cd PartyGame.Web && dotnet run
+cd PartyGame.Web && dotnet run --launch-profile lan
+# Listens on http://0.0.0.0:5002
 ```
 
-Then open http://localhost:5002/tv in a browser (TV view) and scan the QR or open http://localhost:5002/join/{code} on your phone.
+Then open `http://<your-ip>:5002/tv` in a browser and scan the QR code with your phone.
 
 ---
 
-## 10. Changelog
+## 10. Manual Testing Checklist
+
+### Iteration 4: Room Locking
+
+1. **Start both projects** using `lan` profile
+2. **Open TV view** at `http://<your-ip>:5002/tv`
+3. **Verify** room shows "Room Open" with ?? icon
+4. **Click lock toggle** - should change to "Room Locked" with ?? icon
+5. **On phone**, scan QR code or navigate to join URL
+6. **Try to join locked room** - should see error "This room is locked and not accepting new players"
+7. **On TV**, click lock toggle to unlock
+8. **On phone**, join the unlocked room - should succeed
+9. **On TV**, lock room again after player joined
+10. **On phone**, disconnect (close browser) then reconnect - should succeed (reconnect allowed even when locked)
+
+---
+
+## 11. Changelog
 
 ### v0.1.0 (Iteration 0)
 - Initial solution structure
@@ -387,3 +430,15 @@ Then open http://localhost:5002/tv in a browser (TV view) and scan the QR or ope
 - SignalR client wrapper for easy frontend integration
 - Responsive CSS design
 - CORS support for development
+- LAN mode with auto IP detection
+
+### v0.5.0 (Iteration 4)
+- Room locking feature (host-only)
+- `ErrorCodes` static class for centralized error codes
+- `SetRoomLocked` SignalR hub method
+- `SetRoomLockedAsync` and `IsHostOfRoom` in LobbyService
+- Lock toggle UI on TV view
+- ROOM_LOCKED error handling on join page
+- Reconnects allowed even when room is locked
+- NSubstitute added for unit test mocking
+- 70 total tests passing (18 new for room locking)
