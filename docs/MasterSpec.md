@@ -324,17 +324,41 @@ public interface IClock
 - [x] Integration tests for SignalR lock operations (8 tests)
 - [x] 70 total tests passing
 
-### ?? Iteration 5 - Room Cleanup
-- [ ] `RoomCleanupHostedService`
-- [ ] Remove rooms without host after timeout
-- [ ] Remove disconnected players after grace period
-- [ ] Configuration for timeouts
+### ? Iteration 5 - Room Cleanup/TTL
+- [x] `RoomCleanupHostedService` background service
+- [x] `RoomCleanupOptions` configuration class
+- [x] `HostDisconnectedAtUtc` tracking on Room model
+- [x] Remove rooms without host after TTL (default 10 min)
+- [x] Remove disconnected players after grace period (default 120s)
+- [x] Configuration in `appsettings.json`
+- [x] Cleanup broadcasts `LobbyUpdated` when players removed
+- [x] Unit tests for cleanup logic (14 tests)
+- [x] 84 total tests passing
 
-### ?? Iteration 6 - Game Start & State Machine
-- [ ] `StartGame` hub method (host-only)
-- [ ] Room status transitions (Lobby ? InGame ? Finished)
-- [ ] Game phase management
-- [ ] UI updates for game state
+### ? Iteration 6 - Game Session Skeleton + Start Game
+- [x] `GameType` enum (Quiz)
+- [x] `GameSession` model (GameType, Phase, StartedUtc, State)
+- [x] `CurrentGame` property on Room model
+- [x] `GameSessionDto` for client communication
+- [x] Extended `RoomStateDto` with `currentGame`
+- [x] `StartGameAsync` in `ILobbyService` and `LobbyService`
+- [x] `StartGame` SignalR hub method (host-only)
+- [x] Error codes: `INVALID_STATE`, `NOT_ENOUGH_PLAYERS`
+- [x] Validation: room exists, caller is host, status=Lobby, ?2 players
+- [x] Side effects: status?InGame, isLocked?true, CurrentGame created
+- [x] Broadcasts both `LobbyUpdated` and `GameStarted` events
+- [x] TV UI: Working Start Game button with overlay
+- [x] Phone UI: Shows "Game Started!" when status=InGame
+- [x] `game-client.js`: `startGame(gameType)` method, `onGameStarted` callback
+- [x] Unit tests for StartGameAsync (6 tests)
+- [x] Integration tests for StartGame (4 tests)
+- [x] 94 total tests passing
+
+### ?? Iteration 7 - Quiz Questions (Planned)
+- [ ] Question model and storage
+- [ ] Question phases (Show, Answer, Results)
+- [ ] Player answer submission
+- [ ] Phase transitions
 
 ---
 
@@ -385,6 +409,33 @@ Then open `http://<your-ip>:5002/tv` in a browser and scan the QR code with your
 ---
 
 ## 10. Manual Testing Checklist
+
+### Iteration 6: Start Game
+
+1. **Start both projects** using `lan` profile
+2. **Open TV view** at `http://<your-ip>:5002/tv`
+3. **Verify** "Start Game" button is disabled (0 players)
+4. **Join with first phone** - button still disabled (1 player)
+5. **Join with second phone** - button becomes enabled with "Ready to start!"
+6. **Click "Start Game"** on TV
+7. **Verify TV shows**:
+   - "Game Starting!" overlay appears briefly
+   - Green "Game In Progress" card visible
+   - Header shows "Game in progress!"
+   - Start button container hidden
+8. **Verify both phones show** "Game Started!" with phase badge
+9. **Try joining with new phone** - should get "ROOM_LOCKED" error
+10. **Try starting game with only 1 player** - should get "NOT_ENOUGH_PLAYERS" error
+
+### Iteration 5: Room Cleanup
+
+1. Create room via `/api/rooms`, don't register host
+2. Wait 10+ minutes
+3. Verify room is removed (GET returns 404)
+4. Create room, register host, add player
+5. Disconnect player (close browser)
+6. Wait 2+ minutes
+7. Verify player removed from lobby (host receives LobbyUpdated)
 
 ### Iteration 4: Room Locking
 
@@ -442,3 +493,88 @@ Then open `http://<your-ip>:5002/tv` in a browser and scan the QR code with your
 - Reconnects allowed even when room is locked
 - NSubstitute added for unit test mocking
 - 70 total tests passing (18 new for room locking)
+
+### v0.6.0 (Iteration 5)
+- Room cleanup background service
+- `RoomCleanupHostedService` with configurable intervals
+- `RoomCleanupOptions` for TTL and grace period settings
+- Host disconnect timestamp tracking
+- Automatic removal of hostless rooms and disconnected players
+- 84 total tests passing (14 new for cleanup)
+
+### v0.7.0 (Iteration 6)
+- Game session skeleton implementation
+- `GameType` enum and `GameSession` model
+- `StartGame` SignalR hub method (host-only)
+- New error codes: `INVALID_STATE`, `NOT_ENOUGH_PLAYERS`
+- `GameStarted` event broadcast
+- TV UI: Working Start Game with overlay
+- Phone UI: Game active state display
+- 94 total tests passing (10 new for start game)
+
+---
+
+## Appendix: SignalR Contract Reference
+
+### Hub Methods (Client ? Server)
+
+| Method | Parameters | Who | Description |
+|--------|------------|-----|-------------|
+| `RegisterHost` | `roomCode: string` | Host | Register as host for room |
+| `JoinRoom` | `roomCode: string, playerId: Guid, displayName: string` | Player | Join room as player |
+| `LeaveRoom` | `roomCode: string, playerId: Guid` | Player | Leave room voluntarily |
+| `SetRoomLocked` | `roomCode: string, isLocked: bool` | Host | Lock/unlock room |
+| `StartGame` | `roomCode: string, gameType: string` | Host | Start game (requires ?2 players) |
+
+### Events (Server ? Client)
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `LobbyUpdated` | `RoomStateDto` | Room state changed |
+| `GameStarted` | `GameSessionDto` | Game has started |
+| `Error` | `ErrorDto` | Error occurred |
+
+### DTOs
+
+```typescript
+interface RoomStateDto {
+  roomCode: string;
+  status: 'Lobby' | 'InGame' | 'Finished';
+  isLocked: boolean;
+  players: PlayerDto[];
+  currentGame: GameSessionDto | null;
+}
+
+interface GameSessionDto {
+  gameType: string;
+  phase: string;
+  startedUtc: string; // ISO 8601
+}
+
+interface PlayerDto {
+  playerId: string;
+  displayName: string;
+  isConnected: boolean;
+  score: number;
+}
+
+interface ErrorDto {
+  code: string;
+  message: string;
+}
+```
+
+### Error Codes
+
+| Code | Description |
+|------|-------------|
+| `ROOM_NOT_FOUND` | Room does not exist |
+| `ROOM_LOCKED` | Room is locked |
+| `ROOM_FULL` | Room at capacity |
+| `NAME_INVALID` | Invalid display name |
+| `NAME_TAKEN` | Name already in use |
+| `ALREADY_HOST` | Already hosting another room |
+| `NOT_HOST` | Requires host privileges |
+| `CONNECTION_FAILED` | Connection error |
+| `INVALID_STATE` | Invalid room state for action |
+| `NOT_ENOUGH_PLAYERS` | Need ?2 players |

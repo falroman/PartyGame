@@ -1,3 +1,4 @@
+using PartyGame.Core.Enums;
 using PartyGame.Server.DTOs;
 
 namespace PartyGame.Server.Services;
@@ -85,4 +86,14 @@ public interface ILobbyService
     /// </summary>
     /// <param name="roomCode">The room code to remove.</param>
     void RemoveRoom(string roomCode);
+
+    /// <summary>
+    /// Starts a game in the specified room. Only the host can perform this action.
+    /// Requires at least 2 players in the room.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="connectionId">The connection ID attempting the action (must be host).</param>
+    /// <param name="gameType">The type of game to start.</param>
+    /// <returns>Success if game started, error details otherwise.</returns>
+    Task<(bool Success, ErrorDto? Error)> StartGameAsync(string roomCode, string connectionId, GameType gameType);
 }

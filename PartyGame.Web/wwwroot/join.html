@@ -5,6 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PartyGame - Join</title>
     <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        /* Game In Progress styles */
+        .game-active-card {
+            text-align: center;
+            display: none;
+        }
+        
+        .game-active-card.visible {
+            display: block;
+        }
+        
+        .game-active-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+        
+        .game-active-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .game-active-subtitle {
+            color: var(--text-light);
+            margin-bottom: 24px;
+        }
+        
+        .game-phase-badge {
+            display: inline-block;
+            background: var(--success-color);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
     <div class="phone-layout">
@@ -67,7 +103,7 @@
             </p>
         </div>
 
-        <!-- Waiting State (shown after joining) -->
+        <!-- Waiting State (shown after joining, in lobby) -->
         <div id="waitingCard" class="card phone-card" style="display: none;">
             <div style="text-align: center;">
                 <h2 style="margin-bottom: 8px;">You're in! 🎉</h2>
@@ -93,6 +129,24 @@
                     Leave Room
                 </button>
             </div>
+        </div>
+
+        <!-- Game Active State (shown when game has started) -->
+        <div id="gameActiveCard" class="card phone-card" style="display: none;">
+            <div class="game-active-icon">🎯</div>
+            <div class="game-active-title">Game Started!</div>
+            <div class="game-active-subtitle">Get ready for the next question...</div>
+            
+            <div class="game-phase-badge" id="currentPhase">Starting</div>
+            
+            <div style="margin-top: 32px; padding: 16px; background: var(--bg-color); border-radius: 12px;">
+                <p style="color: var(--text-light); font-size: 0.875rem; margin-bottom: 4px;">Playing as</p>
+                <p style="font-weight: 600; font-size: 1.125rem;" id="gamePlayerName">-</p>
+            </div>
+            
+            <p style="margin-top: 24px; color: var(--text-light); font-size: 0.875rem;">
+                Room: <strong id="gameRoomCode">----</strong>
+            </p>
         </div>
     </div>
 
@@ -121,6 +175,10 @@
         const roomCodeDisplay = document.getElementById('roomCodeDisplay');
         const playerCountBadge = document.getElementById('playerCountBadge');
         const leaveBtn = document.getElementById('leaveBtn');
+        const gameActiveCard = document.getElementById('gameActiveCard');
+        const currentPhase = document.getElementById('currentPhase');
+        const gamePlayerName = document.getElementById('gamePlayerName');
+        const gameRoomCode = document.getElementById('gameRoomCode');
 
         // ===========================================
         // State variables
@@ -128,6 +186,7 @@
         let client = null;
         let playerId = null;
         let hasJoined = false;
+        let currentRoomStatus = 'Lobby';
         
         // Get server URL
         const SERVER_URL = GameConfig.getServerUrl();
@@ -182,8 +241,16 @@
             console.log('Lobby updated:', roomState);
             updateDebug('Lobby updated - ' + (roomState.players?.length || 0) + ' players');
             
+            currentRoomStatus = roomState.status;
+            
             if (!hasJoined) {
                 hasJoined = true;
+            }
+            
+            // Check if game is in progress
+            if (roomState.status === 'InGame' || roomState.status === 1) {
+                showGameActiveState(roomState);
+            } else {
                 showWaitingState(roomState);
             }
 
@@ -200,10 +267,11 @@
         }
 
         function showWaitingState(roomState) {
-            const name = displayNameInput.value.trim();
+            const name = displayNameInput.value.trim() || GameUtils.getStoredName();
             
             joinForm.parentElement.style.display = 'none';
             waitingCard.style.display = 'block';
+            gameActiveCard.style.display = 'none';
             
             playerInitials.textContent = GameUtils.getInitials(name);
             playerNameEl.textContent = name;
@@ -211,6 +279,32 @@
             
             const players = roomState.players || [];
             playerCountBadge.textContent = players.length;
+        }
+
+        function showGameActiveState(roomState) {
+            const name = displayNameInput.value.trim() || GameUtils.getStoredName();
+            
+            joinForm.parentElement.style.display = 'none';
+            waitingCard.style.display = 'none';
+            gameActiveCard.style.display = 'block';
+            
+            gamePlayerName.textContent = name;
+            gameRoomCode.textContent = roomState.roomCode;
+            
+            // Update phase if available
+            if (roomState.currentGame) {
+                currentPhase.textContent = roomState.currentGame.phase || 'Starting';
+            }
+        }
+
+        // Also handle GameStarted event
+        function onGameStarted(gameSession) {
+            console.log('Game started event:', gameSession);
+            updateDebug('Game started: ' + gameSession.phase);
+            
+            if (gameSession.phase) {
+                currentPhase.textContent = gameSession.phase;
+            }
         }
 
         // ===========================================
@@ -263,6 +357,7 @@
                 client.on('onDisconnected', onDisconnected);
                 client.on('onReconnecting', onReconnecting);
                 client.on('onLobbyUpdated', onLobbyUpdated);
+                client.on('onGameStarted', onGameStarted);
                 client.on('onError', onError);
 
                 // Connect

@@ -36,3 +36,14 @@ public enum ClientRole
     /// </summary>
     Player
 }
+
+/// <summary>
+/// Represents the type of game being played.
+/// </summary>
+public enum GameType
+{
+    /// <summary>
+    /// Quiz game type.
+    /// </summary>
+    Quiz
+}

@@ -389,4 +389,210 @@ public class LobbyServiceTests
     }
 
     #endregion
+
+    #region StartGameAsync Tests
+
+    [Fact]
+    public async Task StartGameAsync_WithValidHostAndEnoughPlayers_StartsGame()
+    {
+        // Arrange
+        var roomCode = "TEST";
+        var hostConnectionId = "host-connection-123";
+        var player1 = new Player { PlayerId = Guid.NewGuid(), DisplayName = "Player1", IsConnected = true };
+        var player2 = new Player { PlayerId = Guid.NewGuid(), DisplayName = "Player2", IsConnected = true };
+        
+        var room = new Room
+        {
+            Code = roomCode,
+            HostConnectionId = hostConnectionId,
+            Status = RoomStatus.Lobby,
+            IsLocked = false,
+            Players = new Dictionary<Guid, Player>
+            {
+                { player1.PlayerId, player1 },
+                { player2.PlayerId, player2 }
+            }
+        };
+
+        _roomStore.TryGetRoom(roomCode, out Arg.Any<Room?>())
+            .Returns(x =>
+            {
+                x[1] = room;
+                return true;
+            });
+
+        var gameStartTime = new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        _clock.UtcNow.Returns(gameStartTime);
+
+        // Act
+        var (success, error) = await _sut.StartGameAsync(roomCode, hostConnectionId, GameType.Quiz);
+
+        // Assert
+        success.Should().BeTrue();
+        error.Should().BeNull();
+        room.Status.Should().Be(RoomStatus.InGame);
+        room.IsLocked.Should().BeTrue();
+        room.CurrentGame.Should().NotBeNull();
+        room.CurrentGame!.GameType.Should().Be(GameType.Quiz);
+        room.CurrentGame.Phase.Should().Be("Starting");
+        room.CurrentGame.StartedUtc.Should().Be(gameStartTime);
+        _roomStore.Received(1).Update(room);
+    }
+
+    [Fact]
+    public async Task StartGameAsync_WithNonHost_ReturnsNotHostError()
+    {
+        // Arrange
+        var roomCode = "TEST";
+        var hostConnectionId = "host-connection-123";
+        var playerConnectionId = "player-connection-456";
+        
+        var room = new Room
+        {
+            Code = roomCode,
+            HostConnectionId = hostConnectionId,
+            Status = RoomStatus.Lobby,
+            Players = new Dictionary<Guid, Player>
+            {
+                { Guid.NewGuid(), new Player { DisplayName = "Player1" } },
+                { Guid.NewGuid(), new Player { DisplayName = "Player2" } }
+            }
+        };
+
+        _roomStore.TryGetRoom(roomCode, out Arg.Any<Room?>())
+            .Returns(x =>
+            {
+                x[1] = room;
+                return true;
+            });
+
+        // Act
+        var (success, error) = await _sut.StartGameAsync(roomCode, playerConnectionId, GameType.Quiz);
+
+        // Assert
+        success.Should().BeFalse();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ErrorCodes.NotHost);
+        room.Status.Should().Be(RoomStatus.Lobby); // Should not change
+    }
+
+    [Fact]
+    public async Task StartGameAsync_WithLessThan2Players_ReturnsNotEnoughPlayersError()
+    {
+        // Arrange
+        var roomCode = "TEST";
+        var hostConnectionId = "host-connection-123";
+        
+        var room = new Room
+        {
+            Code = roomCode,
+            HostConnectionId = hostConnectionId,
+            Status = RoomStatus.Lobby,
+            Players = new Dictionary<Guid, Player>
+            {
+                { Guid.NewGuid(), new Player { DisplayName = "Player1" } }
+            }
+        };
+
+        _roomStore.TryGetRoom(roomCode, out Arg.Any<Room?>())
+            .Returns(x =>
+            {
+                x[1] = room;
+                return true;
+            });
+
+        // Act
+        var (success, error) = await _sut.StartGameAsync(roomCode, hostConnectionId, GameType.Quiz);
+
+        // Assert
+        success.Should().BeFalse();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ErrorCodes.NotEnoughPlayers);
+    }
+
+    [Fact]
+    public async Task StartGameAsync_WithNonExistentRoom_ReturnsRoomNotFoundError()
+    {
+        // Arrange
+        _roomStore.TryGetRoom("XXXX", out Arg.Any<Room?>()).Returns(false);
+
+        // Act
+        var (success, error) = await _sut.StartGameAsync("XXXX", "connection-id", GameType.Quiz);
+
+        // Assert
+        success.Should().BeFalse();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ErrorCodes.RoomNotFound);
+    }
+
+    [Fact]
+    public async Task StartGameAsync_WhenAlreadyInGame_ReturnsInvalidStateError()
+    {
+        // Arrange
+        var roomCode = "TEST";
+        var hostConnectionId = "host-connection-123";
+        
+        var room = new Room
+        {
+            Code = roomCode,
+            HostConnectionId = hostConnectionId,
+            Status = RoomStatus.InGame, // Already in game
+            Players = new Dictionary<Guid, Player>
+            {
+                { Guid.NewGuid(), new Player { DisplayName = "Player1" } },
+                { Guid.NewGuid(), new Player { DisplayName = "Player2" } }
+            }
+        };
+
+        _roomStore.TryGetRoom(roomCode, out Arg.Any<Room?>())
+            .Returns(x =>
+            {
+                x[1] = room;
+                return true;
+            });
+
+        // Act
+        var (success, error) = await _sut.StartGameAsync(roomCode, hostConnectionId, GameType.Quiz);
+
+        // Assert
+        success.Should().BeFalse();
+        error.Should().NotBeNull();
+        error!.Code.Should().Be(ErrorCodes.InvalidState);
+    }
+
+    [Fact]
+    public async Task StartGameAsync_BroadcastsLobbyUpdatedAndGameStarted()
+    {
+        // Arrange
+        var roomCode = "TEST";
+        var hostConnectionId = "host-connection-123";
+        
+        var room = new Room
+        {
+            Code = roomCode,
+            HostConnectionId = hostConnectionId,
+            Status = RoomStatus.Lobby,
+            Players = new Dictionary<Guid, Player>
+            {
+                { Guid.NewGuid(), new Player { DisplayName = "Player1", IsConnected = true } },
+                { Guid.NewGuid(), new Player { DisplayName = "Player2", IsConnected = true } }
+            }
+        };
+
+        _roomStore.TryGetRoom(roomCode, out Arg.Any<Room?>())
+            .Returns(x =>
+            {
+                x[1] = room;
+                return true;
+            });
+
+        // Act
+        await _sut.StartGameAsync(roomCode, hostConnectionId, GameType.Quiz);
+
+        // Assert - Should broadcast both events
+        var mockClients = _hubContext.Clients;
+        mockClients.Received(2).Group($"room:{roomCode}"); // Called twice: LobbyUpdated and GameStarted
+    }
+
+    #endregion
 }

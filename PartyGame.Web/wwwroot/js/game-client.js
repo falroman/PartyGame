@@ -15,6 +15,7 @@ class GameClient {
             onDisconnected: () => {},
             onReconnecting: () => {},
             onLobbyUpdated: () => {},
+            onGameStarted: () => {},
             onError: () => {}
         };
     }
@@ -35,6 +36,11 @@ class GameClient {
         this.connection.on('LobbyUpdated', (roomState) => {
             console.log('LobbyUpdated:', roomState);
             this.callbacks.onLobbyUpdated(roomState);
+        });
+
+        this.connection.on('GameStarted', (gameSession) => {
+            console.log('GameStarted:', gameSession);
+            this.callbacks.onGameStarted(gameSession);
         });
 
         this.connection.on('Error', (error) => {
@@ -136,6 +142,20 @@ class GameClient {
      */
     async toggleRoomLocked(currentState) {
         await this.setRoomLocked(!currentState);
+    }
+
+    /**
+     * Start the game (host only)
+     * @param {string} gameType - The type of game to start (e.g., "Quiz")
+     */
+    async startGame(gameType = 'Quiz') {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.isHost) {
+            throw new Error('Only the host can start the game');
+        }
+        await this.connection.invoke('StartGame', this.roomCode, gameType);
     }
 
     /**
@@ -291,7 +311,9 @@ const GameUtils = {
             'NAME_TAKEN': 'This name is already taken. Please choose another.',
             'ALREADY_HOST': 'You are already hosting another room.',
             'NOT_HOST': 'Only the host can perform this action.',
-            'CONNECTION_FAILED': 'Failed to connect to server. Please try again.'
+            'CONNECTION_FAILED': 'Failed to connect to server. Please try again.',
+            'INVALID_STATE': 'This action cannot be performed in the current game state.',
+            'NOT_ENOUGH_PLAYERS': 'At least 2 players are required to start the game.'
         };
         
         if (error && error.code && errorMessages[error.code]) {

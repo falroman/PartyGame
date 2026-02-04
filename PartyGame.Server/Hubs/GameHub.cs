@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using PartyGame.Core.Enums;
 using PartyGame.Server.DTOs;
 using PartyGame.Server.Services;
 
@@ -115,6 +116,32 @@ public class GameHub : Hub
             roomCode, isLocked, Context.ConnectionId);
 
         var (success, error) = await _lobbyService.SetRoomLockedAsync(roomCode, Context.ConnectionId, isLocked);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+        }
+    }
+
+    /// <summary>
+    /// Host starts the game. Only the host can start a game, and at least 2 players are required.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="gameType">The type of game to start (e.g., "Quiz").</param>
+    public async Task StartGame(string roomCode, string gameType)
+    {
+        _logger.LogInformation("StartGame called for room {RoomCode} with gameType={GameType} by {ConnectionId}", 
+            roomCode, gameType, Context.ConnectionId);
+
+        // Parse game type from string
+        if (!Enum.TryParse<GameType>(gameType, ignoreCase: true, out var parsedGameType))
+        {
+            _logger.LogWarning("StartGame failed: Invalid game type '{GameType}'", gameType);
+            await Clients.Caller.SendAsync("Error", new ErrorDto(ErrorCodes.InvalidState, $"Invalid game type: {gameType}"));
+            return;
+        }
+
+        var (success, error) = await _lobbyService.StartGameAsync(roomCode, Context.ConnectionId, parsedGameType);
 
         if (!success && error != null)
         {

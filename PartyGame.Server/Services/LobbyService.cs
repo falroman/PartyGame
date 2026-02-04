@@ -324,7 +324,18 @@ public class LobbyService : ILobbyService
             .OrderBy(p => p.DisplayName)
             .ToList();
 
-        return new RoomStateDto(room.Code, room.Status, room.IsLocked, players);
+        // Map CurrentGame to GameSessionDto if present
+        GameSessionDto? currentGameDto = null;
+        if (room.CurrentGame != null)
+        {
+            currentGameDto = new GameSessionDto(
+                room.CurrentGame.GameType.ToString(),
+                room.CurrentGame.Phase,
+                room.CurrentGame.StartedUtc
+            );
+        }
+
+        return new RoomStateDto(room.Code, room.Status, room.IsLocked, players, currentGameDto);
     }
 
     /// <inheritdoc />
@@ -407,5 +418,77 @@ public class LobbyService : ILobbyService
         var normalizedCode = roomCode.ToUpperInvariant();
         _roomStore.Remove(normalizedCode);
         _logger.LogInformation("Room {RoomCode} removed by cleanup", normalizedCode);
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool Success, ErrorDto? Error)> StartGameAsync(string roomCode, string connectionId, GameType gameType)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        // Check if room exists
+        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+        {
+            _logger.LogWarning("StartGame failed: Room {RoomCode} not found", normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, $"Room with code '{normalizedCode}' does not exist."));
+        }
+
+        // Check if caller is the host
+        if (!IsHostOfRoom(normalizedCode, connectionId))
+        {
+            _logger.LogWarning("StartGame failed: Connection {ConnectionId} is not host of room {RoomCode}", 
+                connectionId, normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.NotHost, "Only the host can start the game."));
+        }
+
+        // Check if room is in Lobby state
+        if (room.Status != RoomStatus.Lobby)
+        {
+            _logger.LogWarning("StartGame failed: Room {RoomCode} is not in Lobby state (current: {Status})", 
+                normalizedCode, room.Status);
+            return (false, new ErrorDto(ErrorCodes.InvalidState, "Game cannot be started. The room is not in lobby state."));
+        }
+
+        // Check if there are at least 2 players
+        if (room.Players.Count < 2)
+        {
+            _logger.LogWarning("StartGame failed: Room {RoomCode} has only {Count} player(s), need at least 2", 
+                normalizedCode, room.Players.Count);
+            return (false, new ErrorDto(ErrorCodes.NotEnoughPlayers, "At least 2 players are required to start the game."));
+        }
+
+        // Create game session
+        var gameSession = new GameSession
+        {
+            GameType = gameType,
+            Phase = "Starting",
+            StartedUtc = _clock.UtcNow,
+            State = null
+        };
+
+        // Update room state
+        room.Status = RoomStatus.InGame;
+        room.IsLocked = true;
+        room.CurrentGame = gameSession;
+        _roomStore.Update(room);
+
+        _logger.LogInformation("Game started in room {RoomCode}: Type={GameType}, Phase={Phase}", 
+            normalizedCode, gameType, gameSession.Phase);
+
+        // Broadcast lobby update (includes new game state)
+        var roomState = GetRoomState(normalizedCode);
+        if (roomState != null)
+        {
+            await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("LobbyUpdated", roomState);
+            
+            // Also send GameStarted event for clients that want to handle it separately
+            var gameSessionDto = new GameSessionDto(
+                gameSession.GameType.ToString(),
+                gameSession.Phase,
+                gameSession.StartedUtc
+            );
+            await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("GameStarted", gameSessionDto);
+        }
+
+        return (true, null);
     }
 }

@@ -29,4 +29,10 @@ public static class ErrorCodes
     
     /// <summary>Failed to establish connection to the server.</summary>
     public const string ConnectionFailed = "CONNECTION_FAILED";
+
+    /// <summary>Room is not in the correct state for this action (e.g., game already running).</summary>
+    public const string InvalidState = "INVALID_STATE";
+
+    /// <summary>Not enough players to start the game (minimum 2 required).</summary>
+    public const string NotEnoughPlayers = "NOT_ENOUGH_PLAYERS";
 }

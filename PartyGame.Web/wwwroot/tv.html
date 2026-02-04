@@ -67,6 +67,60 @@
         .lock-status.locked {
             color: var(--warning-color);
         }
+        
+        /* Game Status Overlay */
+        .game-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .game-overlay.visible {
+            display: flex;
+        }
+        
+        .game-overlay-content {
+            text-align: center;
+            color: white;
+        }
+        
+        .game-overlay-icon {
+            font-size: 4rem;
+            margin-bottom: 24px;
+        }
+        
+        .game-overlay-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        
+        .game-overlay-subtitle {
+            font-size: 1.25rem;
+            opacity: 0.8;
+        }
+
+        /* Game Status Card */
+        .game-status-card {
+            display: none;
+            background: var(--success-color);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .game-status-card.visible {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -75,7 +129,7 @@
         <div class="tv-main">
             <div class="tv-header">
                 <h1>🎮 PartyGame</h1>
-                <p>Scan the QR code or enter the room code to join!</p>
+                <p id="headerSubtitle">Scan the QR code or enter the room code to join!</p>
             </div>
 
             <!-- Connection Status -->
@@ -123,6 +177,19 @@
                 </div>
                 <p class="qr-hint">Scan with your phone camera to join</p>
             </div>
+
+            <!-- Game Status Card (shown when game is in progress) -->
+            <div id="gameStatusCard" class="game-status-card">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 1.5rem;">🎯</span>
+                    <div>
+                        <div style="font-weight: bold;">Game In Progress</div>
+                        <div style="opacity: 0.9; font-size: 0.875rem;">
+                            <span id="gameTypeDisplay">Quiz</span> - <span id="gamePhaseDisplay">Starting</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Sidebar: Player List -->
@@ -142,16 +209,25 @@
                 <!-- Player List -->
                 <ul id="playerList" class="player-list" style="display: none;"></ul>
 
-                <!-- Start Game Button (future) -->
-                <div style="margin-top: auto; padding-top: 20px;">
+                <!-- Start Game Button -->
+                <div id="startGameContainer" style="margin-top: auto; padding-top: 20px;">
                     <button id="startGameBtn" class="btn btn-success btn-large" style="width: 100%;" disabled>
                         Start Game
                     </button>
-                    <p style="text-align: center; margin-top: 8px; color: var(--text-light); font-size: 0.875rem;">
+                    <p id="startGameHint" style="text-align: center; margin-top: 8px; color: var(--text-light); font-size: 0.875rem;">
                         Need at least 2 players to start
                     </p>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Game Starting Overlay -->
+    <div id="gameOverlay" class="game-overlay">
+        <div class="game-overlay-content">
+            <div class="game-overlay-icon">🎮</div>
+            <div class="game-overlay-title">Game Starting!</div>
+            <div class="game-overlay-subtitle">Get ready, <span id="overlayPlayerCount">0</span> players...</div>
         </div>
     </div>
 
@@ -182,11 +258,20 @@
         const lockIcon = document.getElementById('lockIcon');
         const lockLabel = document.getElementById('lockLabel');
         const lockStatusEl = document.getElementById('lockStatus');
+        const gameStatusCard = document.getElementById('gameStatusCard');
+        const gameTypeDisplay = document.getElementById('gameTypeDisplay');
+        const gamePhaseDisplay = document.getElementById('gamePhaseDisplay');
+        const headerSubtitle = document.getElementById('headerSubtitle');
+        const gameOverlay = document.getElementById('gameOverlay');
+        const overlayPlayerCount = document.getElementById('overlayPlayerCount');
+        const startGameContainer = document.getElementById('startGameContainer');
+        const startGameHint = document.getElementById('startGameHint');
 
         // Game client
         const client = new GameClient(SERVER_URL);
         let currentRoomCode = null;
         let isRoomLocked = false;
+        let currentRoomStatus = 'Lobby'; // Lobby, InGame, Finished
 
         // Initialize
         async function init() {
@@ -196,6 +281,7 @@
                 client.on('onDisconnected', onDisconnected);
                 client.on('onReconnecting', onReconnecting);
                 client.on('onLobbyUpdated', onLobbyUpdated);
+                client.on('onGameStarted', onGameStarted);
                 client.on('onError', onError);
 
                 // Connect to SignalR
@@ -297,6 +383,10 @@
             // Update lock state
             updateLockUI(roomState.isLocked);
 
+            // Update room status
+            currentRoomStatus = roomState.status;
+            updateGameStatusUI(roomState);
+
             // Update player list
             if (players.length === 0) {
                 emptyState.style.display = 'block';
@@ -320,12 +410,75 @@
                 `).join('');
             }
 
-            // Enable/disable start button
-            startGameBtn.disabled = players.length < 2;
+            // Enable/disable start button based on player count and game status
+            const canStart = players.length >= 2 && currentRoomStatus === 'Lobby';
+            startGameBtn.disabled = !canStart;
+            
+            // Update hint text
+            if (currentRoomStatus !== 'Lobby') {
+                startGameHint.textContent = 'Game is in progress';
+            } else if (players.length < 2) {
+                startGameHint.textContent = 'Need at least 2 players to start';
+            } else {
+                startGameHint.textContent = 'Ready to start!';
+            }
 
             // Hide error on successful update
             hideError();
         }
+
+        function onGameStarted(gameSession) {
+            console.log('Game started:', gameSession);
+            
+            // Show overlay briefly
+            overlayPlayerCount.textContent = playerCount.textContent.split('/')[0];
+            gameOverlay.classList.add('visible');
+            
+            // Hide overlay after 3 seconds
+            setTimeout(() => {
+                gameOverlay.classList.remove('visible');
+            }, 3000);
+        }
+
+        function updateGameStatusUI(roomState) {
+            if (roomState.status === 'InGame' || roomState.status === 1) {
+                // Show game status
+                gameStatusCard.classList.add('visible');
+                headerSubtitle.textContent = 'Game in progress!';
+                
+                // Hide start game container during game
+                startGameContainer.style.display = 'none';
+                
+                // Update game info if available
+                if (roomState.currentGame) {
+                    gameTypeDisplay.textContent = roomState.currentGame.gameType || 'Quiz';
+                    gamePhaseDisplay.textContent = roomState.currentGame.phase || 'Starting';
+                }
+            } else {
+                // Hide game status, show normal lobby
+                gameStatusCard.classList.remove('visible');
+                headerSubtitle.textContent = 'Scan the QR code or enter the room code to join!';
+                startGameContainer.style.display = 'block';
+            }
+        }
+
+        // Start game button click handler
+        startGameBtn.addEventListener('click', async () => {
+            if (startGameBtn.disabled) return;
+            
+            try {
+                startGameBtn.disabled = true;
+                startGameBtn.textContent = 'Starting...';
+                
+                await client.startGame('Quiz');
+                
+            } catch (error) {
+                console.error('Failed to start game:', error);
+                showError('Failed to start game: ' + (error.message || 'Unknown error'));
+                startGameBtn.disabled = false;
+                startGameBtn.textContent = 'Start Game';
+            }
+        });
 
         function onError(error) {
             showError(GameUtils.formatError(error));

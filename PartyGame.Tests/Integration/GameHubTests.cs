@@ -492,4 +492,184 @@ public class GameHubTests : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     }
 
     #endregion
+
+    #region Start Game Tests
+
+    [Fact]
+    public async Task StartGame_WithHostAndTwoPlayers_StartsGameSuccessfully()
+    {
+        // Arrange - Create room and register host
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        var player1Connection = CreateHubConnection();
+        var player2Connection = CreateHubConnection();
+
+        RoomStateDto? hostState = null;
+        RoomStateDto? player1State = null;
+        RoomStateDto? player2State = null;
+
+        _hostConnection.On<RoomStateDto>("LobbyUpdated", state => hostState = state);
+        player1Connection.On<RoomStateDto>("LobbyUpdated", state => player1State = state);
+        player2Connection.On<RoomStateDto>("LobbyUpdated", state => player2State = state);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+
+        await player1Connection.StartAsync();
+        await player1Connection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "Player1");
+
+        await player2Connection.StartAsync();
+        await player2Connection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "Player2");
+        await Task.Delay(100);
+
+        // Act
+        await _hostConnection.InvokeAsync("StartGame", roomCode, "Quiz");
+
+        // Assert
+        await Task.Delay(100);
+        
+        // All clients should receive the updated state
+        hostState.Should().NotBeNull();
+        hostState!.Status.Should().Be(RoomStatus.InGame);
+        hostState.IsLocked.Should().BeTrue();
+        hostState.CurrentGame.Should().NotBeNull();
+        hostState.CurrentGame!.GameType.Should().Be("Quiz");
+        hostState.CurrentGame.Phase.Should().Be("Starting");
+
+        player1State.Should().NotBeNull();
+        player1State!.Status.Should().Be(RoomStatus.InGame);
+        player1State.CurrentGame.Should().NotBeNull();
+
+        player2State.Should().NotBeNull();
+        player2State!.Status.Should().Be(RoomStatus.InGame);
+        player2State.CurrentGame.Should().NotBeNull();
+
+        await player1Connection.DisposeAsync();
+        await player2Connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task StartGame_ByNonHost_ReturnsNotHostError()
+    {
+        // Arrange - Create room and register host
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        var player1Connection = CreateHubConnection();
+        var player2Connection = CreateHubConnection();
+
+        ErrorDto? receivedError = null;
+        RoomStateDto? hostState = null;
+
+        _hostConnection.On<RoomStateDto>("LobbyUpdated", state => hostState = state);
+        player1Connection.On<ErrorDto>("Error", error => receivedError = error);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+
+        await player1Connection.StartAsync();
+        await player1Connection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "Player1");
+
+        await player2Connection.StartAsync();
+        await player2Connection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "Player2");
+        await Task.Delay(100);
+
+        // Act - Player tries to start game (not host)
+        await player1Connection.InvokeAsync("StartGame", roomCode, "Quiz");
+
+        // Assert
+        await Task.Delay(100);
+        receivedError.Should().NotBeNull();
+        receivedError!.Code.Should().Be(ErrorCodes.NotHost);
+        
+        // Room should still be in Lobby
+        hostState!.Status.Should().Be(RoomStatus.Lobby);
+
+        await player1Connection.DisposeAsync();
+        await player2Connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task StartGame_WithLessThanTwoPlayers_ReturnsNotEnoughPlayersError()
+    {
+        // Arrange - Create room with only 1 player
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        var player1Connection = CreateHubConnection();
+
+        ErrorDto? receivedError = null;
+        _hostConnection.On<ErrorDto>("Error", error => receivedError = error);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+
+        await player1Connection.StartAsync();
+        await player1Connection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "Player1");
+        await Task.Delay(100);
+
+        // Act - Host tries to start with only 1 player
+        await _hostConnection.InvokeAsync("StartGame", roomCode, "Quiz");
+
+        // Assert
+        await Task.Delay(100);
+        receivedError.Should().NotBeNull();
+        receivedError!.Code.Should().Be(ErrorCodes.NotEnoughPlayers);
+
+        await player1Connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task StartGame_ReceivesGameStartedEvent()
+    {
+        // Arrange
+        var createResponse = await _httpClient.PostAsync("/api/rooms", null);
+        var roomData = await createResponse.Content.ReadFromJsonAsync<CreateRoomResponseDto>();
+        var roomCode = roomData!.RoomCode;
+
+        _hostConnection = CreateHubConnection();
+        var player1Connection = CreateHubConnection();
+        var player2Connection = CreateHubConnection();
+
+        GameSessionDto? hostGameSession = null;
+        GameSessionDto? player1GameSession = null;
+
+        _hostConnection.On<GameSessionDto>("GameStarted", session => hostGameSession = session);
+        player1Connection.On<GameSessionDto>("GameStarted", session => player1GameSession = session);
+
+        await _hostConnection.StartAsync();
+        await _hostConnection.InvokeAsync("RegisterHost", roomCode);
+
+        await player1Connection.StartAsync();
+        await player1Connection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "Player1");
+
+        await player2Connection.StartAsync();
+        await player2Connection.InvokeAsync("JoinRoom", roomCode, Guid.NewGuid(), "Player2");
+        await Task.Delay(100);
+
+        // Act
+        await _hostConnection.InvokeAsync("StartGame", roomCode, "Quiz");
+
+        // Assert
+        await Task.Delay(100);
+        
+        hostGameSession.Should().NotBeNull();
+        hostGameSession!.GameType.Should().Be("Quiz");
+        hostGameSession.Phase.Should().Be("Starting");
+
+        player1GameSession.Should().NotBeNull();
+        player1GameSession!.GameType.Should().Be("Quiz");
+
+        await player1Connection.DisposeAsync();
+        await player2Connection.DisposeAsync();
+    }
+
+    #endregion
 }

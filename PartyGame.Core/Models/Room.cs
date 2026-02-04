@@ -47,4 +47,9 @@ public class Room
     /// Maximum number of players allowed in the room.
     /// </summary>
     public int MaxPlayers { get; set; } = 8;
+
+    /// <summary>
+    /// Current game session. Null when in Lobby or after game has finished.
+    /// </summary>
+    public GameSession? CurrentGame { get; set; }
 }
