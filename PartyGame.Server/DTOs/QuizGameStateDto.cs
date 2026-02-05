@@ -16,6 +16,7 @@ public record QuizGameStateDto(
     string? CurrentCategory,
     Guid? RoundLeaderPlayerId,
     IReadOnlyList<string>? AvailableCategories,
+    RoundType? RoundType,
     string QuestionId,
     string QuestionText,
     IReadOnlyList<QuizOptionDto> Options,
@@ -53,5 +54,7 @@ public record PlayerScoreDto(
     int Score,
     int Position,
     bool? AnsweredCorrectly,
-    string? SelectedOption
+    string? SelectedOption,
+    int PointsEarned = 0,
+    bool GotSpeedBonus = false
 );

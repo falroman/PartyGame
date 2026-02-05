@@ -56,7 +56,13 @@ public enum RoundType
     /// <summary>
     /// A round with questions from a single category, chosen by a player.
     /// </summary>
-    CategoryQuiz
+    CategoryQuiz,
+
+    /// <summary>
+    /// A round with dictionary words - players guess the correct definition.
+    /// This is always the final round and serves as a catch-up mechanism.
+    /// </summary>
+    DictionaryGame
 }
 
 /// <summary>
@@ -92,5 +98,15 @@ public enum QuizPhase
     /// <summary>
     /// Game has finished.
     /// </summary>
-    Finished
+    Finished,
+
+    /// <summary>
+    /// Dictionary game: showing the word (suspense phase before options appear).
+    /// </summary>
+    DictionaryWord,
+
+    /// <summary>
+    /// Dictionary game: showing word + 4 definition options.
+    /// </summary>
+    DictionaryAnswering
 }

@@ -209,6 +209,25 @@ public class GameHub : Hub
     }
 
     /// <summary>
+    /// Player submits their answer for the dictionary game.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="playerId">The player's ID.</param>
+    /// <param name="optionIndex">The selected option index (0-3).</param>
+    public async Task SubmitDictionaryAnswer(string roomCode, Guid playerId, int optionIndex)
+    {
+        _logger.LogInformation("SubmitDictionaryAnswer called for room {RoomCode} by player {PlayerId} with option {OptionIndex}", 
+            roomCode, playerId, optionIndex);
+
+        var (success, error) = await _quizOrchestrator.SubmitDictionaryAnswerAsync(roomCode, playerId, optionIndex);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+        }
+    }
+
+    /// <summary>
     /// Host triggers the next question (optional - game auto-advances by default).
     /// </summary>
     /// <param name="roomCode">The room code.</param>
@@ -234,28 +253,47 @@ public class GameHub : Hub
             .Select(p => new PlayerAnswerStatusDto(
                 p.PlayerId,
                 p.DisplayName,
-                state.Answers.TryGetValue(p.PlayerId, out var a) && a != null
+                state.CurrentRound?.Type == RoundType.DictionaryGame
+                    ? state.DictionaryAnswers.TryGetValue(p.PlayerId, out var da) && da != null
+                    : state.Answers.TryGetValue(p.PlayerId, out var a) && a != null
             ))
             .ToList();
 
-        var questionsInRound = GameRound.QuestionsPerRound;
-        var currentQuestionInRound = state.CurrentRound?.CurrentQuestionIndex ?? 0;
+        var questionsInRound = state.CurrentRound?.Type == RoundType.DictionaryGame
+            ? QuizGameState.DictionaryWordsPerRound
+            : GameRound.QuestionsPerRound;
+        var currentQuestionInRound = state.CurrentRound?.Type == RoundType.DictionaryGame
+            ? state.DictionaryWordIndex
+            : state.CurrentRound?.CurrentQuestionIndex ?? 0;
 
         return new QuizGameStateDto(
             Phase: state.Phase,
             QuestionNumber: state.QuestionNumber,
-            TotalQuestions: state.TotalQuestions,
+            TotalQuestions: state.TotalQuestions + QuizGameState.DictionaryWordsPerRound,
             RoundNumber: state.RoundNumber,
             QuestionsInRound: questionsInRound,
             CurrentQuestionInRound: currentQuestionInRound,
             CurrentCategory: state.CurrentRound?.Category,
             RoundLeaderPlayerId: state.CurrentRound?.RoundLeaderPlayerId,
             AvailableCategories: state.Phase == QuizPhase.CategorySelection ? state.AvailableCategories : null,
+            RoundType: state.CurrentRound?.Type,
             QuestionId: state.QuestionId,
-            QuestionText: state.QuestionText,
-            Options: state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList(),
-            CorrectOptionKey: showCorrectAnswer ? state.CorrectOptionKey : null,
-            Explanation: showCorrectAnswer ? state.Explanation : null,
+            QuestionText: state.CurrentRound?.Type == RoundType.DictionaryGame 
+                ? state.DictionaryQuestion?.Word ?? string.Empty
+                : state.QuestionText,
+            Options: state.CurrentRound?.Type == RoundType.DictionaryGame
+                ? CreateDictionaryOptions(state, showCorrectAnswer)
+                : state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList(),
+            CorrectOptionKey: showCorrectAnswer 
+                ? (state.CurrentRound?.Type == RoundType.DictionaryGame
+                    ? state.DictionaryQuestion?.CorrectIndex.ToString()
+                    : state.CorrectOptionKey)
+                : null,
+            Explanation: showCorrectAnswer 
+                ? (state.CurrentRound?.Type == RoundType.DictionaryGame
+                    ? state.DictionaryQuestion?.Definition
+                    : state.Explanation)
+                : null,
             RemainingSeconds: remainingSeconds,
             AnswerStatuses: answerStatuses,
             Scoreboard: state.Scoreboard
@@ -265,10 +303,25 @@ public class GameHub : Hub
                     p.Score,
                     p.Position,
                     showCorrectAnswer ? p.AnsweredCorrectly : null,
-                    showCorrectAnswer ? p.SelectedOption : null
+                    showCorrectAnswer ? p.SelectedOption : null,
+                    showCorrectAnswer ? p.PointsEarned : 0,
+                    showCorrectAnswer && p.GotSpeedBonus
                 ))
                 .OrderBy(p => p.Position)
                 .ToList()
         );
+    }
+
+    private static List<QuizOptionDto> CreateDictionaryOptions(QuizGameState state, bool showOptions)
+    {
+        if (state.DictionaryQuestion == null || state.Phase == QuizPhase.DictionaryWord)
+        {
+            // Don't show options during word display phase (suspense)
+            return new List<QuizOptionDto>();
+        }
+
+        return state.DictionaryQuestion.Options
+            .Select((text, index) => new QuizOptionDto(index.ToString(), text))
+            .ToList();
     }
 }

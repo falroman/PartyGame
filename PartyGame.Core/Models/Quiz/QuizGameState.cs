@@ -1,4 +1,5 @@
 using PartyGame.Core.Enums;
+using PartyGame.Core.Models.Dictionary;
 
 namespace PartyGame.Core.Models.Quiz;
 
@@ -112,6 +113,56 @@ public class QuizGameState
     /// Locale for questions (e.g., "nl-BE").
     /// </summary>
     public string Locale { get; set; } = "nl-BE";
+
+    #region Dictionary Game State
+
+    /// <summary>
+    /// Current dictionary question (only set during DictionaryGame round).
+    /// </summary>
+    public DictionaryQuestion? DictionaryQuestion { get; set; }
+
+    /// <summary>
+    /// Dictionary answers: PlayerId -> OptionIndex (0-3), null if not answered.
+    /// </summary>
+    public Dictionary<Guid, int?> DictionaryAnswers { get; set; } = new();
+
+    /// <summary>
+    /// Dictionary answer timestamps: PlayerId -> UTC time when answer was submitted.
+    /// Used for speed bonus calculation.
+    /// </summary>
+    public Dictionary<Guid, DateTime> DictionaryAnswerTimes { get; set; } = new();
+
+    /// <summary>
+    /// Words already used in this game's dictionary round (to prevent repeats).
+    /// </summary>
+    public HashSet<string> UsedDictionaryWords { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Current word index within the dictionary round (1-based, 1-3).
+    /// </summary>
+    public int DictionaryWordIndex { get; set; } = 0;
+
+    /// <summary>
+    /// Number of words per dictionary round.
+    /// </summary>
+    public const int DictionaryWordsPerRound = 3;
+
+    /// <summary>
+    /// Points for correct dictionary answer.
+    /// </summary>
+    public const int DictionaryCorrectPoints = 1000;
+
+    /// <summary>
+    /// Bonus points for fastest correct answer.
+    /// </summary>
+    public const int DictionarySpeedBonusPoints = 250;
+
+    /// <summary>
+    /// Extra catch-up bonus for players in bottom half.
+    /// </summary>
+    public const int DictionaryCatchUpBonusPoints = 100;
+
+    #endregion
 }
 
 /// <summary>
@@ -164,4 +215,14 @@ public class PlayerScoreState
     /// The option the player selected (in Reveal phase).
     /// </summary>
     public string? SelectedOption { get; set; }
+
+    /// <summary>
+    /// Points earned in the current question (for delta display).
+    /// </summary>
+    public int PointsEarned { get; set; } = 0;
+
+    /// <summary>
+    /// Whether this player got the speed bonus (fastest correct answer).
+    /// </summary>
+    public bool GotSpeedBonus { get; set; } = false;
 }

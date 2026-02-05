@@ -1,6 +1,7 @@
 using PartyGame.Core.Enums;
 using PartyGame.Core.Interfaces;
 using PartyGame.Core.Models;
+using PartyGame.Core.Models.Dictionary;
 using PartyGame.Core.Models.Quiz;
 
 namespace PartyGame.Server.Services;
@@ -45,6 +46,7 @@ public class QuizGameEngine : IQuizGameEngine
         foreach (var player in room.Players.Keys)
         {
             state.Answers[player] = null;
+            state.DictionaryAnswers[player] = null;
         }
 
         return state;
@@ -82,6 +84,231 @@ public class QuizGameEngine : IQuizGameEngine
 
         return state;
     }
+
+    #region Dictionary Game Methods
+
+    /// <inheritdoc />
+    public QuizGameState StartDictionaryRound(QuizGameState state, int wordDisplayDurationSeconds, DateTime currentTime)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        // Complete current round if exists
+        if (state.CurrentRound != null && !state.CurrentRound.IsCompleted)
+        {
+            state.CurrentRound.IsCompleted = true;
+            state.CompletedRounds.Add(state.CurrentRound);
+        }
+
+        // Create dictionary round
+        state.RoundNumber++;
+        state.CurrentRound = GameRound.CreateDictionaryRound();
+        state.DictionaryWordIndex = 0;
+
+        // Reset dictionary answers
+        foreach (var key in state.DictionaryAnswers.Keys.ToList())
+        {
+            state.DictionaryAnswers[key] = null;
+        }
+        state.DictionaryAnswerTimes.Clear();
+
+        return state;
+    }
+
+    /// <inheritdoc />
+    public QuizGameState StartDictionaryWord(QuizGameState state, DictionaryQuestion question, int wordDisplayDurationSeconds, DateTime currentTime)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(question);
+
+        state.DictionaryQuestion = question;
+        state.DictionaryWordIndex++;
+        state.QuestionNumber++;
+
+        // Update current round
+        if (state.CurrentRound != null)
+        {
+            state.CurrentRound.CurrentQuestionIndex++;
+        }
+
+        // Track used word
+        state.UsedDictionaryWords.Add(question.Word);
+
+        // Reset answers for this word
+        foreach (var key in state.DictionaryAnswers.Keys.ToList())
+        {
+            state.DictionaryAnswers[key] = null;
+        }
+        state.DictionaryAnswerTimes.Clear();
+
+        // Reset scoreboard answer status
+        foreach (var player in state.Scoreboard)
+        {
+            player.AnsweredCorrectly = null;
+            player.SelectedOption = null;
+            player.PointsEarned = 0;
+            player.GotSpeedBonus = false;
+        }
+
+        // Set phase to word display (suspense before options)
+        state.Phase = QuizPhase.DictionaryWord;
+        state.PhaseEndsUtc = currentTime.AddSeconds(wordDisplayDurationSeconds);
+
+        return state;
+    }
+
+    /// <inheritdoc />
+    public QuizGameState StartDictionaryAnsweringPhase(QuizGameState state, int answeringDurationSeconds, DateTime currentTime)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        state.Phase = QuizPhase.DictionaryAnswering;
+        state.PhaseEndsUtc = currentTime.AddSeconds(answeringDurationSeconds);
+
+        return state;
+    }
+
+    /// <inheritdoc />
+    public QuizGameState SubmitDictionaryAnswer(QuizGameState state, Guid playerId, int optionIndex, DateTime answerTime)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        // Check if player exists in the game
+        if (!state.DictionaryAnswers.ContainsKey(playerId))
+        {
+            return state; // Player not in game
+        }
+
+        // Idempotent: only record first answer
+        if (state.DictionaryAnswers[playerId] != null)
+        {
+            return state; // Already answered
+        }
+
+        // Validate option index
+        if (!IsValidDictionaryOption(optionIndex))
+        {
+            return state; // Invalid option, ignore
+        }
+
+        // Record the answer and time
+        state.DictionaryAnswers[playerId] = optionIndex;
+        state.DictionaryAnswerTimes[playerId] = answerTime;
+
+        return state;
+    }
+
+    /// <inheritdoc />
+    public QuizGameState RevealDictionaryAnswer(QuizGameState state, int revealDurationSeconds, DateTime currentTime)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        state.Phase = QuizPhase.Reveal;
+        state.PhaseEndsUtc = currentTime.AddSeconds(revealDurationSeconds);
+
+        if (state.DictionaryQuestion == null)
+            return state;
+
+        var correctIndex = state.DictionaryQuestion.CorrectIndex;
+
+        // Find fastest correct answer
+        DateTime? fastestCorrectTime = null;
+        Guid? fastestPlayerId = null;
+
+        foreach (var (playerId, answerTime) in state.DictionaryAnswerTimes)
+        {
+            if (state.DictionaryAnswers.TryGetValue(playerId, out var answer) && answer == correctIndex)
+            {
+                if (fastestCorrectTime == null || answerTime < fastestCorrectTime)
+                {
+                    fastestCorrectTime = answerTime;
+                    fastestPlayerId = playerId;
+                }
+            }
+        }
+
+        // Calculate median score for catch-up bonus
+        var sortedScores = state.Scoreboard.OrderBy(p => p.Score).ToList();
+        var medianIndex = sortedScores.Count / 2;
+        var medianScore = sortedScores.Count > 0 ? sortedScores[medianIndex].Score : 0;
+
+        // Calculate scores
+        foreach (var player in state.Scoreboard)
+        {
+            player.PointsEarned = 0;
+            player.GotSpeedBonus = false;
+
+            if (state.DictionaryAnswers.TryGetValue(player.PlayerId, out var answer))
+            {
+                player.SelectedOption = answer?.ToString();
+                player.AnsweredCorrectly = answer == correctIndex;
+
+                if (player.AnsweredCorrectly == true)
+                {
+                    // Base points
+                    player.PointsEarned = QuizGameState.DictionaryCorrectPoints;
+
+                    // Speed bonus for fastest
+                    if (player.PlayerId == fastestPlayerId)
+                    {
+                        player.PointsEarned += QuizGameState.DictionarySpeedBonusPoints;
+                        player.GotSpeedBonus = true;
+                    }
+
+                    // Catch-up bonus for players in bottom half
+                    if (player.Score <= medianScore && sortedScores.Count > 1)
+                    {
+                        player.PointsEarned += QuizGameState.DictionaryCatchUpBonusPoints;
+                    }
+
+                    player.Score += player.PointsEarned;
+                }
+            }
+            else
+            {
+                player.SelectedOption = null;
+                player.AnsweredCorrectly = false;
+            }
+        }
+
+        // Update positions
+        UpdatePositions(state.Scoreboard);
+
+        return state;
+    }
+
+    /// <inheritdoc />
+    public bool HasMoreDictionaryWords(QuizGameState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        return state.DictionaryWordIndex < QuizGameState.DictionaryWordsPerRound;
+    }
+
+    /// <inheritdoc />
+    public bool AllDictionaryAnswered(QuizGameState state, IEnumerable<Guid> playerIds)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        return playerIds.All(id =>
+            state.DictionaryAnswers.TryGetValue(id, out var answer) && answer != null);
+    }
+
+    /// <inheritdoc />
+    public bool IsValidDictionaryOption(int optionIndex)
+    {
+        return optionIndex >= 0 && optionIndex <= 3;
+    }
+
+    /// <inheritdoc />
+    public bool ShouldStartDictionaryRound(QuizGameState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        // Dictionary round starts after all quiz questions are done
+        // and current round is not already a dictionary round
+        return state.QuestionNumber >= state.TotalQuestions &&
+               (state.CurrentRound == null || state.CurrentRound.Type != RoundType.DictionaryGame);
+    }
+
+    #endregion
 
     /// <inheritdoc />
     public Guid SelectRoundLeader(QuizGameState state)
@@ -197,6 +424,8 @@ public class QuizGameEngine : IQuizGameEngine
         {
             player.AnsweredCorrectly = null;
             player.SelectedOption = null;
+            player.PointsEarned = 0;
+            player.GotSpeedBonus = false;
         }
 
         return state;
@@ -254,6 +483,8 @@ public class QuizGameEngine : IQuizGameEngine
         // Calculate scores and update scoreboard
         foreach (var player in state.Scoreboard)
         {
+            player.PointsEarned = 0;
+
             if (state.Answers.TryGetValue(player.PlayerId, out var answer))
             {
                 player.SelectedOption = answer;
@@ -262,6 +493,7 @@ public class QuizGameEngine : IQuizGameEngine
 
                 if (player.AnsweredCorrectly == true)
                 {
+                    player.PointsEarned = state.PointsPerCorrectAnswer;
                     player.Score += state.PointsPerCorrectAnswer;
                 }
             }

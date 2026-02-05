@@ -48,6 +48,9 @@ builder.Services.AddSingleton<IConnectionIndex, ConnectionIndex>();
 // Add quiz question bank
 builder.Services.AddSingleton<IQuizQuestionBank, JsonQuizQuestionBank>();
 
+// Add dictionary question provider
+builder.Services.AddSingleton<IDictionaryQuestionProvider, DictionaryQuestionProvider>();
+
 // Add quiz game engine and orchestrator
 builder.Services.AddSingleton<IQuizGameEngine, QuizGameEngine>();
 builder.Services.AddSingleton<IQuizGameOrchestrator, QuizGameOrchestrator>();

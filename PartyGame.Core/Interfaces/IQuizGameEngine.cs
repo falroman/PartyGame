@@ -1,4 +1,5 @@
 using PartyGame.Core.Models;
+using PartyGame.Core.Models.Dictionary;
 using PartyGame.Core.Models.Quiz;
 
 namespace PartyGame.Core.Interfaces;
@@ -25,6 +26,68 @@ public interface IQuizGameEngine
     /// <param name="currentTime">Current UTC time.</param>
     /// <returns>Updated state in CategorySelection phase.</returns>
     QuizGameState StartNewRound(QuizGameState state, int categorySelectionDurationSeconds, DateTime currentTime);
+
+    /// <summary>
+    /// Starts the Dictionary Game round (final round, mandatory).
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="wordDisplayDurationSeconds">Duration to show word before options.</param>
+    /// <param name="currentTime">Current UTC time.</param>
+    /// <returns>Updated state with DictionaryGame round started.</returns>
+    QuizGameState StartDictionaryRound(QuizGameState state, int wordDisplayDurationSeconds, DateTime currentTime);
+
+    /// <summary>
+    /// Starts a new dictionary word within the dictionary round.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="question">The dictionary question to display.</param>
+    /// <param name="wordDisplayDurationSeconds">Duration to show word before options.</param>
+    /// <param name="currentTime">Current UTC time.</param>
+    /// <returns>Updated state with new dictionary word.</returns>
+    QuizGameState StartDictionaryWord(QuizGameState state, DictionaryQuestion question, int wordDisplayDurationSeconds, DateTime currentTime);
+
+    /// <summary>
+    /// Transitions to dictionary answering phase (show options).
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="answeringDurationSeconds">Duration for answering.</param>
+    /// <param name="currentTime">Current UTC time.</param>
+    /// <returns>Updated state in DictionaryAnswering phase.</returns>
+    QuizGameState StartDictionaryAnsweringPhase(QuizGameState state, int answeringDurationSeconds, DateTime currentTime);
+
+    /// <summary>
+    /// Records a player's dictionary answer. Idempotent - first answer wins.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="playerId">Player submitting the answer.</param>
+    /// <param name="optionIndex">Selected option index (0-3).</param>
+    /// <param name="answerTime">Time when answer was submitted.</param>
+    /// <returns>Updated state with the answer recorded.</returns>
+    QuizGameState SubmitDictionaryAnswer(QuizGameState state, Guid playerId, int optionIndex, DateTime answerTime);
+
+    /// <summary>
+    /// Reveals the dictionary answer and calculates scores with speed bonus.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="revealDurationSeconds">Duration to show the reveal.</param>
+    /// <param name="currentTime">Current UTC time.</param>
+    /// <returns>Updated state with scores calculated.</returns>
+    QuizGameState RevealDictionaryAnswer(QuizGameState state, int revealDurationSeconds, DateTime currentTime);
+
+    /// <summary>
+    /// Checks if there are more words in the dictionary round.
+    /// </summary>
+    bool HasMoreDictionaryWords(QuizGameState state);
+
+    /// <summary>
+    /// Checks if all players have answered the dictionary question.
+    /// </summary>
+    bool AllDictionaryAnswered(QuizGameState state, IEnumerable<Guid> playerIds);
+
+    /// <summary>
+    /// Validates if an option index is valid for dictionary answer (0-3).
+    /// </summary>
+    bool IsValidDictionaryOption(int optionIndex);
 
     /// <summary>
     /// Selects the round leader based on current scores.
@@ -111,11 +174,16 @@ public interface IQuizGameEngine
     bool HasMoreQuestionsInRound(QuizGameState state);
 
     /// <summary>
-    /// Checks if there are more questions available in the game.
+    /// Checks if there are more questions available in the game (before dictionary round).
     /// </summary>
     /// <param name="state">Current game state.</param>
     /// <returns>True if more questions can be asked.</returns>
     bool HasMoreQuestions(QuizGameState state);
+
+    /// <summary>
+    /// Checks if the dictionary round should start (all quiz rounds complete).
+    /// </summary>
+    bool ShouldStartDictionaryRound(QuizGameState state);
 
     /// <summary>
     /// Validates if an option key is valid for the current question.
