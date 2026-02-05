@@ -98,13 +98,27 @@ app.MapHub<GameHub>("/hub/game");
 
 // Health endpoint
 app.MapGet("/health", (IHostEnvironment env, IOptions<AutoplayOptions> options) =>
-        Results.Ok(new
+{
+    var response = new
+    {
+        status = "healthy",
+        timestamp = DateTime.UtcNow
+    };
+
+    // Only expose environment details in Development
+    if (env.IsDevelopment())
+    {
+        return Results.Ok(new
         {
-            status = "healthy",
-            timestamp = DateTime.UtcNow,
+            response.status,
+            response.timestamp,
             environment = env.EnvironmentName,
             autoplayEnabled = options.Value.Enabled
-        }))
+        });
+    }
+
+    return Results.Ok(response);
+})
    .WithName("Health");
 
 app.Run();
