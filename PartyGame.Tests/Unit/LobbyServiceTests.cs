@@ -188,6 +188,43 @@ public class LobbyServiceTests
 
     #endregion
 
+    #region AddBotPlayersAsync Tests
+
+    [Fact]
+    public async Task AddBotPlayersAsync_AddsBotsWithUniqueIdsAndNames()
+    {
+        // Arrange
+        var roomCode = "TEST";
+        var room = new Room
+        {
+            Code = roomCode,
+            MaxPlayers = 10,
+            Players = new Dictionary<Guid, Player>()
+        };
+
+        _roomStore.TryGetRoom(roomCode, out Arg.Any<Room?>())
+            .Returns(x =>
+            {
+                x[1] = room;
+                return true;
+            });
+
+        // Act
+        var (success, error) = await _sut.AddBotPlayersAsync(roomCode, 3);
+
+        // Assert
+        success.Should().BeTrue();
+        error.Should().BeNull();
+        room.Players.Count.Should().Be(3);
+        room.Players.Values.Should().OnlyContain(p => p.IsBot);
+        room.Players.Values.Select(p => p.PlayerId).Distinct().Count().Should().Be(3);
+        room.Players.Values.Select(p => p.DisplayName).Distinct().Count().Should().Be(3);
+        room.Players.Values.Should().OnlyContain(p => p.BotSkill is >= 0 and <= 100);
+        _hubContext.Clients.Received(1).Group($"room:{roomCode}");
+    }
+
+    #endregion
+
     #region JoinRoomAsync - Locked Room Tests
 
     [Fact]

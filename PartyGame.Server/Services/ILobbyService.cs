@@ -35,6 +35,14 @@ public interface ILobbyService
     Task LeaveRoomAsync(string roomCode, Guid playerId);
 
     /// <summary>
+    /// Adds server-side bot players to a room without a SignalR connection.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="count">Number of bots to add.</param>
+    /// <returns>Success if bots added, error details otherwise.</returns>
+    Task<(bool Success, ErrorDto? Error)> AddBotPlayersAsync(string roomCode, int count);
+
+    /// <summary>
     /// Handles a SignalR disconnection.
     /// </summary>
     /// <param name="connectionId">The disconnected connection ID.</param>

@@ -39,6 +39,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
     private readonly ConcurrentDictionary<string, QuizGameState> _gameStates = new();
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _roomTimers = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _roomLocks = new();
 
     // Category Quiz timing
     private const int CategorySelectionSeconds = 30;
@@ -81,174 +82,192 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         var roomCode = room.Code.ToUpperInvariant();
 
-        // Default round plan: 2x CategoryQuiz, 1x RankingStars, 1x DictionaryGame
-        var plannedRounds = new List<RoundType>
+        return await ExecuteWithRoomLockAsync(roomCode, async () =>
         {
-            RoundType.CategoryQuiz,
-            RoundType.CategoryQuiz,
-            RoundType.RankingStars,
-            RoundType.DictionaryGame  // Always last
-        };
+            // Default round plan: 2x CategoryQuiz, 1x RankingStars, 1x DictionaryGame
+            var plannedRounds = new List<RoundType>
+            {
+                RoundType.CategoryQuiz,
+                RoundType.CategoryQuiz,
+                RoundType.RankingStars,
+                RoundType.DictionaryGame  // Always last
+            };
 
-        var state = _engine.InitializeGame(room, "nl-BE", plannedRounds);
-        _gameStates[roomCode] = state;
+            var state = _engine.InitializeGame(room, "nl-BE", plannedRounds);
+            _gameStates[roomCode] = state;
 
-        _logger.LogInformation("Quiz game initialized for room {RoomCode} with {RoundCount} planned rounds", 
-            roomCode, plannedRounds.Count);
+            _logger.LogInformation("Quiz game initialized for room {RoomCode} with {RoundCount} planned rounds", 
+                roomCode, plannedRounds.Count);
 
-        await StartNextPlannedRoundAsync(roomCode);
+            await StartNextPlannedRoundAsync(roomCode);
 
-        return (true, null);
+            return (true, null);
+        });
     }
 
     public async Task<(bool Success, ErrorDto? Error)> SelectCategoryAsync(string roomCode, Guid playerId, string category)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
-        if (!_gameStates.TryGetValue(normalizedCode, out var state))
-            return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
-
-        if (state.Phase != QuizPhase.CategorySelection)
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Category selection is not active."));
-
-        if (state.CurrentRound?.RoundLeaderPlayerId != playerId)
-            return (false, new ErrorDto(ErrorCodes.NotRoundLeader, "Only the round leader can select a category."));
-
-        if (!string.IsNullOrEmpty(state.CurrentRound.Category))
-            return (false, new ErrorDto(ErrorCodes.RoundAlreadyStarted, "Category has already been selected."));
-
-        if (!_engine.IsValidCategory(state, category))
-            return (false, new ErrorDto(ErrorCodes.InvalidCategory, "Invalid category selection."));
-
-        _engine.SetRoundCategory(state, category);
-        
-        _logger.LogInformation("Round leader {PlayerId} selected category '{Category}' in room {RoomCode}", 
-            playerId, category, normalizedCode);
-
-        CancelTimer(normalizedCode);
-        await BroadcastStateAsync(normalizedCode, state);
-
-        SchedulePhaseTransition(normalizedCode, 2, async () =>
+        return await ExecuteWithRoomLockAsync(normalizedCode, async () =>
         {
-            await StartNextQuestionAsync(normalizedCode);
-        });
+            if (!_gameStates.TryGetValue(normalizedCode, out var state))
+                return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
 
-        return (true, null);
+            if (state.Phase != QuizPhase.CategorySelection)
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Category selection is not active."));
+
+            if (state.CurrentRound?.RoundLeaderPlayerId != playerId)
+                return (false, new ErrorDto(ErrorCodes.NotRoundLeader, "Only the round leader can select a category."));
+
+            if (!string.IsNullOrEmpty(state.CurrentRound.Category))
+                return (false, new ErrorDto(ErrorCodes.RoundAlreadyStarted, "Category has already been selected."));
+
+            if (!_engine.IsValidCategory(state, category))
+                return (false, new ErrorDto(ErrorCodes.InvalidCategory, "Invalid category selection."));
+
+            _engine.SetRoundCategory(state, category);
+            
+            _logger.LogInformation("Round leader {PlayerId} selected category '{Category}' in room {RoomCode}", 
+                playerId, category, normalizedCode);
+
+            CancelTimer(normalizedCode);
+            await BroadcastStateAsync(normalizedCode, state);
+
+            SchedulePhaseTransition(normalizedCode, 2, async () =>
+            {
+                await StartNextQuestionAsync(normalizedCode);
+            });
+
+            return (true, null);
+        });
     }
 
     public async Task<(bool Success, ErrorDto? Error)> SubmitAnswerAsync(string roomCode, Guid playerId, string optionKey)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
-        if (!_gameStates.TryGetValue(normalizedCode, out var state))
-            return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
-
-        if (state.Phase != QuizPhase.Answering)
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Answers are not being accepted at this time."));
-
-        if (!state.Answers.ContainsKey(playerId))
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
-
-        if (!_engine.IsValidOptionKey(state, optionKey))
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid option."));
-
-        _engine.SubmitAnswer(state, playerId, optionKey);
-
-        _logger.LogInformation("Player {PlayerId} submitted answer {Option} in room {RoomCode}", 
-            playerId, optionKey, normalizedCode);
-
-        await BroadcastStateAsync(normalizedCode, state);
-
-        if (await CheckAllAnsweredAndAdvance(normalizedCode, state, 
-            ids => _engine.AllPlayersAnswered(state, ids),
-            () => AdvanceFromAnsweringAsync(normalizedCode)))
+        return await ExecuteWithRoomLockAsync(normalizedCode, async () =>
         {
-            return (true, null);
-        }
+            if (!_gameStates.TryGetValue(normalizedCode, out var state))
+                return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
 
-        return (true, null);
+            if (state.Phase != QuizPhase.Answering)
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Answers are not being accepted at this time."));
+
+            if (!state.Answers.ContainsKey(playerId))
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
+
+            if (!_engine.IsValidOptionKey(state, optionKey))
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid option."));
+
+            _engine.SubmitAnswer(state, playerId, optionKey);
+
+            _logger.LogInformation("Player {PlayerId} submitted answer {Option} in room {RoomCode}", 
+                playerId, optionKey, normalizedCode);
+
+            await BroadcastStateAsync(normalizedCode, state);
+
+            if (await CheckAllAnsweredAndAdvance(normalizedCode, state, 
+                ids => _engine.AllPlayersAnswered(state, ids),
+                () => AdvanceFromAnsweringAsync(normalizedCode)))
+            {
+                return (true, null);
+            }
+
+            return (true, null);
+        });
     }
 
     public async Task<(bool Success, ErrorDto? Error)> SubmitDictionaryAnswerAsync(string roomCode, Guid playerId, int optionIndex)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
-        if (!_gameStates.TryGetValue(normalizedCode, out var state))
-            return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
+        return await ExecuteWithRoomLockAsync(normalizedCode, async () =>
+        {
+            if (!_gameStates.TryGetValue(normalizedCode, out var state))
+                return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
 
-        if (state.Phase != QuizPhase.DictionaryAnswering)
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Dictionary answers are not being accepted at this time."));
+            if (state.Phase != QuizPhase.DictionaryAnswering)
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Dictionary answers are not being accepted at this time."));
 
-        if (!state.DictionaryAnswers.ContainsKey(playerId))
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
+            if (!state.DictionaryAnswers.ContainsKey(playerId))
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
 
-        if (!_engine.IsValidDictionaryOption(optionIndex))
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid option index (must be 0-3)."));
+            if (!_engine.IsValidDictionaryOption(optionIndex))
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid option index (must be 0-3)."));
 
-        _engine.SubmitDictionaryAnswer(state, playerId, optionIndex, _clock.UtcNow);
+            _engine.SubmitDictionaryAnswer(state, playerId, optionIndex, _clock.UtcNow);
 
-        _logger.LogInformation("Player {PlayerId} submitted dictionary answer {Option} in room {RoomCode}", 
-            playerId, optionIndex, normalizedCode);
+            _logger.LogInformation("Player {PlayerId} submitted dictionary answer {Option} in room {RoomCode}", 
+                playerId, optionIndex, normalizedCode);
 
-        await BroadcastStateAsync(normalizedCode, state);
+            await BroadcastStateAsync(normalizedCode, state);
 
-        await CheckAllAnsweredAndAdvance(normalizedCode, state,
-            ids => _engine.AllDictionaryAnswered(state, ids),
-            () => AdvanceFromDictionaryAnsweringAsync(normalizedCode));
+            await CheckAllAnsweredAndAdvance(normalizedCode, state,
+                ids => _engine.AllDictionaryAnswered(state, ids),
+                () => AdvanceFromDictionaryAnsweringAsync(normalizedCode));
 
-        return (true, null);
+            return (true, null);
+        });
     }
 
     public async Task<(bool Success, ErrorDto? Error)> SubmitRankingVoteAsync(string roomCode, Guid voterPlayerId, Guid votedForPlayerId)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
-        if (!_gameStates.TryGetValue(normalizedCode, out var state))
-            return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
+        return await ExecuteWithRoomLockAsync(normalizedCode, async () =>
+        {
+            if (!_gameStates.TryGetValue(normalizedCode, out var state))
+                return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
 
-        if (state.Phase != QuizPhase.RankingVoting)
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Ranking votes are not being accepted at this time."));
+            if (state.Phase != QuizPhase.RankingVoting)
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Ranking votes are not being accepted at this time."));
 
-        if (!state.RankingVotes.ContainsKey(voterPlayerId))
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
+            if (!state.RankingVotes.ContainsKey(voterPlayerId))
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
 
-        if (!_engine.IsValidRankingVote(state, voterPlayerId, votedForPlayerId))
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid vote (cannot vote for yourself or non-existent player)."));
+            if (!_engine.IsValidRankingVote(state, voterPlayerId, votedForPlayerId))
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid vote (cannot vote for yourself or non-existent player)."));
 
-        _engine.SubmitRankingVote(state, voterPlayerId, votedForPlayerId, _clock.UtcNow);
+            _engine.SubmitRankingVote(state, voterPlayerId, votedForPlayerId, _clock.UtcNow);
 
-        _logger.LogInformation("Player {VoterId} voted for {VotedForId} in room {RoomCode}", 
-            voterPlayerId, votedForPlayerId, normalizedCode);
+            _logger.LogInformation("Player {VoterId} voted for {VotedForId} in room {RoomCode}", 
+                voterPlayerId, votedForPlayerId, normalizedCode);
 
-        await BroadcastStateAsync(normalizedCode, state);
+            await BroadcastStateAsync(normalizedCode, state);
 
-        await CheckAllAnsweredAndAdvance(normalizedCode, state,
-            ids => _engine.AllRankingVoted(state, ids),
-            () => AdvanceFromRankingVotingAsync(normalizedCode));
+            await CheckAllAnsweredAndAdvance(normalizedCode, state,
+                ids => _engine.AllRankingVoted(state, ids),
+                () => AdvanceFromRankingVotingAsync(normalizedCode));
 
-        return (true, null);
+            return (true, null);
+        });
     }
 
     public async Task<(bool Success, ErrorDto? Error)> NextQuestionAsync(string roomCode, string connectionId)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
-        if (!_gameStates.TryGetValue(normalizedCode, out var state))
-            return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
+        return await ExecuteWithRoomLockAsync(normalizedCode, async () =>
+        {
+            if (!_gameStates.TryGetValue(normalizedCode, out var state))
+                return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
 
-        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
-            return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Room not found."));
+            if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+                return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Room not found."));
 
-        if (room.HostConnectionId != connectionId)
-            return (false, new ErrorDto(ErrorCodes.NotHost, "Only the host can advance the game."));
+            if (room.HostConnectionId != connectionId)
+                return (false, new ErrorDto(ErrorCodes.NotHost, "Only the host can advance the game."));
 
-        if (state.Phase != QuizPhase.Scoreboard)
-            return (false, new ErrorDto(ErrorCodes.InvalidState, "Cannot advance at this time."));
+            if (state.Phase != QuizPhase.Scoreboard)
+                return (false, new ErrorDto(ErrorCodes.InvalidState, "Cannot advance at this time."));
 
-        CancelTimer(normalizedCode);
-        await HandleScoreboardCompleteAsync(normalizedCode);
+            CancelTimer(normalizedCode);
+            await HandleScoreboardCompleteAsync(normalizedCode);
 
-        return (true, null);
+            return (true, null);
+        });
     }
 
     public QuizGameState? GetState(string roomCode)
@@ -658,7 +677,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
                 await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cts.Token);
                 if (!cts.Token.IsCancellationRequested)
                 {
-                    await action();
+                    await ExecuteWithRoomLockAsync(roomCode, action);
                 }
             }
             catch (TaskCanceledException) { }
@@ -675,6 +694,34 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         {
             cts.Cancel();
             cts.Dispose();
+        }
+    }
+
+    private async Task ExecuteWithRoomLockAsync(string roomCode, Func<Task> action)
+    {
+        var semaphore = _roomLocks.GetOrAdd(roomCode, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync();
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    private async Task<T> ExecuteWithRoomLockAsync<T>(string roomCode, Func<Task<T>> action)
+    {
+        var semaphore = _roomLocks.GetOrAdd(roomCode, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync();
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            semaphore.Release();
         }
     }
 

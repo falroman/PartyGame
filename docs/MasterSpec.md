@@ -380,7 +380,7 @@ Question packs are stored in `PartyGame.Server/Content/questions.{locale}.json`.
       "id": "geo-001",
       "category": "Geografie",
       "difficulty": 1,
-      "question": "Wat is de hoofdstad van België?",
+      "question": "Wat is de hoofdstad van BelgiÃ«?",
       "options": [
         { "key": "A", "text": "Antwerpen" },
         { "key": "B", "text": "Brussel" },
@@ -388,7 +388,7 @@ Question packs are stored in `PartyGame.Server/Content/questions.{locale}.json`.
         { "key": "D", "text": "Luik" }
       ],
       "correctOptionKey": "B",
-      "explanation": "Brussel is de hoofdstad van België.",
+      "explanation": "Brussel is de hoofdstad van BelgiÃ«.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": ["belgium", "capitals"],
@@ -599,9 +599,9 @@ int GetCount(string locale);
   - Animation API documentation
   - Test checklist for animations
 
-### v0.11.0 – Iteration 9: Rounds & Category Selection
+### v0.11.0 Â– Iteration 9: Rounds & Category Selection
 - STRUCTURE
-  - Game now structured as 3 rounds × 3 questions = 9 total
+  - Game now structured as 3 rounds Ã— 3 questions = 9 total
   - Added `RoundType` enum with `CategoryQuiz` type
   - Added `GameRound` model with round lifecycle
   - Added `SelectRoundLeader` method to pick RoundLeader (lowest score rule)
@@ -792,7 +792,7 @@ If GSAP/Flip fails to load:
 
 ---
 
-## 14. Iteration 9 – Rounds & Category Selection
+## 14. Iteration 9 Â– Rounds & Category Selection
 
 ### 14.1 Overview
 
@@ -899,3 +899,44 @@ public class QuizGameState
 ?       ?       ?       ?                                     ?
 ?       ?       ?       ?                                     ?
 ?       ?       ?   FinishGame()                           
+
+
+## 13. Dev Autoplay (Server-side bots)
+
+### 13.1 Overview
+- Development-only feature that lets the host spawn server-side bots.
+- Bots participate in category selection, quiz answers, dictionary answers, and ranking votes.
+- Designed for local testing without real phones or SignalR clients.
+
+### 13.2 Configuration
+Autoplay is controlled via `Autoplay` options in `PartyGame.Server` appsettings:
+
+```json
+{
+  "Autoplay": {
+    "Enabled": true,
+    "MinBots": 4,
+    "MaxBots": 12,
+    "PollIntervalMs": 250,
+    "MinActionDelayMs": 250,
+    "MaxActionDelayMs": 1200,
+    "DefaultTimeLimitSeconds": 15
+  }
+}
+```
+
+- `appsettings.Development.json`: `Enabled = true`
+- `appsettings.json` (Production default): `Enabled = false`
+
+### 13.3 Host Controls (TV)
+- **Add Bots (random)**: Adds a random number of bots to the room.
+- **Start Autoplay**: Adds bots if needed and starts the autoplay loop.
+- **Stop Autoplay**: Stops the autoplay loop.
+- UI is only visible in Development environment.
+
+### 13.4 Manual Test Checklist
+1. Start the server in Development.
+2. Open `/tv` and create a room.
+3. Click **Start Autoplay** in the DEV panel.
+4. Start the game and confirm bots answer and phases advance.
+5. Click **Stop Autoplay** and verify bots stop acting.

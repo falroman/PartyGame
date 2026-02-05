@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using PartyGame.Core.Enums;
 using PartyGame.Core.Models.Quiz;
 using PartyGame.Server.DTOs;
+using PartyGame.Server.Options;
 using PartyGame.Server.Services;
 
 namespace PartyGame.Server.Hubs;
@@ -13,15 +16,24 @@ public class GameHub : Hub
 {
     private readonly ILobbyService _lobbyService;
     private readonly IQuizGameOrchestrator _quizOrchestrator;
+    private readonly IAutoplayService _autoplayService;
+    private readonly AutoplayOptions _autoplayOptions;
+    private readonly IHostEnvironment _environment;
     private readonly ILogger<GameHub> _logger;
 
     public GameHub(
         ILobbyService lobbyService, 
         IQuizGameOrchestrator quizOrchestrator,
+        IAutoplayService autoplayService,
+        IOptions<AutoplayOptions> autoplayOptions,
+        IHostEnvironment environment,
         ILogger<GameHub> logger)
     {
         _lobbyService = lobbyService;
         _quizOrchestrator = quizOrchestrator;
+        _autoplayService = autoplayService;
+        _autoplayOptions = autoplayOptions.Value;
+        _environment = environment;
         _logger = logger;
     }
 
@@ -74,6 +86,8 @@ public class GameHub : Hub
             // The orchestrator will have already broadcasted, but send to newly connected host
             await Clients.Caller.SendAsync("QuizStateUpdated", CreateSafeQuizDto(quizState));
         }
+
+        await SendAutoplayStatusAsync(roomCode);
     }
 
     /// <summary>
@@ -262,6 +276,109 @@ public class GameHub : Hub
         }
     }
 
+    /// <summary>
+    /// Host adds server-side bot players to a room.
+    /// </summary>
+    public async Task AddBots(string roomCode, int? count)
+    {
+        _logger.LogInformation("AddBots called for room {RoomCode} by {ConnectionId} with count={Count}",
+            roomCode, Context.ConnectionId, count);
+
+        if (!IsAutoplayAllowed())
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto(ErrorCodes.FeatureDisabled, "Autoplay is disabled."));
+            return;
+        }
+
+        if (!_lobbyService.IsHostOfRoom(roomCode, Context.ConnectionId))
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto(ErrorCodes.NotHost, "Only the host can add bots."));
+            return;
+        }
+
+        var botCount = GetRequestedBotCount(count);
+        var (success, error) = await _lobbyService.AddBotPlayersAsync(roomCode, botCount);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+            return;
+        }
+
+        _logger.LogInformation("AddBots completed for room {RoomCode} with {BotCount} bot(s)", roomCode, botCount);
+
+        await SendAutoplayStatusAsync(roomCode);
+    }
+
+    /// <summary>
+    /// Host starts autoplay loop and optionally adds bots.
+    /// </summary>
+    public async Task StartAutoplay(string roomCode, int? count)
+    {
+        _logger.LogInformation("StartAutoplay called for room {RoomCode} by {ConnectionId} with count={Count}",
+            roomCode, Context.ConnectionId, count);
+
+        if (!IsAutoplayAllowed())
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto(ErrorCodes.FeatureDisabled, "Autoplay is disabled."));
+            return;
+        }
+
+        if (!_lobbyService.IsHostOfRoom(roomCode, Context.ConnectionId))
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto(ErrorCodes.NotHost, "Only the host can start autoplay."));
+            return;
+        }
+
+        var desiredBots = GetRequestedBotCount(count);
+        var existingBots = _autoplayService.GetBotIds(roomCode).Count;
+
+        if (existingBots < desiredBots)
+        {
+            var toAdd = desiredBots - existingBots;
+            var (success, error) = await _lobbyService.AddBotPlayersAsync(roomCode, toAdd);
+            if (!success && error != null)
+            {
+                await Clients.Caller.SendAsync("Error", error);
+                return;
+            }
+        }
+
+        await _autoplayService.StartAsync(roomCode);
+
+        _logger.LogInformation("Autoplay started for room {RoomCode} with {BotCount} bot(s)",
+            roomCode, _autoplayService.GetBotIds(roomCode).Count);
+
+        await SendAutoplayStatusAsync(roomCode);
+    }
+
+    /// <summary>
+    /// Host stops autoplay loop.
+    /// </summary>
+    public async Task StopAutoplay(string roomCode)
+    {
+        _logger.LogInformation("StopAutoplay called for room {RoomCode} by {ConnectionId}",
+            roomCode, Context.ConnectionId);
+
+        if (!IsAutoplayAllowed())
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto(ErrorCodes.FeatureDisabled, "Autoplay is disabled."));
+            return;
+        }
+
+        if (!_lobbyService.IsHostOfRoom(roomCode, Context.ConnectionId))
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto(ErrorCodes.NotHost, "Only the host can stop autoplay."));
+            return;
+        }
+
+        await _autoplayService.StopAsync(roomCode);
+
+        _logger.LogInformation("Autoplay stopped for room {RoomCode}", roomCode);
+
+        await SendAutoplayStatusAsync(roomCode);
+    }
+
     private QuizGameStateDto CreateSafeQuizDto(QuizGameState state)
     {
         var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.RankingReveal or QuizPhase.Scoreboard or QuizPhase.Finished;
@@ -400,5 +517,26 @@ public class GameHub : Hub
             RoundType.RankingStars => null,
             _ => state.Explanation
         };
+    }
+
+    private bool IsAutoplayAllowed()
+    {
+        return _environment.IsDevelopment() && _autoplayOptions.Enabled;
+    }
+
+    private int GetRequestedBotCount(int? count)
+    {
+        var min = Math.Max(1, _autoplayOptions.MinBots);
+        var max = Math.Max(min, _autoplayOptions.MaxBots);
+        var defaultCount = Random.Shared.Next(min, max + 1);
+        var desired = count ?? defaultCount;
+        return Math.Clamp(desired, 1, 50);
+    }
+
+    private async Task SendAutoplayStatusAsync(string roomCode)
+    {
+        var botCount = _autoplayService.GetBotIds(roomCode).Count;
+        var running = _autoplayService.IsRunning(roomCode);
+        await Clients.Caller.SendAsync("AutoplayStatusUpdated", new AutoplayStatusDto(running, botCount));
     }
 }

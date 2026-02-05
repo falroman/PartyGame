@@ -44,4 +44,7 @@ public static class ErrorCodes
 
     /// <summary>The round has already started (category already selected).</summary>
     public const string RoundAlreadyStarted = "ROUND_ALREADY_STARTED";
+
+    /// <summary>Feature is disabled in the current environment.</summary>
+    public const string FeatureDisabled = "FEATURE_DISABLED";
 }

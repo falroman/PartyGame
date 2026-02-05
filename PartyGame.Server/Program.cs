@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using PartyGame.Core.Interfaces;
 using PartyGame.Core.Services;
 using PartyGame.Server.Hubs;
@@ -39,6 +40,10 @@ builder.Services.AddSignalR();
 builder.Services.Configure<RoomCleanupOptions>(
     builder.Configuration.GetSection(RoomCleanupOptions.SectionName));
 
+// Configure autoplay options
+builder.Services.Configure<AutoplayOptions>(
+    builder.Configuration.GetSection(AutoplayOptions.SectionName));
+
 // Add game services
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IRoomCodeGenerator, RoomCodeGenerator>();
@@ -60,6 +65,7 @@ builder.Services.AddSingleton<IQuizGameOrchestrator, QuizGameOrchestrator>();
 
 // Add lobby service (depends on orchestrator)
 builder.Services.AddSingleton<ILobbyService, LobbyService>();
+builder.Services.AddSingleton<IAutoplayService, AutoplayService>();
 
 // Add hosted services
 builder.Services.AddHostedService<RoomCleanupHostedService>();
@@ -91,7 +97,14 @@ app.MapControllers();
 app.MapHub<GameHub>("/hub/game");
 
 // Health endpoint
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+app.MapGet("/health", (IHostEnvironment env, IOptions<AutoplayOptions> options) =>
+        Results.Ok(new
+        {
+            status = "healthy",
+            timestamp = DateTime.UtcNow,
+            environment = env.EnvironmentName,
+            autoplayEnabled = options.Value.Enabled
+        }))
    .WithName("Health");
 
 app.Run();

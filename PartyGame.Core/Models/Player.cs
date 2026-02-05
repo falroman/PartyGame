@@ -34,4 +34,14 @@ public class Player
     /// Player's current score in the game.
     /// </summary>
     public int Score { get; set; }
+
+    /// <summary>
+    /// Indicates if the player is a server-side bot.
+    /// </summary>
+    public bool IsBot { get; set; }
+
+    /// <summary>
+    /// Bot skill level from 0 to 100 (higher = more accurate).
+    /// </summary>
+    public int BotSkill { get; set; }
 }

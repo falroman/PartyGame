@@ -17,6 +17,7 @@ class GameClient {
             onLobbyUpdated: () => {},
             onGameStarted: () => {},
             onQuizStateUpdated: () => {},
+            onAutoplayStatusUpdated: () => {},
             onError: () => {}
         };
     }
@@ -47,6 +48,11 @@ class GameClient {
         this.connection.on('QuizStateUpdated', (quizState) => {
             console.log('QuizStateUpdated:', quizState);
             this.callbacks.onQuizStateUpdated(quizState);
+        });
+
+        this.connection.on('AutoplayStatusUpdated', (status) => {
+            console.log('AutoplayStatusUpdated:', status);
+            this.callbacks.onAutoplayStatusUpdated(status);
         });
 
         this.connection.on('Error', (error) => {
@@ -203,6 +209,45 @@ class GameClient {
             throw new Error('Only the host can advance the game');
         }
         await this.connection.invoke('NextQuestion', this.roomCode);
+    }
+
+    /**
+     * Add server-side bots (host only)
+     */
+    async addBots(count = null) {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.isHost) {
+            throw new Error('Only the host can add bots');
+        }
+        await this.connection.invoke('AddBots', this.roomCode, count);
+    }
+
+    /**
+     * Start autoplay loop (host only)
+     */
+    async startAutoplay(count = null) {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.isHost) {
+            throw new Error('Only the host can start autoplay');
+        }
+        await this.connection.invoke('StartAutoplay', this.roomCode, count);
+    }
+
+    /**
+     * Stop autoplay loop (host only)
+     */
+    async stopAutoplay() {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.isHost) {
+            throw new Error('Only the host can stop autoplay');
+        }
+        await this.connection.invoke('StopAutoplay', this.roomCode);
     }
 
     /**
@@ -363,7 +408,8 @@ const GameUtils = {
             'NOT_ENOUGH_PLAYERS': 'At least 2 players are required to start the game.',
             'NOT_ROUND_LEADER': 'Only the round leader can select a category.',
             'INVALID_CATEGORY': 'Invalid category selection.',
-            'ROUND_ALREADY_STARTED': 'The round has already started.'
+            'ROUND_ALREADY_STARTED': 'The round has already started.',
+            'FEATURE_DISABLED': 'This feature is disabled in the current environment.'
         };
         
         if (error && error.code && errorMessages[error.code]) {

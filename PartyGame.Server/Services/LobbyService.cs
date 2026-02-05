@@ -14,6 +14,13 @@ namespace PartyGame.Server.Services;
 /// </summary>
 public class LobbyService : ILobbyService
 {
+    private static readonly string[] BotNameSeeds =
+    [
+        "Panda", "Kiwi", "Otter", "Fox", "Koala", "Lynx", "Badger", "Fennec", "Hedgehog",
+        "Falcon", "Dolphin", "Mantis", "Seagull", "Gecko", "Moose", "Raven", "Toucan",
+        "Yak", "Bison", "Meerkat", "Pelican", "Wombat", "Narwhal", "Ocelot", "Quokka"
+    ];
+
     private readonly IRoomStore _roomStore;
     private readonly IConnectionIndex _connectionIndex;
     private readonly IClock _clock;
@@ -207,6 +214,66 @@ public class LobbyService : ILobbyService
                 await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("LobbyUpdated", roomState);
             }
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool Success, ErrorDto? Error)> AddBotPlayersAsync(string roomCode, int count)
+    {
+        if (count <= 0)
+        {
+            return (true, null);
+        }
+
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+        {
+            _logger.LogWarning("AddBotPlayers failed: Room {RoomCode} not found", normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, $"Room with code '{normalizedCode}' does not exist."));
+        }
+
+        if (room.Players.Count + count > room.MaxPlayers)
+        {
+            _logger.LogWarning("AddBotPlayers failed: Room {RoomCode} full ({Count}/{Max})", 
+                normalizedCode, room.Players.Count, room.MaxPlayers);
+            return (false, new ErrorDto(ErrorCodes.RoomFull, $"This room is full ({room.MaxPlayers} players maximum)."));
+        }
+
+        var now = _clock.UtcNow;
+        var existingNames = new HashSet<string>(room.Players.Values.Select(p => p.DisplayName), StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < count; i++)
+        {
+            var playerId = Guid.NewGuid();
+            var displayName = GenerateBotName(existingNames);
+            var botSkill = Random.Shared.Next(30, 91);
+
+            var player = new Player
+            {
+                PlayerId = playerId,
+                DisplayName = displayName,
+                ConnectionId = null,
+                IsConnected = true,
+                LastSeenUtc = now,
+                Score = 0,
+                IsBot = true,
+                BotSkill = botSkill
+            };
+
+            room.Players[playerId] = player;
+        }
+
+        _roomStore.Update(room);
+
+        _logger.LogInformation("Added {Count} bot player(s) to room {RoomCode}", count, normalizedCode);
+
+        var roomState = GetRoomState(normalizedCode);
+        if (roomState != null)
+        {
+            await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("LobbyUpdated", roomState);
+        }
+
+        return (true, null);
     }
 
     /// <inheritdoc />
@@ -510,5 +577,26 @@ public class LobbyService : ILobbyService
         }
 
         return (true, null);
+    }
+
+    private static string GenerateBotName(HashSet<string> existingNames)
+    {
+        string candidate;
+        var attempts = 0;
+
+        do
+        {
+            var seed = BotNameSeeds[Random.Shared.Next(BotNameSeeds.Length)];
+            candidate = $"Bot {seed}";
+            attempts++;
+
+            if (attempts > BotNameSeeds.Length)
+            {
+                candidate = $"{candidate} {Random.Shared.Next(1, 999)}";
+            }
+        } while (existingNames.Contains(candidate));
+
+        existingNames.Add(candidate);
+        return candidate;
     }
 }
