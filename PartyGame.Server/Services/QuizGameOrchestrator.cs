@@ -14,39 +14,13 @@ namespace PartyGame.Server.Services;
 /// </summary>
 public interface IQuizGameOrchestrator
 {
-    /// <summary>
-    /// Starts a new quiz game for a room.
-    /// </summary>
     Task<(bool Success, ErrorDto? Error)> StartGameAsync(Room room);
-
-    /// <summary>
-    /// Selects a category for the current round.
-    /// </summary>
     Task<(bool Success, ErrorDto? Error)> SelectCategoryAsync(string roomCode, Guid playerId, string category);
-
-    /// <summary>
-    /// Submits a player's answer.
-    /// </summary>
     Task<(bool Success, ErrorDto? Error)> SubmitAnswerAsync(string roomCode, Guid playerId, string optionKey);
-
-    /// <summary>
-    /// Submits a player's dictionary answer.
-    /// </summary>
     Task<(bool Success, ErrorDto? Error)> SubmitDictionaryAnswerAsync(string roomCode, Guid playerId, int optionIndex);
-
-    /// <summary>
-    /// Advances to the next question (host-triggered).
-    /// </summary>
+    Task<(bool Success, ErrorDto? Error)> SubmitRankingVoteAsync(string roomCode, Guid voterPlayerId, Guid votedForPlayerId);
     Task<(bool Success, ErrorDto? Error)> NextQuestionAsync(string roomCode, string connectionId);
-
-    /// <summary>
-    /// Gets the current quiz state for a room.
-    /// </summary>
     QuizGameState? GetState(string roomCode);
-
-    /// <summary>
-    /// Stops the game timer for a room (cleanup).
-    /// </summary>
     void StopGame(string roomCode);
 }
 
@@ -61,24 +35,27 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
     private readonly IHubContext<GameHub> _hubContext;
     private readonly ILogger<QuizGameOrchestrator> _logger;
     private readonly IDictionaryQuestionProvider _dictionaryProvider;
+    private readonly IRankingStarsPromptProvider _rankingProvider;
 
-    // Active game states per room
     private readonly ConcurrentDictionary<string, QuizGameState> _gameStates = new();
-    
-    // Active timers per room (prevents duplicate timers)
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _roomTimers = new();
 
-    // Game configuration
-    private const int CategorySelectionSeconds = 30; // Time to select category
-    private const int QuestionDisplaySeconds = 3; // Time to show question before answering
-    private const int AnsweringSeconds = 15; // Time to answer
-    private const int RevealSeconds = 5; // Time to show correct answer
-    private const int ScoreboardSeconds = 5; // Time to show scoreboard
+    // Category Quiz timing
+    private const int CategorySelectionSeconds = 30;
+    private const int QuestionDisplaySeconds = 3;
+    private const int AnsweringSeconds = 15;
+    private const int RevealSeconds = 5;
+    private const int ScoreboardSeconds = 5;
 
-    // Dictionary game configuration
-    private const int DictionaryWordDisplaySeconds = 3; // Suspense phase
+    // Dictionary game timing
+    private const int DictionaryWordDisplaySeconds = 3;
     private const int DictionaryAnsweringSeconds = 12;
     private const int DictionaryRevealSeconds = 6;
+
+    // Ranking Stars timing
+    private const int RankingPromptDisplaySeconds = 2;
+    private const int RankingVotingSeconds = 15;
+    private const int RankingRevealSeconds = 6;
 
     public QuizGameOrchestrator(
         IQuizGameEngine engine,
@@ -86,7 +63,8 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         IClock clock,
         IHubContext<GameHub> hubContext,
         ILogger<QuizGameOrchestrator> logger,
-        IDictionaryQuestionProvider dictionaryProvider)
+        IDictionaryQuestionProvider dictionaryProvider,
+        IRankingStarsPromptProvider rankingProvider)
     {
         _engine = engine;
         _roomStore = roomStore;
@@ -94,75 +72,62 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         _hubContext = hubContext;
         _logger = logger;
         _dictionaryProvider = dictionaryProvider;
+        _rankingProvider = rankingProvider;
     }
 
-    /// <inheritdoc />
     public async Task<(bool Success, ErrorDto? Error)> StartGameAsync(Room room)
     {
         ArgumentNullException.ThrowIfNull(room);
 
         var roomCode = room.Code.ToUpperInvariant();
 
-        // Initialize game state (9 quiz questions = 3 rounds × 3 questions)
-        // Dictionary round adds 3 more words at the end
-        var state = _engine.InitializeGame(room, "nl-BE", 9);
+        // Default round plan: 2x CategoryQuiz, 1x RankingStars, 1x DictionaryGame
+        var plannedRounds = new List<RoundType>
+        {
+            RoundType.CategoryQuiz,
+            RoundType.CategoryQuiz,
+            RoundType.RankingStars,
+            RoundType.DictionaryGame  // Always last
+        };
+
+        var state = _engine.InitializeGame(room, "nl-BE", plannedRounds);
         _gameStates[roomCode] = state;
 
-        _logger.LogInformation("Quiz game initialized for room {RoomCode}", roomCode);
+        _logger.LogInformation("Quiz game initialized for room {RoomCode} with {RoundCount} planned rounds", 
+            roomCode, plannedRounds.Count);
 
-        // Start first round (category selection)
-        await StartNewRoundAsync(roomCode);
+        await StartNextPlannedRoundAsync(roomCode);
 
         return (true, null);
     }
 
-    /// <inheritdoc />
     public async Task<(bool Success, ErrorDto? Error)> SelectCategoryAsync(string roomCode, Guid playerId, string category)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
         if (!_gameStates.TryGetValue(normalizedCode, out var state))
-        {
             return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
-        }
 
-        // Check phase
         if (state.Phase != QuizPhase.CategorySelection)
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidState, "Category selection is not active."));
-        }
 
-        // Check if player is the round leader
         if (state.CurrentRound?.RoundLeaderPlayerId != playerId)
-        {
             return (false, new ErrorDto(ErrorCodes.NotRoundLeader, "Only the round leader can select a category."));
-        }
 
-        // Check if category has already been selected
         if (!string.IsNullOrEmpty(state.CurrentRound.Category))
-        {
             return (false, new ErrorDto(ErrorCodes.RoundAlreadyStarted, "Category has already been selected."));
-        }
 
-        // Validate category
         if (!_engine.IsValidCategory(state, category))
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidCategory, "Invalid category selection."));
-        }
 
-        // Set the category
         _engine.SetRoundCategory(state, category);
         
         _logger.LogInformation("Round leader {PlayerId} selected category '{Category}' in room {RoomCode}", 
             playerId, category, normalizedCode);
 
-        // Cancel the category selection timer
         CancelTimer(normalizedCode);
-
-        // Broadcast state with selected category
         await BroadcastStateAsync(normalizedCode, state);
 
-        // Short delay to show the selected category, then start first question
         SchedulePhaseTransition(normalizedCode, 2, async () =>
         {
             await StartNextQuestionAsync(normalizedCode);
@@ -171,92 +136,55 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         return (true, null);
     }
 
-    /// <inheritdoc />
     public async Task<(bool Success, ErrorDto? Error)> SubmitAnswerAsync(string roomCode, Guid playerId, string optionKey)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
         if (!_gameStates.TryGetValue(normalizedCode, out var state))
-        {
             return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
-        }
 
-        // Check phase
         if (state.Phase != QuizPhase.Answering)
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidState, "Answers are not being accepted at this time."));
-        }
 
-        // Check if player is in the game
         if (!state.Answers.ContainsKey(playerId))
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
-        }
 
-        // Validate option
         if (!_engine.IsValidOptionKey(state, optionKey))
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid option."));
-        }
 
-        // Submit answer
         _engine.SubmitAnswer(state, playerId, optionKey);
 
         _logger.LogInformation("Player {PlayerId} submitted answer {Option} in room {RoomCode}", 
             playerId, optionKey, normalizedCode);
 
-        // Broadcast updated state
         await BroadcastStateAsync(normalizedCode, state);
 
-        // Check if all players answered - advance early if so
-        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+        if (await CheckAllAnsweredAndAdvance(normalizedCode, state, 
+            ids => _engine.AllPlayersAnswered(state, ids),
+            () => AdvanceFromAnsweringAsync(normalizedCode)))
         {
             return (true, null);
-        }
-
-        var connectedPlayerIds = room.Players.Values
-            .Where(p => p.IsConnected)
-            .Select(p => p.PlayerId);
-
-        if (_engine.AllPlayersAnswered(state, connectedPlayerIds))
-        {
-            _logger.LogInformation("All players answered in room {RoomCode}, advancing early", normalizedCode);
-            CancelTimer(normalizedCode);
-            await AdvanceFromAnsweringAsync(normalizedCode);
         }
 
         return (true, null);
     }
 
-    /// <inheritdoc />
     public async Task<(bool Success, ErrorDto? Error)> SubmitDictionaryAnswerAsync(string roomCode, Guid playerId, int optionIndex)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
         if (!_gameStates.TryGetValue(normalizedCode, out var state))
-        {
             return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
-        }
 
-        // Check phase
         if (state.Phase != QuizPhase.DictionaryAnswering)
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidState, "Dictionary answers are not being accepted at this time."));
-        }
 
-        // Check if player is in the game
         if (!state.DictionaryAnswers.ContainsKey(playerId))
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
-        }
 
-        // Validate option index
         if (!_engine.IsValidDictionaryOption(optionIndex))
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid option index (must be 0-3)."));
-        }
 
-        // Submit dictionary answer
         _engine.SubmitDictionaryAnswer(state, playerId, optionIndex, _clock.UtcNow);
 
         _logger.LogInformation("Player {PlayerId} submitted dictionary answer {Option} in room {RoomCode}", 
@@ -264,52 +192,58 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         await BroadcastStateAsync(normalizedCode, state);
 
-        // Check if all players answered - advance early if so
-        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
-        {
-            return (true, null);
-        }
-
-        var connectedPlayerIds = room.Players.Values
-            .Where(p => p.IsConnected)
-            .Select(p => p.PlayerId);
-
-        if (_engine.AllDictionaryAnswered(state, connectedPlayerIds))
-        {
-            _logger.LogInformation("All players answered dictionary in room {RoomCode}, advancing early", normalizedCode);
-            CancelTimer(normalizedCode);
-            await AdvanceFromDictionaryAnsweringAsync(normalizedCode);
-        }
+        await CheckAllAnsweredAndAdvance(normalizedCode, state,
+            ids => _engine.AllDictionaryAnswered(state, ids),
+            () => AdvanceFromDictionaryAnsweringAsync(normalizedCode));
 
         return (true, null);
     }
 
-    /// <inheritdoc />
+    public async Task<(bool Success, ErrorDto? Error)> SubmitRankingVoteAsync(string roomCode, Guid voterPlayerId, Guid votedForPlayerId)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        if (!_gameStates.TryGetValue(normalizedCode, out var state))
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
+
+        if (state.Phase != QuizPhase.RankingVoting)
+            return (false, new ErrorDto(ErrorCodes.InvalidState, "Ranking votes are not being accepted at this time."));
+
+        if (!state.RankingVotes.ContainsKey(voterPlayerId))
+            return (false, new ErrorDto(ErrorCodes.InvalidState, "Player is not in this game."));
+
+        if (!_engine.IsValidRankingVote(state, voterPlayerId, votedForPlayerId))
+            return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid vote (cannot vote for yourself or non-existent player)."));
+
+        _engine.SubmitRankingVote(state, voterPlayerId, votedForPlayerId, _clock.UtcNow);
+
+        _logger.LogInformation("Player {VoterId} voted for {VotedForId} in room {RoomCode}", 
+            voterPlayerId, votedForPlayerId, normalizedCode);
+
+        await BroadcastStateAsync(normalizedCode, state);
+
+        await CheckAllAnsweredAndAdvance(normalizedCode, state,
+            ids => _engine.AllRankingVoted(state, ids),
+            () => AdvanceFromRankingVotingAsync(normalizedCode));
+
+        return (true, null);
+    }
+
     public async Task<(bool Success, ErrorDto? Error)> NextQuestionAsync(string roomCode, string connectionId)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
         if (!_gameStates.TryGetValue(normalizedCode, out var state))
-        {
             return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
-        }
 
-        // Verify host
         if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
-        {
             return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Room not found."));
-        }
 
         if (room.HostConnectionId != connectionId)
-        {
             return (false, new ErrorDto(ErrorCodes.NotHost, "Only the host can advance the game."));
-        }
 
-        // Only allow from Scoreboard phase
         if (state.Phase != QuizPhase.Scoreboard)
-        {
             return (false, new ErrorDto(ErrorCodes.InvalidState, "Cannot advance at this time."));
-        }
 
         CancelTimer(normalizedCode);
         await HandleScoreboardCompleteAsync(normalizedCode);
@@ -317,14 +251,12 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         return (true, null);
     }
 
-    /// <inheritdoc />
     public QuizGameState? GetState(string roomCode)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
         return _gameStates.TryGetValue(normalizedCode, out var state) ? state : null;
     }
 
-    /// <inheritdoc />
     public void StopGame(string roomCode)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
@@ -335,14 +267,46 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
     #region Round Management
 
-    private async Task StartNewRoundAsync(string roomCode)
+    private async Task StartNextPlannedRoundAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        var nextRoundType = _engine.GetNextRoundType(state);
+        
+        if (nextRoundType == null)
+        {
+            _logger.LogInformation("No more planned rounds in room {RoomCode}, finishing game", roomCode);
+            _engine.FinishGame(state);
+            await BroadcastStateAsync(roomCode, state);
+            UpdateRoomStatus(roomCode, RoomStatus.Finished);
+            return;
+        }
+
+        _logger.LogInformation("Starting next round type {RoundType} in room {RoomCode}", nextRoundType, roomCode);
+
+        switch (nextRoundType.Value)
+        {
+            case RoundType.CategoryQuiz:
+                await StartCategoryQuizRoundAsync(roomCode);
+                break;
+            case RoundType.RankingStars:
+                await StartRankingRoundAsync(roomCode);
+                break;
+            case RoundType.DictionaryGame:
+                await StartDictionaryRoundAsync(roomCode);
+                break;
+        }
+    }
+
+    private async Task StartCategoryQuizRoundAsync(string roomCode)
     {
         if (!_gameStates.TryGetValue(roomCode, out var state))
             return;
 
         _engine.StartNewRound(state, CategorySelectionSeconds, _clock.UtcNow);
         
-        _logger.LogInformation("Started round {RoundNumber} in room {RoomCode}, leader: {LeaderId}", 
+        _logger.LogInformation("Started CategoryQuiz round {RoundNumber} in room {RoomCode}, leader: {LeaderId}", 
             state.RoundNumber, roomCode, state.CurrentRound?.RoundLeaderPlayerId);
 
         await BroadcastStateAsync(roomCode, state);
@@ -358,11 +322,9 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         if (!_gameStates.TryGetValue(roomCode, out var state))
             return;
 
-        // Only auto-select if still in CategorySelection phase
         if (state.Phase != QuizPhase.CategorySelection)
             return;
 
-        // Pick first available category
         var category = state.AvailableCategories.FirstOrDefault();
         if (string.IsNullOrEmpty(category))
         {
@@ -375,7 +337,6 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         await BroadcastStateAsync(roomCode, state);
 
-        // Start first question
         SchedulePhaseTransition(roomCode, 2, async () =>
         {
             await StartNextQuestionAsync(roomCode);
@@ -384,7 +345,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
     #endregion
 
-    #region Quiz Question Flow
+    #region Category Quiz Flow
 
     private async Task StartNextQuestionAsync(string roomCode)
     {
@@ -395,24 +356,14 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         
         if (newState == null)
         {
-            // No more questions - check if we should start dictionary round
-            if (_engine.ShouldStartDictionaryRound(state))
-            {
-                await StartDictionaryRoundAsync(roomCode);
-            }
-            else
-            {
-                _engine.FinishGame(state);
-                await BroadcastStateAsync(roomCode, state);
-                UpdateRoomStatus(roomCode, RoomStatus.Finished);
-            }
+            // No more questions in this round
+            await HandleRoundCompleteAsync(roomCode);
             return;
         }
 
         _gameStates[roomCode] = newState;
         await BroadcastStateAsync(roomCode, newState);
 
-        // Schedule transition to Answering phase
         SchedulePhaseTransition(roomCode, QuestionDisplaySeconds, async () =>
         {
             await TransitionToAnsweringAsync(roomCode);
@@ -427,7 +378,6 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         _engine.StartAnsweringPhase(state, AnsweringSeconds, _clock.UtcNow);
         await BroadcastStateAsync(roomCode, state);
 
-        // Schedule transition to Reveal phase
         SchedulePhaseTransition(roomCode, AnsweringSeconds, async () =>
         {
             await AdvanceFromAnsweringAsync(roomCode);
@@ -439,14 +389,10 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         if (!_gameStates.TryGetValue(roomCode, out var state))
             return;
 
-        // Transition to Reveal
         _engine.RevealAnswer(state, RevealSeconds, _clock.UtcNow);
         await BroadcastStateAsync(roomCode, state);
-
-        // Update player scores in room
         UpdatePlayerScores(roomCode, state);
 
-        // Schedule transition to Scoreboard
         SchedulePhaseTransition(roomCode, RevealSeconds, async () =>
         {
             await TransitionToScoreboardAsync(roomCode);
@@ -461,7 +407,6 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         _engine.ShowScoreboard(state, ScoreboardSeconds, _clock.UtcNow);
         await BroadcastStateAsync(roomCode, state);
 
-        // Schedule next action after scoreboard
         SchedulePhaseTransition(roomCode, ScoreboardSeconds, async () =>
         {
             await HandleScoreboardCompleteAsync(roomCode);
@@ -473,32 +418,129 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         if (!_gameStates.TryGetValue(roomCode, out var state))
             return;
 
-        // If we're in a dictionary round, handle differently
-        if (state.CurrentRound?.Type == RoundType.DictionaryGame)
+        // Check current round type and handle accordingly
+        switch (state.CurrentRound?.Type)
         {
-            await HandleDictionaryScoreboardCompleteAsync(roomCode);
-            return;
-        }
+            case RoundType.CategoryQuiz:
+                if (_engine.HasMoreQuestionsInRound(state))
+                    await StartNextQuestionAsync(roomCode);
+                else
+                    await HandleRoundCompleteAsync(roomCode);
+                break;
 
-        // Check if we should start dictionary round (all quiz questions done)
-        if (_engine.ShouldStartDictionaryRound(state))
-        {
-            _logger.LogInformation("All quiz rounds complete in room {RoomCode}, starting dictionary round", roomCode);
-            await StartDictionaryRoundAsync(roomCode);
-            return;
-        }
+            case RoundType.RankingStars:
+                if (_engine.HasMoreRankingPrompts(state))
+                    await StartNextRankingPromptAsync(roomCode);
+                else
+                    await HandleRoundCompleteAsync(roomCode);
+                break;
 
-        // Check if round is complete
-        if (!_engine.HasMoreQuestionsInRound(state))
+            case RoundType.DictionaryGame:
+                if (_engine.HasMoreDictionaryWords(state))
+                    await StartNextDictionaryWordAsync(roomCode);
+                else
+                    await HandleRoundCompleteAsync(roomCode);
+                break;
+
+            default:
+                await HandleRoundCompleteAsync(roomCode);
+                break;
+        }
+    }
+
+    private async Task HandleRoundCompleteAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        _logger.LogInformation("Round {RoundNumber} ({RoundType}) complete in room {RoomCode}", 
+            state.RoundNumber, state.CurrentRound?.Type, roomCode);
+
+        // Check if there are more rounds
+        if (_engine.HasMorePlannedRounds(state))
         {
-            _logger.LogInformation("Round {RoundNumber} complete in room {RoomCode}, starting new round", 
-                state.RoundNumber, roomCode);
-            await StartNewRoundAsync(roomCode);
+            await StartNextPlannedRoundAsync(roomCode);
         }
         else
         {
-            await StartNextQuestionAsync(roomCode);
+            _logger.LogInformation("All rounds complete in room {RoomCode}, finishing game", roomCode);
+            _engine.FinishGame(state);
+            await BroadcastStateAsync(roomCode, state);
+            UpdateRoomStatus(roomCode, RoomStatus.Finished);
         }
+    }
+
+    #endregion
+
+    #region Ranking Stars Flow
+
+    private async Task StartRankingRoundAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        _engine.StartRankingRound(state, RankingPromptDisplaySeconds, _clock.UtcNow);
+        
+        _logger.LogInformation("Started RankingStars round {RoundNumber} in room {RoomCode}", 
+            state.RoundNumber, roomCode);
+
+        await StartNextRankingPromptAsync(roomCode);
+    }
+
+    private async Task StartNextRankingPromptAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        var prompt = _rankingProvider.GetRandomPrompt(state.Locale, state.UsedRankingPromptIds);
+        
+        if (prompt == null)
+        {
+            _logger.LogWarning("No ranking prompts available in room {RoomCode}", roomCode);
+            await HandleRoundCompleteAsync(roomCode);
+            return;
+        }
+
+        _engine.StartRankingPrompt(state, prompt, RankingPromptDisplaySeconds, _clock.UtcNow);
+        
+        _logger.LogInformation("Started ranking prompt {PromptIndex}/3 in room {RoomCode}: '{Prompt}'", 
+            state.RankingPromptIndex, roomCode, prompt.Prompt);
+
+        await BroadcastStateAsync(roomCode, state);
+
+        SchedulePhaseTransition(roomCode, RankingPromptDisplaySeconds, async () =>
+        {
+            await TransitionToRankingVotingAsync(roomCode);
+        });
+    }
+
+    private async Task TransitionToRankingVotingAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        _engine.StartRankingVotingPhase(state, RankingVotingSeconds, _clock.UtcNow);
+        await BroadcastStateAsync(roomCode, state);
+
+        SchedulePhaseTransition(roomCode, RankingVotingSeconds, async () =>
+        {
+            await AdvanceFromRankingVotingAsync(roomCode);
+        });
+    }
+
+    private async Task AdvanceFromRankingVotingAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        _engine.RevealRankingVotes(state, RankingRevealSeconds, _clock.UtcNow);
+        await BroadcastStateAsync(roomCode, state);
+        UpdatePlayerScores(roomCode, state);
+
+        SchedulePhaseTransition(roomCode, RankingRevealSeconds, async () =>
+        {
+            await TransitionToScoreboardAsync(roomCode);
+        });
     }
 
     #endregion
@@ -512,9 +554,9 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         _engine.StartDictionaryRound(state, DictionaryWordDisplaySeconds, _clock.UtcNow);
         
-        _logger.LogInformation("Started Dictionary round in room {RoomCode}", roomCode);
+        _logger.LogInformation("Started Dictionary round {RoundNumber} in room {RoomCode}", 
+            state.RoundNumber, roomCode);
 
-        // Start first word
         await StartNextDictionaryWordAsync(roomCode);
     }
 
@@ -523,15 +565,12 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         if (!_gameStates.TryGetValue(roomCode, out var state))
             return;
 
-        // Get next dictionary question
         var question = _dictionaryProvider.GetRandomQuestion(state.Locale, state.UsedDictionaryWords);
         
         if (question == null)
         {
-            _logger.LogWarning("No dictionary words available in room {RoomCode}, finishing game", roomCode);
-            _engine.FinishGame(state);
-            await BroadcastStateAsync(roomCode, state);
-            UpdateRoomStatus(roomCode, RoomStatus.Finished);
+            _logger.LogWarning("No dictionary words available in room {RoomCode}", roomCode);
+            await HandleRoundCompleteAsync(roomCode);
             return;
         }
 
@@ -542,7 +581,6 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         await BroadcastStateAsync(roomCode, state);
 
-        // Schedule transition to answering (show options)
         SchedulePhaseTransition(roomCode, DictionaryWordDisplaySeconds, async () =>
         {
             await TransitionToDictionaryAnsweringAsync(roomCode);
@@ -570,52 +608,41 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         _engine.RevealDictionaryAnswer(state, DictionaryRevealSeconds, _clock.UtcNow);
         await BroadcastStateAsync(roomCode, state);
-
         UpdatePlayerScores(roomCode, state);
 
         SchedulePhaseTransition(roomCode, DictionaryRevealSeconds, async () =>
         {
-            await TransitionToDictionaryScoreboardAsync(roomCode);
+            await TransitionToScoreboardAsync(roomCode);
         });
-    }
-
-    private async Task TransitionToDictionaryScoreboardAsync(string roomCode)
-    {
-        if (!_gameStates.TryGetValue(roomCode, out var state))
-            return;
-
-        _engine.ShowScoreboard(state, ScoreboardSeconds, _clock.UtcNow);
-        await BroadcastStateAsync(roomCode, state);
-
-        SchedulePhaseTransition(roomCode, ScoreboardSeconds, async () =>
-        {
-            await HandleDictionaryScoreboardCompleteAsync(roomCode);
-        });
-    }
-
-    private async Task HandleDictionaryScoreboardCompleteAsync(string roomCode)
-    {
-        if (!_gameStates.TryGetValue(roomCode, out var state))
-            return;
-
-        // Check if more dictionary words
-        if (_engine.HasMoreDictionaryWords(state))
-        {
-            await StartNextDictionaryWordAsync(roomCode);
-        }
-        else
-        {
-            // Dictionary round complete - finish game
-            _logger.LogInformation("Dictionary round complete in room {RoomCode}, finishing game", roomCode);
-            _engine.FinishGame(state);
-            await BroadcastStateAsync(roomCode, state);
-            UpdateRoomStatus(roomCode, RoomStatus.Finished);
-        }
     }
 
     #endregion
 
     #region Utilities
+
+    private async Task<bool> CheckAllAnsweredAndAdvance(
+        string roomCode, 
+        QuizGameState state, 
+        Func<IEnumerable<Guid>, bool> allAnsweredCheck,
+        Func<Task> advanceAction)
+    {
+        if (!_roomStore.TryGetRoom(roomCode, out var room) || room == null)
+            return false;
+
+        var connectedPlayerIds = room.Players.Values
+            .Where(p => p.IsConnected)
+            .Select(p => p.PlayerId);
+
+        if (allAnsweredCheck(connectedPlayerIds))
+        {
+            _logger.LogInformation("All players answered in room {RoomCode}, advancing early", roomCode);
+            CancelTimer(roomCode);
+            await advanceAction();
+            return true;
+        }
+
+        return false;
+    }
 
     private void SchedulePhaseTransition(string roomCode, int delaySeconds, Func<Task> action)
     {
@@ -634,10 +661,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
                     await action();
                 }
             }
-            catch (TaskCanceledException)
-            {
-                // Timer was cancelled, ignore
-            }
+            catch (TaskCanceledException) { }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in phase transition for room {RoomCode}", roomCode);
@@ -663,34 +687,29 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
     private QuizGameStateDto CreateSafeDto(QuizGameState state)
     {
         var remainingSeconds = Math.Max(0, (int)(state.PhaseEndsUtc - _clock.UtcNow).TotalSeconds);
+        var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.RankingReveal or QuizPhase.Scoreboard or QuizPhase.Finished;
 
-        // Build answer statuses (who has answered, not what)
         var answerStatuses = state.Scoreboard
             .Select(p => new PlayerAnswerStatusDto(
                 p.PlayerId,
                 p.DisplayName,
-                state.CurrentRound?.Type == RoundType.DictionaryGame
-                    ? state.DictionaryAnswers.TryGetValue(p.PlayerId, out var da) && da != null
-                    : state.Answers.TryGetValue(p.PlayerId, out var a) && a != null
+                GetHasAnswered(state, p.PlayerId)
             ))
             .ToList();
 
-        // In Answering phase, hide correct answer
-        // In Reveal/Scoreboard/Finished, show correct answer
-        var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.Scoreboard or QuizPhase.Finished;
+        var questionsInRound = GetQuestionsInRound(state);
+        var currentQuestionInRound = GetCurrentQuestionInRound(state);
 
-        // Calculate questions in current round
-        var questionsInRound = state.CurrentRound?.Type == RoundType.DictionaryGame
-            ? QuizGameState.DictionaryWordsPerRound
-            : GameRound.QuestionsPerRound;
-        var currentQuestionInRound = state.CurrentRound?.Type == RoundType.DictionaryGame
-            ? state.DictionaryWordIndex
-            : state.CurrentRound?.CurrentQuestionIndex ?? 0;
+        // Build player options for ranking (excluding connection IDs, just player info)
+        var playerOptions = state.CurrentRound?.Type == RoundType.RankingStars && 
+                           state.Phase is QuizPhase.RankingPrompt or QuizPhase.RankingVoting or QuizPhase.RankingReveal
+            ? state.Scoreboard.Select(p => new PlayerOptionDto(p.PlayerId, p.DisplayName)).ToList()
+            : null;
 
         return new QuizGameStateDto(
             Phase: state.Phase,
             QuestionNumber: state.QuestionNumber,
-            TotalQuestions: state.TotalQuestions + QuizGameState.DictionaryWordsPerRound, // Include dictionary words in total
+            TotalQuestions: state.TotalQuestions + QuizGameState.DictionaryWordsPerRound,
             RoundNumber: state.RoundNumber,
             QuestionsInRound: questionsInRound,
             CurrentQuestionInRound: currentQuestionInRound,
@@ -699,22 +718,13 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
             AvailableCategories: state.Phase == QuizPhase.CategorySelection ? state.AvailableCategories : null,
             RoundType: state.CurrentRound?.Type,
             QuestionId: state.QuestionId,
-            QuestionText: state.CurrentRound?.Type == RoundType.DictionaryGame 
-                ? state.DictionaryQuestion?.Word ?? string.Empty
-                : state.QuestionText,
-            Options: state.CurrentRound?.Type == RoundType.DictionaryGame
-                ? CreateDictionaryOptions(state)
-                : state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList(),
-            CorrectOptionKey: showCorrectAnswer 
-                ? (state.CurrentRound?.Type == RoundType.DictionaryGame
-                    ? state.DictionaryQuestion?.CorrectIndex.ToString()
-                    : state.CorrectOptionKey)
-                : null,
-            Explanation: showCorrectAnswer 
-                ? (state.CurrentRound?.Type == RoundType.DictionaryGame
-                    ? state.DictionaryQuestion?.Definition
-                    : state.Explanation)
-                : null,
+            QuestionText: GetQuestionText(state),
+            Options: GetOptions(state, showCorrectAnswer),
+            PlayerOptions: playerOptions,
+            CorrectOptionKey: showCorrectAnswer ? GetCorrectOptionKey(state) : null,
+            Explanation: showCorrectAnswer ? GetExplanation(state) : null,
+            RankingWinnerIds: showCorrectAnswer ? state.RankingResult?.WinnerPlayerIds : null,
+            RankingVoteCounts: showCorrectAnswer ? state.RankingResult?.VoteCounts : null,
             RemainingSeconds: remainingSeconds,
             AnswerStatuses: answerStatuses,
             Scoreboard: state.Scoreboard
@@ -726,24 +736,94 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
                     showCorrectAnswer ? p.AnsweredCorrectly : null,
                     showCorrectAnswer ? p.SelectedOption : null,
                     showCorrectAnswer ? p.PointsEarned : 0,
-                    showCorrectAnswer && p.GotSpeedBonus
+                    showCorrectAnswer && p.GotSpeedBonus,
+                    showCorrectAnswer && p.IsRankingStar,
+                    showCorrectAnswer ? p.RankingVotesReceived : 0
                 ))
                 .OrderBy(p => p.Position)
                 .ToList()
         );
     }
 
-    private static List<QuizOptionDto> CreateDictionaryOptions(QuizGameState state)
+    private bool GetHasAnswered(QuizGameState state, Guid playerId)
     {
-        if (state.DictionaryQuestion == null || state.Phase == QuizPhase.DictionaryWord)
+        return state.CurrentRound?.Type switch
         {
-            // Don't show options during word display phase
+            RoundType.DictionaryGame => state.DictionaryAnswers.TryGetValue(playerId, out var da) && da != null,
+            RoundType.RankingStars => state.RankingVotes.TryGetValue(playerId, out var rv) && rv != null,
+            _ => state.Answers.TryGetValue(playerId, out var a) && a != null
+        };
+    }
+
+    private int GetQuestionsInRound(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => QuizGameState.DictionaryWordsPerRound,
+            RoundType.RankingStars => QuizGameState.RankingPromptsPerRound,
+            _ => GameRound.QuestionsPerRound
+        };
+    }
+
+    private int GetCurrentQuestionInRound(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryWordIndex,
+            RoundType.RankingStars => state.RankingPromptIndex,
+            _ => state.CurrentRound?.CurrentQuestionIndex ?? 0
+        };
+    }
+
+    private string GetQuestionText(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryQuestion?.Word ?? string.Empty,
+            RoundType.RankingStars => state.RankingPromptText ?? string.Empty,
+            _ => state.QuestionText
+        };
+    }
+
+    private List<QuizOptionDto> GetOptions(QuizGameState state, bool showCorrectAnswer)
+    {
+        if (state.CurrentRound?.Type == RoundType.DictionaryGame)
+        {
+            if (state.DictionaryQuestion == null || state.Phase == QuizPhase.DictionaryWord)
+                return new List<QuizOptionDto>();
+
+            return state.DictionaryQuestion.Options
+                .Select((text, index) => new QuizOptionDto(index.ToString(), text))
+                .ToList();
+        }
+
+        if (state.CurrentRound?.Type == RoundType.RankingStars)
+        {
+            // For ranking, options are players - handled separately via PlayerOptions
             return new List<QuizOptionDto>();
         }
 
-        return state.DictionaryQuestion.Options
-            .Select((text, index) => new QuizOptionDto(index.ToString(), text))
-            .ToList();
+        return state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList();
+    }
+
+    private string? GetCorrectOptionKey(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryQuestion?.CorrectIndex.ToString(),
+            RoundType.RankingStars => state.RankingResult?.WinnerPlayerIds.FirstOrDefault().ToString(),
+            _ => state.CorrectOptionKey
+        };
+    }
+
+    private string? GetExplanation(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryQuestion?.Definition,
+            RoundType.RankingStars => null, // No explanation for ranking
+            _ => state.Explanation
+        };
     }
 
     private void UpdatePlayerScores(string roomCode, QuizGameState state)

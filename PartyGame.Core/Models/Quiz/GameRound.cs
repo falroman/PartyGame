@@ -4,8 +4,8 @@ namespace PartyGame.Core.Models.Quiz;
 
 /// <summary>
 /// Represents a single round in a quiz game.
-/// Each round has 3 questions from a single category (CategoryQuiz) 
-/// or 3 words (DictionaryGame).
+/// Each round has 3 questions from a single category (CategoryQuiz),
+/// 3 words (DictionaryGame), or 3 prompts (RankingStars).
 /// </summary>
 public class GameRound
 {
@@ -15,7 +15,7 @@ public class GameRound
     public Guid RoundId { get; set; } = Guid.NewGuid();
 
     /// <summary>
-    /// The type of round (e.g., CategoryQuiz, DictionaryGame).
+    /// The type of round (e.g., CategoryQuiz, RankingStars, DictionaryGame).
     /// </summary>
     public RoundType Type { get; set; } = RoundType.CategoryQuiz;
 
@@ -28,7 +28,7 @@ public class GameRound
 
     /// <summary>
     /// The player ID of the round leader who selects the category.
-    /// Not used for DictionaryGame rounds.
+    /// Not used for DictionaryGame or RankingStars rounds.
     /// </summary>
     public Guid RoundLeaderPlayerId { get; set; }
 
@@ -73,6 +73,22 @@ public class GameRound
             Type = RoundType.DictionaryGame,
             Category = "Woordenboekspel",
             RoundLeaderPlayerId = Guid.Empty, // No leader for dictionary round
+            CurrentQuestionIndex = 0,
+            IsCompleted = false
+        };
+    }
+
+    /// <summary>
+    /// Creates a new RankingStars round.
+    /// </summary>
+    public static GameRound CreateRankingRound()
+    {
+        return new GameRound
+        {
+            RoundId = Guid.NewGuid(),
+            Type = RoundType.RankingStars,
+            Category = "Ranking the Stars",
+            RoundLeaderPlayerId = Guid.Empty, // No leader for ranking round
             CurrentQuestionIndex = 0,
             IsCompleted = false
         };

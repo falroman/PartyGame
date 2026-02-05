@@ -20,8 +20,11 @@ public record QuizGameStateDto(
     string QuestionId,
     string QuestionText,
     IReadOnlyList<QuizOptionDto> Options,
+    IReadOnlyList<PlayerOptionDto>? PlayerOptions,  // For RankingStars - players to vote for
     string? CorrectOptionKey,
     string? Explanation,
+    IReadOnlyList<Guid>? RankingWinnerIds,  // For RankingStars reveal
+    Dictionary<Guid, int>? RankingVoteCounts,  // For RankingStars reveal
     int RemainingSeconds,
     IReadOnlyList<PlayerAnswerStatusDto> AnswerStatuses,
     IReadOnlyList<PlayerScoreDto> Scoreboard
@@ -33,6 +36,14 @@ public record QuizGameStateDto(
 public record QuizOptionDto(
     string Key,
     string Text
+);
+
+/// <summary>
+/// DTO for a player option in RankingStars voting.
+/// </summary>
+public record PlayerOptionDto(
+    Guid PlayerId,
+    string DisplayName
 );
 
 /// <summary>
@@ -56,5 +67,7 @@ public record PlayerScoreDto(
     bool? AnsweredCorrectly,
     string? SelectedOption,
     int PointsEarned = 0,
-    bool GotSpeedBonus = false
+    bool GotSpeedBonus = false,
+    bool IsRankingStar = false,
+    int RankingVotesReceived = 0
 );

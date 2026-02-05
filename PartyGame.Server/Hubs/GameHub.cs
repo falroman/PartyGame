@@ -8,7 +8,6 @@ namespace PartyGame.Server.Hubs;
 
 /// <summary>
 /// Main SignalR hub for realtime game communication.
-/// Handles host registration, player joins, lobby updates, and game events.
 /// </summary>
 public class GameHub : Hub
 {
@@ -228,6 +227,25 @@ public class GameHub : Hub
     }
 
     /// <summary>
+    /// Player submits their vote for the Ranking Stars round.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="voterPlayerId">The voting player's ID.</param>
+    /// <param name="votedForPlayerId">The player being voted for.</param>
+    public async Task SubmitRankingVote(string roomCode, Guid voterPlayerId, Guid votedForPlayerId)
+    {
+        _logger.LogInformation("SubmitRankingVote called for room {RoomCode} by player {VoterId} voting for {VotedForId}", 
+            roomCode, voterPlayerId, votedForPlayerId);
+
+        var (success, error) = await _quizOrchestrator.SubmitRankingVoteAsync(roomCode, voterPlayerId, votedForPlayerId);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+        }
+    }
+
+    /// <summary>
     /// Host triggers the next question (optional - game auto-advances by default).
     /// </summary>
     /// <param name="roomCode">The room code.</param>
@@ -246,25 +264,24 @@ public class GameHub : Hub
 
     private QuizGameStateDto CreateSafeQuizDto(QuizGameState state)
     {
-        var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.Scoreboard or QuizPhase.Finished;
+        var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.RankingReveal or QuizPhase.Scoreboard or QuizPhase.Finished;
         var remainingSeconds = Math.Max(0, (int)(state.PhaseEndsUtc - DateTime.UtcNow).TotalSeconds);
 
         var answerStatuses = state.Scoreboard
             .Select(p => new PlayerAnswerStatusDto(
                 p.PlayerId,
                 p.DisplayName,
-                state.CurrentRound?.Type == RoundType.DictionaryGame
-                    ? state.DictionaryAnswers.TryGetValue(p.PlayerId, out var da) && da != null
-                    : state.Answers.TryGetValue(p.PlayerId, out var a) && a != null
+                GetHasAnswered(state, p.PlayerId)
             ))
             .ToList();
 
-        var questionsInRound = state.CurrentRound?.Type == RoundType.DictionaryGame
-            ? QuizGameState.DictionaryWordsPerRound
-            : GameRound.QuestionsPerRound;
-        var currentQuestionInRound = state.CurrentRound?.Type == RoundType.DictionaryGame
-            ? state.DictionaryWordIndex
-            : state.CurrentRound?.CurrentQuestionIndex ?? 0;
+        var questionsInRound = GetQuestionsInRound(state);
+        var currentQuestionInRound = GetCurrentQuestionInRound(state);
+
+        var playerOptions = state.CurrentRound?.Type == RoundType.RankingStars && 
+                           state.Phase is QuizPhase.RankingPrompt or QuizPhase.RankingVoting or QuizPhase.RankingReveal
+            ? state.Scoreboard.Select(p => new PlayerOptionDto(p.PlayerId, p.DisplayName)).ToList()
+            : null;
 
         return new QuizGameStateDto(
             Phase: state.Phase,
@@ -278,22 +295,13 @@ public class GameHub : Hub
             AvailableCategories: state.Phase == QuizPhase.CategorySelection ? state.AvailableCategories : null,
             RoundType: state.CurrentRound?.Type,
             QuestionId: state.QuestionId,
-            QuestionText: state.CurrentRound?.Type == RoundType.DictionaryGame 
-                ? state.DictionaryQuestion?.Word ?? string.Empty
-                : state.QuestionText,
-            Options: state.CurrentRound?.Type == RoundType.DictionaryGame
-                ? CreateDictionaryOptions(state, showCorrectAnswer)
-                : state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList(),
-            CorrectOptionKey: showCorrectAnswer 
-                ? (state.CurrentRound?.Type == RoundType.DictionaryGame
-                    ? state.DictionaryQuestion?.CorrectIndex.ToString()
-                    : state.CorrectOptionKey)
-                : null,
-            Explanation: showCorrectAnswer 
-                ? (state.CurrentRound?.Type == RoundType.DictionaryGame
-                    ? state.DictionaryQuestion?.Definition
-                    : state.Explanation)
-                : null,
+            QuestionText: GetQuestionText(state),
+            Options: GetOptions(state),
+            PlayerOptions: playerOptions,
+            CorrectOptionKey: showCorrectAnswer ? GetCorrectOptionKey(state) : null,
+            Explanation: showCorrectAnswer ? GetExplanation(state) : null,
+            RankingWinnerIds: showCorrectAnswer ? state.RankingResult?.WinnerPlayerIds : null,
+            RankingVoteCounts: showCorrectAnswer ? state.RankingResult?.VoteCounts : null,
             RemainingSeconds: remainingSeconds,
             AnswerStatuses: answerStatuses,
             Scoreboard: state.Scoreboard
@@ -305,23 +313,92 @@ public class GameHub : Hub
                     showCorrectAnswer ? p.AnsweredCorrectly : null,
                     showCorrectAnswer ? p.SelectedOption : null,
                     showCorrectAnswer ? p.PointsEarned : 0,
-                    showCorrectAnswer && p.GotSpeedBonus
+                    showCorrectAnswer && p.GotSpeedBonus,
+                    showCorrectAnswer && p.IsRankingStar,
+                    showCorrectAnswer ? p.RankingVotesReceived : 0
                 ))
                 .OrderBy(p => p.Position)
                 .ToList()
         );
     }
 
-    private static List<QuizOptionDto> CreateDictionaryOptions(QuizGameState state, bool showOptions)
+    private static bool GetHasAnswered(QuizGameState state, Guid playerId)
     {
-        if (state.DictionaryQuestion == null || state.Phase == QuizPhase.DictionaryWord)
+        return state.CurrentRound?.Type switch
         {
-            // Don't show options during word display phase (suspense)
+            RoundType.DictionaryGame => state.DictionaryAnswers.TryGetValue(playerId, out var da) && da != null,
+            RoundType.RankingStars => state.RankingVotes.TryGetValue(playerId, out var rv) && rv != null,
+            _ => state.Answers.TryGetValue(playerId, out var a) && a != null
+        };
+    }
+
+    private static int GetQuestionsInRound(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => QuizGameState.DictionaryWordsPerRound,
+            RoundType.RankingStars => QuizGameState.RankingPromptsPerRound,
+            _ => GameRound.QuestionsPerRound
+        };
+    }
+
+    private static int GetCurrentQuestionInRound(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryWordIndex,
+            RoundType.RankingStars => state.RankingPromptIndex,
+            _ => state.CurrentRound?.CurrentQuestionIndex ?? 0
+        };
+    }
+
+    private static string GetQuestionText(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryQuestion?.Word ?? string.Empty,
+            RoundType.RankingStars => state.RankingPromptText ?? string.Empty,
+            _ => state.QuestionText
+        };
+    }
+
+    private static List<QuizOptionDto> GetOptions(QuizGameState state)
+    {
+        if (state.CurrentRound?.Type == RoundType.DictionaryGame)
+        {
+            if (state.DictionaryQuestion == null || state.Phase == QuizPhase.DictionaryWord)
+                return new List<QuizOptionDto>();
+
+            return state.DictionaryQuestion.Options
+                .Select((text, index) => new QuizOptionDto(index.ToString(), text))
+                .ToList();
+        }
+
+        if (state.CurrentRound?.Type == RoundType.RankingStars)
+        {
             return new List<QuizOptionDto>();
         }
 
-        return state.DictionaryQuestion.Options
-            .Select((text, index) => new QuizOptionDto(index.ToString(), text))
-            .ToList();
+        return state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList();
+    }
+
+    private static string? GetCorrectOptionKey(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryQuestion?.CorrectIndex.ToString(),
+            RoundType.RankingStars => state.RankingResult?.WinnerPlayerIds.FirstOrDefault().ToString(),
+            _ => state.CorrectOptionKey
+        };
+    }
+
+    private static string? GetExplanation(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryQuestion?.Definition,
+            RoundType.RankingStars => null,
+            _ => state.Explanation
+        };
     }
 }

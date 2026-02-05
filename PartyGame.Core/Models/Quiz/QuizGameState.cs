@@ -1,5 +1,6 @@
 using PartyGame.Core.Enums;
 using PartyGame.Core.Models.Dictionary;
+using PartyGame.Core.Models.Ranking;
 
 namespace PartyGame.Core.Models.Quiz;
 
@@ -25,7 +26,7 @@ public class QuizGameState
     public int QuestionNumber { get; set; } = 0;
 
     /// <summary>
-    /// Total number of questions in the game.
+    /// Total number of questions in the game (excluding dictionary round).
     /// </summary>
     public int TotalQuestions { get; set; } = 10;
 
@@ -43,6 +44,26 @@ public class QuizGameState
     /// List of completed rounds.
     /// </summary>
     public List<GameRound> CompletedRounds { get; set; } = new();
+
+    #region Round Planning
+
+    /// <summary>
+    /// The planned sequence of round types for this game.
+    /// DictionaryGame is always last.
+    /// </summary>
+    public List<RoundType> PlannedRounds { get; set; } = new();
+
+    /// <summary>
+    /// Current index in PlannedRounds (0-based).
+    /// </summary>
+    public int PlannedRoundIndex { get; set; } = -1;
+
+    /// <summary>
+    /// Gets whether we're in the final dictionary round.
+    /// </summary>
+    public bool IsInFinalDictionaryRound => CurrentRound?.Type == RoundType.DictionaryGame;
+
+    #endregion
 
     /// <summary>
     /// Categories that have already been used in previous rounds.
@@ -163,6 +184,65 @@ public class QuizGameState
     public const int DictionaryCatchUpBonusPoints = 100;
 
     #endregion
+
+    #region Ranking Stars State
+
+    /// <summary>
+    /// Current ranking prompt ID.
+    /// </summary>
+    public string? RankingPromptId { get; set; }
+
+    /// <summary>
+    /// Current ranking prompt text.
+    /// </summary>
+    public string? RankingPromptText { get; set; }
+
+    /// <summary>
+    /// Ranking votes: VoterPlayerId -> VotedForPlayerId (null if not voted).
+    /// </summary>
+    public Dictionary<Guid, Guid?> RankingVotes { get; set; } = new();
+
+    /// <summary>
+    /// Ranking vote timestamps: VoterPlayerId -> UTC time when vote was submitted.
+    /// </summary>
+    public Dictionary<Guid, DateTime> RankingVoteTimes { get; set; } = new();
+
+    /// <summary>
+    /// IDs of prompts already used in this game's ranking round.
+    /// </summary>
+    public HashSet<string> UsedRankingPromptIds { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Current prompt index within the ranking round (1-based, 1-3).
+    /// </summary>
+    public int RankingPromptIndex { get; set; } = 0;
+
+    /// <summary>
+    /// Last computed ranking vote result (for reveal phase).
+    /// </summary>
+    public RankingVoteResult? RankingResult { get; set; }
+
+    /// <summary>
+    /// Number of prompts per ranking round.
+    /// </summary>
+    public const int RankingPromptsPerRound = 3;
+
+    /// <summary>
+    /// Points for being the "Star" (most voted player).
+    /// </summary>
+    public const int RankingStarPoints = 500;
+
+    /// <summary>
+    /// Points for voting for the winning player.
+    /// </summary>
+    public const int RankingCorrectVotePoints = 250;
+
+    /// <summary>
+    /// Catch-up bonus for players in bottom 50% who voted correctly.
+    /// </summary>
+    public const int RankingCatchUpBonusPoints = 50;
+
+    #endregion
 }
 
 /// <summary>
@@ -225,4 +305,14 @@ public class PlayerScoreState
     /// Whether this player got the speed bonus (fastest correct answer).
     /// </summary>
     public bool GotSpeedBonus { get; set; } = false;
+
+    /// <summary>
+    /// Whether this player is the "Star" (most voted) in Ranking Stars.
+    /// </summary>
+    public bool IsRankingStar { get; set; } = false;
+
+    /// <summary>
+    /// Number of votes received in Ranking Stars.
+    /// </summary>
+    public int RankingVotesReceived { get; set; } = 0;
 }

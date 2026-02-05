@@ -56,6 +56,17 @@ public class DictionaryGameEngineTests
         };
     }
 
+    private static List<RoundType> CreateTestRoundPlan()
+    {
+        return new List<RoundType>
+        {
+            RoundType.CategoryQuiz,
+            RoundType.CategoryQuiz,
+            RoundType.CategoryQuiz,
+            RoundType.DictionaryGame
+        };
+    }
+
     #region StartDictionaryRound Tests
 
     [Fact]
@@ -63,8 +74,9 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         state.QuestionNumber = 9; // All quiz questions done
+        state.PlannedRoundIndex = 2; // At last CategoryQuiz round
 
         // Act
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
@@ -80,8 +92,9 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         state.QuestionNumber = 9;
+        state.PlannedRoundIndex = 2;
 
         // Act
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
@@ -95,9 +108,10 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         state.RoundNumber = 3;
         state.QuestionNumber = 9;
+        state.PlannedRoundIndex = 2;
 
         // Act
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
@@ -115,7 +129,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         var question = CreateTestDictionaryQuestion();
 
@@ -132,7 +146,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         var question = CreateTestDictionaryQuestion();
 
@@ -148,7 +162,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         var question = CreateTestDictionaryQuestion("UniqueWord");
 
@@ -164,7 +178,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         
         // Simulate previous answers
@@ -189,7 +203,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         _sut.StartDictionaryWord(state, CreateTestDictionaryQuestion(), 3, DateTime.UtcNow);
 
@@ -205,7 +219,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         _sut.StartDictionaryWord(state, CreateTestDictionaryQuestion(), 3, DateTime.UtcNow);
         var answerTime = DateTime.UtcNow;
@@ -222,7 +236,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         _sut.StartDictionaryWord(state, CreateTestDictionaryQuestion(), 3, DateTime.UtcNow);
 
@@ -239,7 +253,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         _sut.StartDictionaryWord(state, CreateTestDictionaryQuestion(), 3, DateTime.UtcNow);
 
@@ -259,7 +273,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         
         var question = CreateTestDictionaryQuestion();
@@ -286,7 +300,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         
         var question = CreateTestDictionaryQuestion();
@@ -315,7 +329,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
         _sut.StartDictionaryWord(state, CreateTestDictionaryQuestion(), 3, DateTime.UtcNow);
 
@@ -335,7 +349,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         state.DictionaryWordIndex = 1;
 
         // Act & Assert
@@ -347,7 +361,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         state.DictionaryWordIndex = 3;
 
         // Act & Assert
@@ -359,24 +373,24 @@ public class DictionaryGameEngineTests
     #region ShouldStartDictionaryRound Tests
 
     [Fact]
-    public void ShouldStartDictionaryRound_TrueWhenAllQuizQuestionsComplete()
+    public void ShouldStartDictionaryRound_TrueWhenNextRoundIsDictionary()
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
-        state.QuestionNumber = 9;
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
+        state.PlannedRoundIndex = 2; // At last CategoryQuiz, next is DictionaryGame
 
         // Act & Assert
         _sut.ShouldStartDictionaryRound(state).Should().BeTrue();
     }
 
     [Fact]
-    public void ShouldStartDictionaryRound_FalseWhenQuizQuestionsRemain()
+    public void ShouldStartDictionaryRound_FalseWhenNextRoundIsNotDictionary()
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
-        state.QuestionNumber = 5;
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
+        state.PlannedRoundIndex = 0; // Next is CategoryQuiz
 
         // Act & Assert
         _sut.ShouldStartDictionaryRound(state).Should().BeFalse();
@@ -387,11 +401,11 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, _) = CreateTestRoom(3);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
-        state.QuestionNumber = 9;
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
+        state.PlannedRoundIndex = 2;
         _sut.StartDictionaryRound(state, 3, DateTime.UtcNow);
 
-        // Act & Assert
+        // Act & Assert - Now at index 3 (DictionaryGame), next would be null
         _sut.ShouldStartDictionaryRound(state).Should().BeFalse();
     }
 
@@ -422,7 +436,7 @@ public class DictionaryGameEngineTests
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom(4);
-        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        var state = _sut.InitializeGame(room, "nl-BE", CreateTestRoundPlan());
         
         // Set up scores: Players 0,1 have high scores, players 2,3 have low scores
         state.Scoreboard.First(p => p.PlayerId == playerIds[0]).Score = 500;

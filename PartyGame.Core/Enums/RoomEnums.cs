@@ -59,6 +59,11 @@ public enum RoundType
     CategoryQuiz,
 
     /// <summary>
+    /// A round where players vote for another player as the answer to fun prompts.
+    /// </summary>
+    RankingStars,
+
+    /// <summary>
     /// A round with dictionary words - players guess the correct definition.
     /// This is always the final round and serves as a catch-up mechanism.
     /// </summary>
@@ -108,5 +113,20 @@ public enum QuizPhase
     /// <summary>
     /// Dictionary game: showing word + 4 definition options.
     /// </summary>
-    DictionaryAnswering
+    DictionaryAnswering,
+
+    /// <summary>
+    /// Ranking Stars: showing the prompt (intro phase).
+    /// </summary>
+    RankingPrompt,
+
+    /// <summary>
+    /// Ranking Stars: players vote for another player.
+    /// </summary>
+    RankingVoting,
+
+    /// <summary>
+    /// Ranking Stars: revealing the votes and winner.
+    /// </summary>
+    RankingReveal
 }
