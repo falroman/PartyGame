@@ -281,6 +281,13 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         var normalizedCode = roomCode.ToUpperInvariant();
         CancelTimer(normalizedCode);
         _gameStates.TryRemove(normalizedCode, out _);
+        
+        // Clean up the semaphore to prevent memory leak
+        if (_roomLocks.TryRemove(normalizedCode, out var semaphore))
+        {
+            semaphore.Dispose();
+        }
+        
         _logger.LogInformation("Quiz game stopped for room {RoomCode}", normalizedCode);
     }
 

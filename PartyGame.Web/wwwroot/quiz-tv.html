@@ -832,6 +832,8 @@
             autoplayStatusEl.textContent = `Autoplay: ${running} · Bots: ${status.botCount ?? 0}`;
         }
 
+        let devPanelListenersAdded = false;
+
         async function configureDevPanel() {
             try {
                 const response = await fetch(`${SERVER_URL}/health`);
@@ -843,17 +845,22 @@
                 console.warn('Dev panel disabled:', error);
             }
 
-            addBotsBtn?.addEventListener('click', async () => {
-                await client.addBots();
-            });
+            // Only add event listeners once to prevent duplicate handlers on reconnect
+            if (!devPanelListenersAdded) {
+                addBotsBtn?.addEventListener('click', async () => {
+                    await client.addBots();
+                });
 
-            startAutoplayBtn?.addEventListener('click', async () => {
-                await client.startAutoplay();
-            });
+                startAutoplayBtn?.addEventListener('click', async () => {
+                    await client.startAutoplay();
+                });
 
-            stopAutoplayBtn?.addEventListener('click', async () => {
-                await client.stopAutoplay();
-            });
+                stopAutoplayBtn?.addEventListener('click', async () => {
+                    await client.stopAutoplay();
+                });
+
+                devPanelListenersAdded = true;
+            }
         }
 
         function escapeHtml(text) {

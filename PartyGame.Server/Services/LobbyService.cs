@@ -246,7 +246,7 @@ public class LobbyService : ILobbyService
         {
             var playerId = Guid.NewGuid();
             var displayName = GenerateBotName(existingNames);
-            var botSkill = Random.Shared.Next(30, 91);
+            var botSkill = Random.Shared.Next(0, 101);
 
             var player = new Player
             {
@@ -581,22 +581,38 @@ public class LobbyService : ILobbyService
 
     private static string GenerateBotName(HashSet<string> existingNames)
     {
-        string candidate;
+        const int MaxAttempts = 1000;
         var attempts = 0;
 
-        do
+        // Try to generate a unique bot name using the seed list (and optional numeric suffix)
+        while (attempts < MaxAttempts)
         {
             var seed = BotNameSeeds[Random.Shared.Next(BotNameSeeds.Length)];
-            candidate = $"Bot {seed}";
-            attempts++;
+            var candidate = $"Bot {seed}";
 
-            if (attempts > BotNameSeeds.Length)
+            // After we've tried each seed at least once, start appending a numeric suffix
+            if (attempts >= BotNameSeeds.Length)
             {
                 candidate = $"{candidate} {Random.Shared.Next(1, 999)}";
             }
-        } while (existingNames.Contains(candidate));
 
-        existingNames.Add(candidate);
-        return candidate;
+            if (!existingNames.Contains(candidate))
+            {
+                existingNames.Add(candidate);
+                return candidate;
+            }
+
+            attempts++;
+        }
+
+        // Fallback: if we somehow exhaust our attempts, generate a GUID-based name
+        string fallback;
+        do
+        {
+            fallback = $"Bot {Guid.NewGuid():N}";
+        } while (existingNames.Contains(fallback));
+
+        existingNames.Add(fallback);
+        return fallback;
     }
 }
