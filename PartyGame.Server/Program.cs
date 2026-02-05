@@ -4,6 +4,7 @@ using PartyGame.Core.Services;
 using PartyGame.Server.Hubs;
 using PartyGame.Server.Options;
 using PartyGame.Server.Services;
+using PartyGame.Server.Services.Boosters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,26 @@ builder.Services.AddSingleton<IDictionaryQuestionProvider, DictionaryQuestionPro
 
 // Add ranking stars prompt provider
 builder.Services.AddSingleton<IRankingStarsPromptProvider, RankingStarsPromptProvider>();
+
+// Add scoring service
+builder.Services.AddSingleton<IScoringService, ScoringService>();
+
+// Add booster handlers (plugin architecture)
+builder.Services.AddSingleton<IBoosterHandler, DoublePointsHandler>();
+builder.Services.AddSingleton<IBoosterHandler, FiftyFiftyHandler>();
+builder.Services.AddSingleton<IBoosterHandler, BackToZeroHandler>();
+builder.Services.AddSingleton<IBoosterHandler, NopeHandler>();
+builder.Services.AddSingleton<IBoosterHandler, PositionSwitchHandler>();
+builder.Services.AddSingleton<IBoosterHandler, LateLockHandler>();
+builder.Services.AddSingleton<IBoosterHandler, MirrorHandler>();
+builder.Services.AddSingleton<IBoosterHandler, JuryDutyHandler>();
+builder.Services.AddSingleton<IBoosterHandler, ChaosModeHandler>();
+builder.Services.AddSingleton<IBoosterHandler, ShieldHandler>();
+builder.Services.AddSingleton<IBoosterHandler, WildcardHandler>();
+builder.Services.AddSingleton<IBoosterHandler, SpotlightHandler>();
+
+// Add booster service
+builder.Services.AddSingleton<IBoosterService, BoosterService>();
 
 // Add quiz game engine and orchestrator
 builder.Services.AddSingleton<IQuizGameEngine, QuizGameEngine>();

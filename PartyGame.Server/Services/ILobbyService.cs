@@ -104,4 +104,13 @@ public interface ILobbyService
     /// <param name="gameType">The type of game to start.</param>
     /// <returns>Success if game started, error details otherwise.</returns>
     Task<(bool Success, ErrorDto? Error)> StartGameAsync(string roomCode, string connectionId, GameType gameType);
+
+    /// <summary>
+    /// Resets the room back to lobby state. Only the host can perform this action.
+    /// Keeps all players in the room but clears game state and scores.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="connectionId">The connection ID attempting the action (must be host).</param>
+    /// <returns>Success if reset succeeded, error details otherwise.</returns>
+    Task<(bool Success, ErrorDto? Error)> ResetToLobbyAsync(string roomCode, string connectionId);
 }

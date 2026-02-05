@@ -579,6 +579,55 @@ public class LobbyService : ILobbyService
         return (true, null);
     }
 
+    /// <inheritdoc />
+    public async Task<(bool Success, ErrorDto? Error)> ResetToLobbyAsync(string roomCode, string connectionId)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        // Check if room exists
+        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+        {
+            _logger.LogWarning("ResetToLobby failed: Room {RoomCode} not found", normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, $"Room with code '{normalizedCode}' does not exist."));
+        }
+
+        // Check if caller is the host
+        if (!IsHostOfRoom(normalizedCode, connectionId))
+        {
+            _logger.LogWarning("ResetToLobby failed: Connection {ConnectionId} is not host of room {RoomCode}", 
+                connectionId, normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.NotHost, "Only the host can reset the room to lobby."));
+        }
+
+        // Stop any running game
+        _quizOrchestrator?.StopGame(normalizedCode);
+
+        // Reset room state but keep players
+        room.Status = RoomStatus.Lobby;
+        room.IsLocked = false;
+        room.CurrentGame = null;
+
+        // Reset player scores but keep them in the room
+        foreach (var player in room.Players.Values)
+        {
+            player.Score = 0;
+        }
+
+        _roomStore.Update(room);
+
+        _logger.LogInformation("Room {RoomCode} reset to lobby by host. Players retained: {PlayerCount}", 
+            normalizedCode, room.Players.Count);
+
+        // Broadcast lobby update
+        var roomState = GetRoomState(normalizedCode);
+        if (roomState != null)
+        {
+            await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("LobbyUpdated", roomState);
+        }
+
+        return (true, null);
+    }
+
     private static string GenerateBotName(HashSet<string> existingNames)
     {
         const int MaxAttempts = 1000;

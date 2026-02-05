@@ -251,6 +251,20 @@ class GameClient {
     }
 
     /**
+     * Reset room back to lobby (host only)
+     * Keeps all players but clears game state
+     */
+    async resetToLobby() {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.isHost) {
+            throw new Error('Only the host can reset to lobby');
+        }
+        await this.connection.invoke('ResetToLobby', this.roomCode);
+    }
+
+    /**
      * Disconnect from the hub
      */
     async disconnect() {
