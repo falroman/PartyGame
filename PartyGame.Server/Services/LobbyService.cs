@@ -658,7 +658,7 @@ public class LobbyService : ILobbyService
         string fallback;
         do
         {
-            fallback = $"Bot {Guid.NewGuid():N}";
+            fallback = $"Bot {Guid.NewGuid().ToString("N")[..8]}";
         } while (existingNames.Contains(fallback));
 
         existingNames.Add(fallback);
