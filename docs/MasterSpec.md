@@ -596,6 +596,31 @@ int GetCount(string locale);
   - Animation API documentation
   - Test checklist for animations
 
+### v0.11.0 – Iteration 9: Rounds & Category Selection
+- STRUCTURE
+  - Game now structured as 3 rounds × 3 questions = 9 total
+  - Added `RoundType` enum with `CategoryQuiz` type
+  - Added `GameRound` model with round lifecycle
+  - Added `SelectRoundLeader` method to pick RoundLeader (lowest score rule)
+  - Added `GetRandomCategories` to fetch random categories for the round
+  - Updated `QuizGameState` and `QuizGameStateDto` with round/category info
+  - Updated SignalR hub methods for category selection
+
+- UI
+  - TV view shows category selection screen with 3 options
+  - Phone view (RoundLeader) shows 3 tappable category buttons
+  - Waiting screen for other players during category selection
+  - Shows "Watching [LeaderName]" when not leader
+
+- PHASES
+  - New `CategorySelection` phase before questions
+  - Automatic progression through phases: Question ? Answering ? Reveal ? Scoreboard
+  - Loops through 3 questions per round, then progresses rounds or ends game
+
+- TESTS
+  - Manual test checklist for round and category selection flow
+  - 150 total tests passing
+
 ---
 
 ## 12. Quiz Game Flow
@@ -610,11 +635,12 @@ StartGame -> Question (3s) -> Answering (15s) -> Reveal (5s) -> Scoreboard (5s) 
 
 | Phase | Value | Description |
 |-------|-------|-------------|
-| Question | 0 | Display question, players watch TV |
-| Answering | 1 | Players can submit answers |
-| Reveal | 2 | Show correct answer, calculate scores |
-| Scoreboard | 3 | Display current standings |
-| Finished | 4 | Game complete, show final results |
+| CategorySelection | 0 | Waiting for round leader to select a category |
+| Question | 1 | Display question, players watch TV |
+| Answering | 2 | Players can submit answers |
+| Reveal | 3 | Show correct answer, calculate scores |
+| Scoreboard | 4 | Display current standings |
+| Finished | 5 | Game complete, show final results |
 
 ### 12.3 QuizGameStateDto
 
@@ -623,34 +649,13 @@ interface QuizGameStateDto {
     phase: QuizPhase;
     questionNumber: number;
     totalQuestions: number;
-    questionId: string;
-    questionText: string;
-    options: QuizOptionDto[];
-    correctOptionKey?: string;   // Only in Reveal/Scoreboard/Finished
-    explanation?: string;        // Only in Reveal/Scoreboard/Finished
-    remainingSeconds: number;
-    answerStatuses: PlayerAnswerStatusDto[];
-    scoreboard: PlayerScoreDto[];
-}
-
-interface QuizOptionDto {
-    key: string;  // "A", "B", "C", "D"
-    text: string;
-}
-
-interface PlayerAnswerStatusDto {
-    playerId: string;
-    displayName: string;
-    hasAnswered: boolean;
-}
-
-interface PlayerScoreDto {
-    playerId: string;
-    displayName: string;
-    score: number;
-    position: number;
-    answeredCorrectly?: boolean;  // Only in Reveal/Scoreboard
-    selectedOption?: string;      // Only in Reveal/Scoreboard
+    roundNumber: number;                        // NEW
+    questionsInRound: number;                   // NEW (always 3)
+    currentQuestionInRound: number;             // NEW (1-3)
+    currentCategory?: string;                  // NEW
+    roundLeaderPlayerId?: string;              // NEW
+    availableCategories?: string[];            // NEW (only in CategorySelection)
+    // ...existing properties...
 }
 ```
 
@@ -661,6 +666,7 @@ interface PlayerScoreDto {
 | `QuizStateUpdated` | Server ? Client | `QuizGameStateDto` | Every phase change, answer submission |
 | `SubmitAnswer` | Client ? Server | `roomCode, playerId, optionKey` | Player taps answer button |
 | `NextQuestion` | Client ? Server | `roomCode` | Host manually advances (optional) |
+| `SelectCategory` | Client ? Server | `roomCode, playerId, category` | Round leader selects a category |
 
 ### 12.5 Scoring Rules
 
@@ -673,7 +679,9 @@ interface PlayerScoreDto {
 ### 12.6 Manual Test Checklist
 
 - [ ] Create room on TV, 2+ players join
-- [ ] Start game, TV shows first question
+- [ ] Start game, TV shows category selection
+- [ ] Round leader selects a category
+- [ ] TV shows first question
 - [ ] Phone shows "Watch the screen" during Question phase
 - [ ] Phone shows answer buttons during Answering phase
 - [ ] Timer counts down on both TV and phone
@@ -778,3 +786,307 @@ If GSAP/Flip fails to load:
 - [ ] **FLIP reorder**: Rows smoothly swap positions
 - [ ] Verify no console errors
 - [ ] Verify smooth 60fps on TV display
+
+---
+
+## 14. Iteration 9 – Rounds & Category Selection
+
+### 14.1 Overview
+
+The game is now structured into **rounds**. Each round consists of:
+- A **RoundLeader** who selects a category
+- Exactly **3 questions** from that category
+- Automatic progression to the next round (or game end)
+
+This architecture enables future round types (e.g., Woordenboekspel, Ranking the Stars) without major refactoring.
+
+### 14.2 Domain Models
+
+#### RoundType Enum
+```csharp
+public enum RoundType
+{
+    CategoryQuiz  // Current implementation
+    // Future: Woordenboekspel, RankingTheStars, etc.
+}
+```
+
+#### GameRound Model
+```csharp
+public class GameRound
+{
+    public Guid RoundId { get; set; }
+    public RoundType Type { get; init; } = RoundType.CategoryQuiz;
+    public string Category { get; set; } = string.Empty;
+    public Guid RoundLeaderPlayerId { get; init; }
+    public int CurrentQuestionIndex { get; set; } = 0;  // 0..2
+    public bool IsCompleted { get; set; } = false;
+    public const int QuestionsPerRound = 3;
+}
+```
+
+#### QuizGameState Extensions
+```csharp
+public class QuizGameState
+{
+    // ...existing properties...
+    
+    public int RoundNumber { get; set; } = 0;
+    public GameRound? CurrentRound { get; set; }
+    public List<GameRound> CompletedRounds { get; set; } = new();
+    public HashSet<string> UsedCategories { get; set; } = new();
+    public List<string> AvailableCategories { get; set; } = new();
+    public List<Guid> PreviousRoundLeaders { get; set; } = new();
+    public string Locale { get; set; } = "nl-BE";
+}
+```
+
+### 14.3 Round Lifecycle
+
+```
+???????????????????????????????????????????????????????????????
+?                    ROUND LIFECYCLE                          ?
+???????????????????????????????????????????????????????????????
+?                                                             ?
+?  StartNewRound()                                            ?
+?       ?                                                     ?
+?       ?                                                     ?
+?  ???????????????????                                        ?
+?  ? CategorySelection? ??? RoundLeader selects 1 of 3       ?
+?  ?   (30 seconds)   ?     categories on their phone        ?
+?  ???????????????????                                        ?
+?           ?                                                 ?
+?           ?                                                 ?
+?  ???????????????????                                        ?
+?  ?    Question     ? ??? Loop 3 times (questions 1-3)      ?
+?  ?   (3 seconds)   ?                                        ?
+?  ???????????????????                                        ?
+?           ?                                                 ?
+?           ?                                                 ?
+?  ???????????????????                                        ?
+?  ?    Answering    ?                                        ?
+?  ?   (15 seconds)  ?                                        ?
+?  ???????????????????                                        ?
+?           ?                                                 ?
+?           ?                                                 ?
+?  ???????????????????                                        ?
+?  ?     Reveal      ?                                        ?
+?  ?   (5 seconds)   ?                                        ?
+?  ???????????????????                                        ?
+?           ?                                                 ?
+?           ?                                                 ?
+?  ???????????????????                                        ?
+?  ?   Scoreboard    ?                                        ?
+?  ?   (5 seconds)   ?                                        ?
+?  ???????????????????                                        ?
+?           ?                                                 ?
+?           ?                                                 ?
+?  ???????????????????????????????????????????????????????????  ?
+?  ?  More questions in round?                              ?  ?
+?       ?           ?                                         ?
+?      Yes          No                                        ?
+?       ?           ?                                         ?
+?       ?           ?                                         ?
+?       ?   MarkRoundComplete()                               ?
+?       ?           ?                                         ?
+?       ?   ???????????????????????????????????????????????   ?
+?       ?   ?  More rounds?                               ?   ?
+?       ?       ?       ?                                     ?
+?       ?      Yes      No                                    ?
+?       ?       ?       ?                                     ?
+?       ?       ?       ?                                     ?
+?       ?       ?   FinishGame()                              ?
+?       ?       ?                                             ?
+?       ???????????? StartNewRound()                          ?
+?               ?                                             ?
+???????????????????????????????????????????????????????????????
+```
+
+### 14.4 RoundLeader Selection Rules
+
+The RoundLeader is selected at the start of each round using these rules:
+
+1. **Lowest Score Rule**: Player with the lowest score becomes the leader
+2. **Tie Breaker**: If multiple players have the same lowest score, the first in the player list is selected
+3. **No Repeat Rule**: The same player cannot be RoundLeader twice in a row
+   - If the lowest scorer was the previous leader, select the next lowest scorer
+
+```csharp
+public Guid SelectRoundLeader(QuizGameState state)
+{
+    var lastRoundLeader = state.PreviousRoundLeaders.LastOrDefault();
+    var minScore = state.Scoreboard.Min(p => p.Score);
+    var lowestScorePlayers = state.Scoreboard
+        .Where(p => p.Score == minScore)
+        .ToList();
+
+    // Prefer non-last-leader with lowest score
+    var candidate = lowestScorePlayers
+        .FirstOrDefault(p => p.PlayerId != lastRoundLeader)
+        ?? lowestScorePlayers.First();
+    
+    return candidate.PlayerId;
+}
+```
+
+### 14.5 Category Selection Flow
+
+#### Server-side
+1. `StartNewRound()` is called
+2. Server fetches 3 random categories via `IQuizQuestionBank.GetRandomCategories()`
+3. Categories already in `UsedCategories` are excluded
+4. `AvailableCategories` is populated
+5. `Phase` is set to `CategorySelection`
+6. State is broadcast to all clients
+
+#### Client-side (Phone)
+- If `playerId == roundLeaderPlayerId`: Show 3 category buttons
+- Otherwise: Show "Waiting for [LeaderName] to choose..."
+
+#### SignalR Contract
+```csharp
+// Hub method
+Task SelectCategory(string roomCode, Guid playerId, string category);
+```
+
+#### Validation
+| Check | Error Code |
+|-------|------------|
+| Phase is not CategorySelection | `INVALID_STATE` |
+| Player is not RoundLeader | `NOT_ROUND_LEADER` |
+| Category not in AvailableCategories | `INVALID_CATEGORY` |
+| Category already selected | `ROUND_ALREADY_STARTED` |
+
+### 14.6 GameStateDto Extensions
+
+```csharp
+public record QuizGameStateDto(
+    QuizPhase Phase,
+    int QuestionNumber,
+    int TotalQuestions,
+    int RoundNumber,                        // NEW
+    int QuestionsInRound,                   // NEW (always 3)
+    int CurrentQuestionInRound,             // NEW (1-3)
+    string? CurrentCategory,                // NEW
+    Guid? RoundLeaderPlayerId,              // NEW
+    IReadOnlyList<string>? AvailableCategories,  // NEW (only in CategorySelection)
+    // ...existing properties...
+);
+```
+
+### 14.7 QuizPhase Enum Update
+
+```csharp
+public enum QuizPhase
+{
+    CategorySelection,  // NEW - waiting for category choice
+    Question,           // Displaying question text
+    Answering,          // Players can submit answers
+    Reveal,             // Showing correct answer
+    Scoreboard,         // Showing scores
+    Finished            // Game complete
+}
+```
+
+### 14.8 Error Codes
+
+| Code | Description |
+|------|-------------|
+| `NOT_ROUND_LEADER` | Only the round leader can select a category |
+| `INVALID_CATEGORY` | Selected category is not available |
+| `ROUND_ALREADY_STARTED` | Category has already been selected |
+
+### 14.9 UI Implementation
+
+#### TV View (quiz-tv.html)
+- **CategorySelection Phase**:
+  - Shows "?? Choose a Category"
+  - Displays RoundLeader name and avatar
+  - Shows 3 category cards with icons
+  - Instruction: "The round leader selects a category on their phone"
+  
+- **Question Phase**:
+  - Shows category banner above question
+  - Shows "Round X" and "Question Y/3"
+
+#### Phone View (quiz-phone.html)
+- **RoundLeader during CategorySelection**:
+  - Shows 3 tappable category buttons
+  - "You're the round leader!"
+  
+- **Non-leader during CategorySelection**:
+  - Shows waiting screen
+  - "[LeaderName] is choosing a category..."
+
+### 14.10 Configuration
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| `QuestionsPerRound` | 3 | Questions per round |
+| `TotalQuestions` | 9 | Total questions (3 rounds × 3) |
+| `CategorySelectionSeconds` | 30 | Time to select category |
+| Auto-select | Yes | First category selected if timer expires |
+
+### 14.11 Manual Test Checklist
+
+- [ ] Start game with 3+ players
+- [ ] **CategorySelection appears** with 3 category options
+- [ ] **RoundLeader identified** (lowest score, or first if tied)
+- [ ] **Only leader can select** (non-leader sees waiting screen)
+- [ ] After selection, **category banner** shows on TV
+- [ ] **3 questions** played from selected category
+- [ ] After question 3, **new round starts**
+- [ ] **New leader selected** (different from previous)
+- [ ] **Categories don't repeat** across rounds
+- [ ] After 9 questions (3 rounds), game finishes
+- [ ] **Timer auto-selects** if leader doesn't choose
+
+---
+
+## 15. Changelog
+
+### v0.11.0 – Iteration 9: Rounds & Category Selection (2025-01-11)
+
+**Added:**
+- `RoundType` enum with `CategoryQuiz` type
+- `GameRound` model with round lifecycle
+- `SelectRoundLeader` method to pick RoundLeader (lowest score rule)
+- `GetRandomCategories` to fetch random categories for the round
+- Updated `QuizGameState` and `QuizGameStateDto` with round/category info
+- Updated SignalR hub methods for category selection
+
+**Changed:**
+- Game now structured as 3 rounds × 3 questions = 9 total
+- Questions filtered by selected category
+- Initial phase is now `CategorySelection` instead of `Question`
+
+**Fixed:**
+- Question pack validation (removed invalid 2-option questions)
+
+### v0.10.0 – Iteration 8: Scoreboard Animations (2025-01-10)
+
+**Added:**
+- `ScoreboardAnimations` class for TV scoreboard
+- GSAP + Flip integration for smooth animations
+- Score tick-up counter animation
+- Delta badge pop/fade animation
+- Winner highlight pulse glow
+- Glassy scoreboard row styling
+
+### v0.9.0 – Iteration 7: Quiz Gameplay (2025-01-09)
+
+**Added:**
+- `QuizGameEngine` with state transitions
+- `QuizGameOrchestrator` for timer management
+- `QuizGameState` and `QuizGameStateDto`
+- `SubmitAnswer` hub method
+- Quiz TV and Phone views
+- Scoring: +100 per correct answer
+
+---
+
+## 16. Last Updated
+
+**Date:** 2025-01-11  
+**Current Iteration:** 9 – Rounds & Category Selection  
+**Status:** Complete ?
