@@ -18,10 +18,36 @@ public interface IQuizGameEngine
     QuizGameState InitializeGame(Room room, string locale, int totalQuestions = 10);
 
     /// <summary>
-    /// Starts a new question round.
+    /// Starts a new round with category selection phase.
     /// </summary>
     /// <param name="state">Current game state.</param>
-    /// <param name="questionDurationSeconds">Duration for the answering phase.</param>
+    /// <param name="categorySelectionDurationSeconds">Duration for category selection.</param>
+    /// <param name="currentTime">Current UTC time.</param>
+    /// <returns>Updated state in CategorySelection phase.</returns>
+    QuizGameState StartNewRound(QuizGameState state, int categorySelectionDurationSeconds, DateTime currentTime);
+
+    /// <summary>
+    /// Selects the round leader based on current scores.
+    /// Rule: Player with lowest score chooses (fairness), ties broken by player order.
+    /// Same player cannot choose twice in a row.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <returns>PlayerId of the selected round leader.</returns>
+    Guid SelectRoundLeader(QuizGameState state);
+
+    /// <summary>
+    /// Sets the category for the current round and transitions to Question phase.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="category">Selected category.</param>
+    /// <returns>Updated state with category set.</returns>
+    QuizGameState SetRoundCategory(QuizGameState state, string category);
+
+    /// <summary>
+    /// Starts a new question within the current round.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="questionDurationSeconds">Duration for the question display phase.</param>
     /// <param name="currentTime">Current UTC time.</param>
     /// <returns>Updated state with new question, or null if no more questions available.</returns>
     QuizGameState? StartNewQuestion(QuizGameState state, int questionDurationSeconds, DateTime currentTime);
@@ -78,7 +104,14 @@ public interface IQuizGameEngine
     bool AllPlayersAnswered(QuizGameState state, IEnumerable<Guid> playerIds);
 
     /// <summary>
-    /// Checks if there are more questions available.
+    /// Checks if there are more questions available in the current round.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <returns>True if more questions can be asked in the current round.</returns>
+    bool HasMoreQuestionsInRound(QuizGameState state);
+
+    /// <summary>
+    /// Checks if there are more questions available in the game.
     /// </summary>
     /// <param name="state">Current game state.</param>
     /// <returns>True if more questions can be asked.</returns>
@@ -91,4 +124,12 @@ public interface IQuizGameEngine
     /// <param name="optionKey">Option key to validate.</param>
     /// <returns>True if the option key is valid.</returns>
     bool IsValidOptionKey(QuizGameState state, string optionKey);
+
+    /// <summary>
+    /// Checks if a category is valid for selection.
+    /// </summary>
+    /// <param name="state">Current game state.</param>
+    /// <param name="category">Category to validate.</param>
+    /// <returns>True if the category can be selected.</returns>
+    bool IsValidCategory(QuizGameState state, string category);
 }

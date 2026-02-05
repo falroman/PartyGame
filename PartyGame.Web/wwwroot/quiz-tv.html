@@ -42,6 +42,13 @@
             font-weight: 600;
         }
 
+        .round-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
         .timer {
             display: flex;
             align-items: center;
@@ -77,6 +84,128 @@
             gap: 20px;
         }
 
+        /* Category Selection View */
+        .category-selection {
+            display: none;
+        }
+
+        .category-selection.visible {
+            display: block;
+        }
+
+        .category-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .category-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        .category-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-light);
+            margin-bottom: 32px;
+        }
+
+        .round-leader-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 32px;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            color: white;
+        }
+
+        .round-leader-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.25rem;
+        }
+
+        .round-leader-text {
+            font-size: 1.25rem;
+        }
+
+        .round-leader-name {
+            font-weight: bold;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .category-option {
+            background: white;
+            border: 3px solid #e5e7eb;
+            border-radius: 20px;
+            padding: 32px 24px;
+            cursor: default;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .category-option.selected {
+            transform: scale(1.05);
+            border-color: #667eea;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .category-option.faded {
+            opacity: 0.4;
+            transform: scale(0.95);
+        }
+
+        .category-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .category-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .waiting-instruction {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px;
+            color: var(--text-light);
+        }
+
         /* Question Card */
         .question-card {
             background: white;
@@ -84,6 +213,16 @@
             padding: 40px;
             text-align: center;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .round-category-banner {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
         }
 
         .question-text {
@@ -198,24 +337,16 @@
             opacity: 0.6;
         }
 
-        /* Scoreboard */
-        .scoreboard-container {
-            display: none;
-        }
-
-        .scoreboard-container.visible {
-            display: block;
-        }
-
+        /* Scoreboard styles remain unchanged */
+        .scoreboard-container { display: none; }
+        .scoreboard-container.visible { display: block; }
         .scoreboard-card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             border-radius: 24px;
             padding: 32px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
-
         .scoreboard-title {
             text-align: center;
             font-size: 2rem;
@@ -223,15 +354,7 @@
             margin-bottom: 24px;
             color: var(--text-color);
         }
-
-        .scoreboard-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            position: relative;
-        }
-
-        /* Glassy scoreboard rows */
+        .scoreboard-list { list-style: none; padding: 0; margin: 0; position: relative; }
         .scoreboard-item {
             display: flex;
             align-items: center;
@@ -240,113 +363,45 @@
             margin-bottom: 12px;
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             position: relative;
             overflow: visible;
         }
-
-        .scoreboard-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-        }
-
+        .scoreboard-item:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); }
         .scoreboard-item.first {
             background: linear-gradient(135deg, rgba(255, 215, 0, 0.9) 0%, rgba(255, 179, 71, 0.9) 100%);
             border: 2px solid rgba(255, 215, 0, 0.5);
             color: #333;
         }
-
         .scoreboard-item.second {
             background: linear-gradient(135deg, rgba(192, 192, 192, 0.9) 0%, rgba(169, 169, 169, 0.9) 100%);
             border: 2px solid rgba(192, 192, 192, 0.5);
         }
-
         .scoreboard-item.third {
             background: linear-gradient(135deg, rgba(205, 127, 50, 0.9) 0%, rgba(184, 115, 51, 0.9) 100%);
             border: 2px solid rgba(205, 127, 50, 0.5);
             color: white;
         }
-
-        .scoreboard-position {
-            font-size: 1.5rem;
-            font-weight: bold;
-            width: 50px;
-            text-align: center;
-        }
-
-        .scoreboard-player {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
+        .scoreboard-position { font-size: 1.5rem; font-weight: bold; width: 50px; text-align: center; }
+        .scoreboard-player { flex: 1; display: flex; align-items: center; gap: 12px; }
         .player-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            width: 40px; height: 40px; border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 0.875rem;
+            color: white; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.875rem;
         }
-
-        .scoreboard-name {
-            font-weight: 600;
-            font-size: 1.125rem;
-        }
-
-        /* Score with tabular nums */
-        .score-value {
-            font-size: 1.75rem;
-            font-weight: bold;
-            font-variant-numeric: tabular-nums;
-            min-width: 80px;
-            text-align: right;
-        }
-
-        /* Delta badge */
+        .scoreboard-name { font-weight: 600; font-size: 1.125rem; }
+        .score-value { font-size: 1.75rem; font-weight: bold; font-variant-numeric: tabular-nums; min-width: 80px; text-align: right; }
         .delta-badge {
-            position: absolute;
-            right: -10px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: bold;
-            white-space: nowrap;
-            z-index: 10;
-            pointer-events: none;
+            position: absolute; right: -10px; top: 50%; transform: translateY(-50%);
+            padding: 4px 12px; border-radius: 20px; font-size: 0.875rem; font-weight: bold;
+            white-space: nowrap; z-index: 10; pointer-events: none;
         }
-
-        .delta-badge.positive {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-        }
-
-        .delta-badge.negative {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-        }
-
-        /* Winner highlight pulse */
-        .scoreboard-item.winner-highlight {
-            z-index: 5;
-        }
-
-        @keyframes winner-glow {
-            0%, 100% { box-shadow: 0 0 20px 5px rgba(255, 215, 0, 0.3); }
-            50% { box-shadow: 0 0 40px 15px rgba(255, 215, 0, 0.6); }
-        }
+        .delta-badge.positive { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
+        .delta-badge.negative { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+        .scoreboard-item.winner-highlight { z-index: 5; }
 
         /* Finished State */
         .game-finished {
@@ -357,34 +412,15 @@
             border-radius: 24px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
-
-        .winner-crown {
-            font-size: 6rem;
-            margin-bottom: 24px;
-            animation: crown-bounce 2s ease-in-out infinite;
-        }
-
+        .winner-crown { font-size: 6rem; margin-bottom: 24px; animation: crown-bounce 2s ease-in-out infinite; }
         @keyframes crown-bounce {
             0%, 100% { transform: translateY(0) rotate(-5deg); }
             50% { transform: translateY(-10px) rotate(5deg); }
         }
+        .winner-name { font-size: 2.5rem; font-weight: bold; color: var(--text-color); margin-bottom: 8px; }
+        .winner-score { font-size: 1.5rem; color: var(--text-light); }
 
-        .winner-name {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--text-color);
-            margin-bottom: 8px;
-        }
-
-        .winner-score {
-            font-size: 1.5rem;
-            color: var(--text-light);
-        }
-
-        /* Hidden states */
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -392,12 +428,13 @@
         <!-- Header -->
         <div class="quiz-header">
             <div class="quiz-progress">
-                <span class="question-counter">Question <span id="questionNumber">1</span>/<span id="totalQuestions">10</span></span>
-                <span class="phase-badge" id="phaseBadge">Question</span>
+                <span class="round-badge" id="roundBadge">Round 1</span>
+                <span class="question-counter">Question <span id="questionNumber">-</span>/<span id="totalQuestions">9</span></span>
+                <span class="phase-badge" id="phaseBadge">Loading...</span>
             </div>
             <div class="timer" id="timer">
                 <span>⏱️</span>
-                <span id="timerValue">15</span>
+                <span id="timerValue">--</span>
             </div>
             <div>
                 Room: <strong id="roomCode">----</strong>
@@ -406,9 +443,33 @@
 
         <!-- Main Content -->
         <div class="quiz-main">
+            <!-- Category Selection View -->
+            <div class="category-selection" id="categoryView">
+                <div class="category-card">
+                    <div class="category-title">🎯 Choose a Category</div>
+                    <div class="category-subtitle" id="categorySubtitle">Round 1 - 3 questions</div>
+                    
+                    <div class="round-leader-info">
+                        <div class="round-leader-avatar" id="leaderAvatar">?</div>
+                        <div class="round-leader-text">
+                            <span class="round-leader-name" id="leaderName">Player</span> is choosing...
+                        </div>
+                    </div>
+                    
+                    <div class="categories-grid" id="categoriesGrid">
+                        <!-- Category options will be inserted here -->
+                    </div>
+                    
+                    <div class="waiting-instruction">
+                        📱 The round leader selects a category on their phone
+                    </div>
+                </div>
+            </div>
+
             <!-- Question View -->
-            <div id="questionView">
+            <div id="questionView" class="hidden">
                 <div class="question-card">
+                    <div class="round-category-banner" id="currentCategoryBanner">Category</div>
                     <div class="question-text" id="questionText">Loading question...</div>
                     
                     <div class="options-grid" id="optionsGrid">
@@ -421,7 +482,6 @@
                     <div id="explanationText"></div>
                 </div>
 
-                <!-- Answer Status (who has answered) -->
                 <div class="answer-status" id="answerStatus">
                     <!-- Player badges will be inserted here -->
                 </div>
@@ -431,9 +491,7 @@
             <div class="scoreboard-container" id="scoreboardView">
                 <div class="scoreboard-card">
                     <div class="scoreboard-title" id="scoreboardTitle">🏆 Scoreboard</div>
-                    <ul class="scoreboard-list" id="scoreboardList">
-                        <!-- Scores will be inserted here via ScoreboardAnimations -->
-                    </ul>
+                    <ul class="scoreboard-list" id="scoreboardList"></ul>
                 </div>
             </div>
 
@@ -469,40 +527,60 @@
 
         const SERVER_URL = GameConfig.getServerUrl();
         const client = new GameClient(SERVER_URL);
-
-        // Initialize scoreboard animations
         const scoreboardAnimator = new ScoreboardAnimations('#scoreboardList');
 
         // DOM Elements
+        const roundBadgeEl = document.getElementById('roundBadge');
         const questionNumberEl = document.getElementById('questionNumber');
         const totalQuestionsEl = document.getElementById('totalQuestions');
         const phaseBadgeEl = document.getElementById('phaseBadge');
         const timerEl = document.getElementById('timer');
         const timerValueEl = document.getElementById('timerValue');
         const roomCodeEl = document.getElementById('roomCode');
+        const categoryViewEl = document.getElementById('categoryView');
+        const categorySubtitleEl = document.getElementById('categorySubtitle');
+        const leaderAvatarEl = document.getElementById('leaderAvatar');
+        const leaderNameEl = document.getElementById('leaderName');
+        const categoriesGridEl = document.getElementById('categoriesGrid');
+        const currentCategoryBannerEl = document.getElementById('currentCategoryBanner');
+        const questionViewEl = document.getElementById('questionView');
         const questionTextEl = document.getElementById('questionText');
         const optionsGridEl = document.getElementById('optionsGrid');
         const explanationCardEl = document.getElementById('explanationCard');
         const explanationTextEl = document.getElementById('explanationText');
         const answerStatusEl = document.getElementById('answerStatus');
-        const questionViewEl = document.getElementById('questionView');
         const scoreboardViewEl = document.getElementById('scoreboardView');
         const scoreboardTitleEl = document.getElementById('scoreboardTitle');
-        const scoreboardListEl = document.getElementById('scoreboardList');
         const finishedViewEl = document.getElementById('finishedView');
         const winnerNameEl = document.getElementById('winnerName');
         const winnerScoreEl = document.getElementById('winnerScore');
 
-        // Track previous phase for animation decisions
         let previousPhase = null;
+        let selectedCategory = null;
 
-        // Phase names
+        const categoryIcons = {
+            'Wetenschap': '🔬', 'Science': '🔬',
+            'Geschiedenis': '📜', 'History': '📜',
+            'Geografie': '🌍', 'Geography': '🌍',
+            'Sport': '⚽', 'Sports': '⚽',
+            'Muziek': '🎵', 'Music': '🎵',
+            'Film': '🎬', 'Films': '🎬', 'Movies': '🎬',
+            'Natuur': '🌿', 'Nature': '🌿',
+            'Kunst': '🎨', 'Art': '🎨',
+            'Literatuur': '📚', 'Literature': '📚',
+            'Technologie': '💻', 'Technology': '💻',
+            'Eten & Drinken': '🍕', 'Food': '🍕',
+            'default': '❓'
+        };
+
         const phaseNames = {
-            0: 'Question',
-            1: 'Answering', 
-            2: 'Reveal',
-            3: 'Scoreboard',
-            4: 'Finished',
+            0: 'Category Selection',
+            1: 'Question',
+            2: 'Answering',
+            3: 'Reveal',
+            4: 'Scoreboard',
+            5: 'Finished',
+            'CategorySelection': 'Category Selection',
             'Question': 'Question',
             'Answering': 'Answering',
             'Reveal': 'Reveal',
@@ -510,14 +588,11 @@
             'Finished': 'Finished'
         };
 
-        // Initialize
         async function init() {
             roomCodeEl.textContent = roomCode;
 
-            // Register GSAP Flip plugin
             if (typeof gsap !== 'undefined' && typeof Flip !== 'undefined') {
                 gsap.registerPlugin(Flip);
-                console.log('GSAP + Flip plugin loaded successfully');
             }
 
             client.on('onConnected', () => console.log('Connected'));
@@ -532,24 +607,24 @@
             console.log('Quiz state:', state);
 
             // Update header
-            questionNumberEl.textContent = state.questionNumber;
+            roundBadgeEl.textContent = `Round ${state.roundNumber || 1}`;
+            questionNumberEl.textContent = state.questionNumber || '-';
             totalQuestionsEl.textContent = state.totalQuestions;
             phaseBadgeEl.textContent = phaseNames[state.phase] || state.phase;
-
-            // Update timer
             updateTimer(state.remainingSeconds);
 
-            // Handle different phases
-            const phase = typeof state.phase === 'number' ? state.phase : 
-                ['Question', 'Answering', 'Reveal', 'Scoreboard', 'Finished'].indexOf(state.phase);
+            // Determine phase (handle both string and number)
+            const phaseMap = { 'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5 };
+            const phase = typeof state.phase === 'number' ? state.phase : (phaseMap[state.phase] ?? state.phase);
 
-            // Determine if we're transitioning to scoreboard (for animation)
-            const isEnteringScoreboard = phase === 3 && previousPhase !== 3;
+            const isEnteringScoreboard = phase === 4 && previousPhase !== 4;
 
-            if (phase === 4) { // Finished
+            if (phase === 5) { // Finished
                 showFinished(state);
-            } else if (phase === 3) { // Scoreboard
+            } else if (phase === 4) { // Scoreboard
                 showScoreboard(state, isEnteringScoreboard);
+            } else if (phase === 0) { // CategorySelection
+                showCategorySelection(state);
             } else { // Question, Answering, Reveal
                 showQuestion(state);
             }
@@ -559,29 +634,68 @@
 
         function updateTimer(seconds) {
             timerValueEl.textContent = seconds;
+            timerEl.classList.toggle('warning', seconds <= 5);
+        }
+
+        function getCategoryIcon(category) {
+            return categoryIcons[category] || categoryIcons['default'];
+        }
+
+        function showCategorySelection(state) {
+            hideAllViews();
+            categoryViewEl.classList.add('visible');
+
+            categorySubtitleEl.textContent = `Round ${state.roundNumber} - ${state.questionsInRound || 3} questions`;
+
+            // Find round leader info
+            const leaderId = state.roundLeaderPlayerId;
+            const leader = state.scoreboard?.find(p => p.playerId === leaderId);
             
-            if (seconds <= 5) {
-                timerEl.classList.add('warning');
-            } else {
-                timerEl.classList.remove('warning');
+            if (leader) {
+                leaderAvatarEl.textContent = GameUtils.getInitials(leader.displayName);
+                leaderNameEl.textContent = leader.displayName;
+            }
+
+            // Render categories
+            const categories = state.availableCategories || [];
+            categoriesGridEl.innerHTML = categories.map(cat => `
+                <div class="category-option ${selectedCategory === cat ? 'selected' : ''}" data-category="${escapeHtml(cat)}">
+                    <div class="category-icon">${getCategoryIcon(cat)}</div>
+                    <div class="category-name">${escapeHtml(cat)}</div>
+                </div>
+            `).join('');
+
+            // Animate categories in
+            if (typeof gsap !== 'undefined') {
+                gsap.from('.category-option', {
+                    opacity: 0,
+                    y: 30,
+                    stagger: 0.1,
+                    duration: 0.5,
+                    ease: 'back.out(1.4)'
+                });
             }
         }
 
         function showQuestion(state) {
+            hideAllViews();
             questionViewEl.classList.remove('hidden');
-            scoreboardViewEl.classList.remove('visible');
-            finishedViewEl.classList.add('hidden');
 
-            // Update question text
+            // Show current category
+            if (state.currentCategory) {
+                currentCategoryBannerEl.textContent = `${getCategoryIcon(state.currentCategory)} ${state.currentCategory}`;
+                currentCategoryBannerEl.style.display = 'inline-block';
+            } else {
+                currentCategoryBannerEl.style.display = 'none';
+            }
+
             questionTextEl.textContent = state.questionText;
 
-            // Update options
             const optionColors = { A: 'a', B: 'b', C: 'c', D: 'd' };
-            optionsGridEl.innerHTML = state.options.map(opt => {
+            optionsGridEl.innerHTML = (state.options || []).map(opt => {
                 let classes = 'option-card';
                 let indicator = '';
 
-                // In Reveal phase, highlight correct/incorrect
                 if (state.correctOptionKey) {
                     if (opt.key === state.correctOptionKey) {
                         classes += ' correct';
@@ -600,7 +714,6 @@
                 `;
             }).join('');
 
-            // Show/hide explanation
             if (state.explanation && state.correctOptionKey) {
                 explanationCardEl.classList.add('visible');
                 explanationTextEl.textContent = state.explanation;
@@ -608,79 +721,63 @@
                 explanationCardEl.classList.remove('visible');
             }
 
-            // Update answer status
-            answerStatusEl.innerHTML = state.answerStatuses.map(status => {
-                const answered = status.hasAnswered;
-                return `
-                    <div class="player-answer-badge ${answered ? 'answered' : 'waiting'}">
-                        ${answered ? '✓' : '⏳'} ${escapeHtml(status.displayName)}
-                    </div>
-                `;
-            }).join('');
+            answerStatusEl.innerHTML = (state.answerStatuses || []).map(status => `
+                <div class="player-answer-badge ${status.hasAnswered ? 'answered' : 'waiting'}">
+                    ${status.hasAnswered ? '✓' : '⏳'} ${escapeHtml(status.displayName)}
+                </div>
+            `).join('');
         }
 
         function showScoreboard(state, animate = true) {
-            questionViewEl.classList.add('hidden');
+            hideAllViews();
             scoreboardViewEl.classList.add('visible');
-            finishedViewEl.classList.add('hidden');
 
             scoreboardTitleEl.textContent = state.questionNumber >= state.totalQuestions 
                 ? '🏆 Final Scores' 
                 : '📊 Scores';
 
-            // Find round winner (player with highest delta this round)
             let roundWinnerId = null;
-            if (state.scoreboard.some(p => p.answeredCorrectly === true)) {
-                // Winner is whoever answered correctly (could be multiple, pick first by position)
-                const correctPlayers = state.scoreboard.filter(p => p.answeredCorrectly === true);
-                if (correctPlayers.length > 0) {
-                    roundWinnerId = correctPlayers[0].playerId;
-                }
+            const correctPlayers = (state.scoreboard || []).filter(p => p.answeredCorrectly === true);
+            if (correctPlayers.length > 0) {
+                roundWinnerId = correctPlayers[0].playerId;
             }
 
-            // Use animated scoreboard
-            scoreboardAnimator.applyUpdate(state.scoreboard, {
+            scoreboardAnimator.applyUpdate(state.scoreboard || [], {
                 animate: animate,
                 highlightWinnerId: roundWinnerId
             });
         }
 
         function showFinished(state) {
-            questionViewEl.classList.add('hidden');
-            scoreboardViewEl.classList.remove('visible');
+            hideAllViews();
             finishedViewEl.classList.remove('hidden');
 
-            const winner = state.scoreboard[0];
+            const winner = state.scoreboard?.[0];
             if (winner) {
                 winnerNameEl.textContent = winner.displayName;
                 winnerScoreEl.textContent = `${winner.score} points`;
 
-                // Animate winner reveal
                 if (typeof gsap !== 'undefined') {
-                    gsap.from(winnerNameEl, {
-                        opacity: 0,
-                        y: 30,
-                        duration: 0.6,
-                        ease: 'back.out(1.7)'
-                    });
-                    gsap.from(winnerScoreEl, {
-                        opacity: 0,
-                        y: 20,
-                        duration: 0.6,
-                        delay: 0.2,
-                        ease: 'power2.out'
-                    });
+                    gsap.from(winnerNameEl, { opacity: 0, y: 30, duration: 0.6, ease: 'back.out(1.7)' });
+                    gsap.from(winnerScoreEl, { opacity: 0, y: 20, duration: 0.6, delay: 0.2, ease: 'power2.out' });
                 }
             }
         }
 
+        function hideAllViews() {
+            categoryViewEl.classList.remove('visible');
+            questionViewEl.classList.add('hidden');
+            scoreboardViewEl.classList.remove('visible');
+            finishedViewEl.classList.add('hidden');
+        }
+
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // Start
         init();
     </script>
 </body>

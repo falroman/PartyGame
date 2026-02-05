@@ -20,6 +20,11 @@ public interface IQuizGameOrchestrator
     Task<(bool Success, ErrorDto? Error)> StartGameAsync(Room room);
 
     /// <summary>
+    /// Selects a category for the current round.
+    /// </summary>
+    Task<(bool Success, ErrorDto? Error)> SelectCategoryAsync(string roomCode, Guid playerId, string category);
+
+    /// <summary>
     /// Submits a player's answer.
     /// </summary>
     Task<(bool Success, ErrorDto? Error)> SubmitAnswerAsync(string roomCode, Guid playerId, string optionKey);
@@ -58,6 +63,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _roomTimers = new();
 
     // Game configuration
+    private const int CategorySelectionSeconds = 30; // Time to select category
     private const int QuestionDisplaySeconds = 3; // Time to show question before answering
     private const int AnsweringSeconds = 15; // Time to answer
     private const int RevealSeconds = 5; // Time to show correct answer
@@ -85,13 +91,68 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         var roomCode = room.Code.ToUpperInvariant();
 
         // Initialize game state
-        var state = _engine.InitializeGame(room, "nl-BE", 10);
+        var state = _engine.InitializeGame(room, "nl-BE", 9); // 3 rounds x 3 questions = 9
         _gameStates[roomCode] = state;
 
         _logger.LogInformation("Quiz game initialized for room {RoomCode}", roomCode);
 
-        // Start first question
-        await StartNextQuestionAsync(roomCode);
+        // Start first round (category selection)
+        await StartNewRoundAsync(roomCode);
+
+        return (true, null);
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool Success, ErrorDto? Error)> SelectCategoryAsync(string roomCode, Guid playerId, string category)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        if (!_gameStates.TryGetValue(normalizedCode, out var state))
+        {
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
+        }
+
+        // Check phase
+        if (state.Phase != QuizPhase.CategorySelection)
+        {
+            return (false, new ErrorDto(ErrorCodes.InvalidState, "Category selection is not active."));
+        }
+
+        // Check if player is the round leader
+        if (state.CurrentRound?.RoundLeaderPlayerId != playerId)
+        {
+            return (false, new ErrorDto(ErrorCodes.NotRoundLeader, "Only the round leader can select a category."));
+        }
+
+        // Check if category has already been selected
+        if (!string.IsNullOrEmpty(state.CurrentRound.Category))
+        {
+            return (false, new ErrorDto(ErrorCodes.RoundAlreadyStarted, "Category has already been selected."));
+        }
+
+        // Validate category
+        if (!_engine.IsValidCategory(state, category))
+        {
+            return (false, new ErrorDto(ErrorCodes.InvalidCategory, "Invalid category selection."));
+        }
+
+        // Set the category
+        _engine.SetRoundCategory(state, category);
+        
+        _logger.LogInformation("Round leader {PlayerId} selected category '{Category}' in room {RoomCode}", 
+            playerId, category, normalizedCode);
+
+        // Cancel the category selection timer
+        CancelTimer(normalizedCode);
+
+        // Broadcast state with selected category
+        await BroadcastStateAsync(normalizedCode, state);
+
+        // Short delay to show the selected category, then start first question
+        SchedulePhaseTransition(normalizedCode, 2, async () =>
+        {
+            await StartNextQuestionAsync(normalizedCode);
+        });
 
         return (true, null);
     }
@@ -181,7 +242,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         }
 
         CancelTimer(normalizedCode);
-        await StartNextQuestionAsync(normalizedCode);
+        await HandleScoreboardCompleteAsync(normalizedCode);
 
         return (true, null);
     }
@@ -200,6 +261,54 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         CancelTimer(normalizedCode);
         _gameStates.TryRemove(normalizedCode, out _);
         _logger.LogInformation("Quiz game stopped for room {RoomCode}", normalizedCode);
+    }
+
+    private async Task StartNewRoundAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        _engine.StartNewRound(state, CategorySelectionSeconds, _clock.UtcNow);
+        
+        _logger.LogInformation("Started round {RoundNumber} in room {RoomCode}, leader: {LeaderId}", 
+            state.RoundNumber, roomCode, state.CurrentRound?.RoundLeaderPlayerId);
+
+        await BroadcastStateAsync(roomCode, state);
+
+        // Schedule auto-select if no category chosen in time (picks first available)
+        SchedulePhaseTransition(roomCode, CategorySelectionSeconds, async () =>
+        {
+            await AutoSelectCategoryAsync(roomCode);
+        });
+    }
+
+    private async Task AutoSelectCategoryAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        // Only auto-select if still in CategorySelection phase
+        if (state.Phase != QuizPhase.CategorySelection)
+            return;
+
+        // Pick first available category
+        var category = state.AvailableCategories.FirstOrDefault();
+        if (string.IsNullOrEmpty(category))
+        {
+            _logger.LogWarning("No categories available for auto-select in room {RoomCode}", roomCode);
+            return;
+        }
+
+        _engine.SetRoundCategory(state, category);
+        _logger.LogInformation("Auto-selected category '{Category}' in room {RoomCode}", category, roomCode);
+
+        await BroadcastStateAsync(roomCode, state);
+
+        // Start first question
+        SchedulePhaseTransition(roomCode, 2, async () =>
+        {
+            await StartNextQuestionAsync(roomCode);
+        });
     }
 
     private async Task StartNextQuestionAsync(string roomCode)
@@ -270,26 +379,40 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         _engine.ShowScoreboard(state, ScoreboardSeconds, _clock.UtcNow);
         await BroadcastStateAsync(roomCode, state);
 
+        // Schedule next action after scoreboard
+        SchedulePhaseTransition(roomCode, ScoreboardSeconds, async () =>
+        {
+            await HandleScoreboardCompleteAsync(roomCode);
+        });
+    }
+
+    private async Task HandleScoreboardCompleteAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
         // Check if game should end
         if (!_engine.HasMoreQuestions(state))
         {
-            // Final scoreboard, then finish
-            SchedulePhaseTransition(roomCode, ScoreboardSeconds, async () =>
-            {
-                if (!_gameStates.TryGetValue(roomCode, out var s))
-                    return;
-                _engine.FinishGame(s);
-                await BroadcastStateAsync(roomCode, s);
-                UpdateRoomStatus(roomCode, RoomStatus.Finished);
-            });
+            // Game finished
+            _engine.FinishGame(state);
+            await BroadcastStateAsync(roomCode, state);
+            UpdateRoomStatus(roomCode, RoomStatus.Finished);
+            return;
+        }
+
+        // Check if round is complete
+        if (!_engine.HasMoreQuestionsInRound(state))
+        {
+            // Round complete, start new round
+            _logger.LogInformation("Round {RoundNumber} complete in room {RoomCode}, starting new round", 
+                state.RoundNumber, roomCode);
+            await StartNewRoundAsync(roomCode);
         }
         else
         {
-            // Auto-advance to next question after scoreboard
-            SchedulePhaseTransition(roomCode, ScoreboardSeconds, async () =>
-            {
-                await StartNextQuestionAsync(roomCode);
-            });
+            // More questions in this round
+            await StartNextQuestionAsync(roomCode);
         }
     }
 
@@ -353,10 +476,20 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         // In Reveal/Scoreboard/Finished, show correct answer
         var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.Scoreboard or QuizPhase.Finished;
 
+        // Calculate questions in current round
+        var questionsInRound = GameRound.QuestionsPerRound;
+        var currentQuestionInRound = state.CurrentRound?.CurrentQuestionIndex ?? 0;
+
         return new QuizGameStateDto(
             Phase: state.Phase,
             QuestionNumber: state.QuestionNumber,
             TotalQuestions: state.TotalQuestions,
+            RoundNumber: state.RoundNumber,
+            QuestionsInRound: questionsInRound,
+            CurrentQuestionInRound: currentQuestionInRound,
+            CurrentCategory: state.CurrentRound?.Category,
+            RoundLeaderPlayerId: state.CurrentRound?.RoundLeaderPlayerId,
+            AvailableCategories: state.Phase == QuizPhase.CategorySelection ? state.AvailableCategories : null,
             QuestionId: state.QuestionId,
             QuestionText: state.QuestionText,
             Options: state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList(),

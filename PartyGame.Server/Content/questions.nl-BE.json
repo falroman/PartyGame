@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packId": "general-knowledge-nl-be",
-  "title": "Algemene Kennis - België & Wereld",
+  "title": "Algemene Kennis - Belgiï¿½ & Wereld",
   "locale": "nl-BE",
   "tags": ["general", "trivia", "belgium"],
   "questions": [
@@ -9,7 +9,7 @@
       "id": "geo-001",
       "category": "Geografie",
       "difficulty": 1,
-      "question": "Wat is de hoofdstad van België?",
+      "question": "Wat is de hoofdstad van Belgiï¿½?",
       "options": [
         { "key": "A", "text": "Antwerpen" },
         { "key": "B", "text": "Brussel" },
@@ -17,7 +17,7 @@
         { "key": "D", "text": "Luik" }
       ],
       "correctOptionKey": "B",
-      "explanation": "Brussel is de hoofdstad van België en tevens de zetel van de Europese Unie.",
+      "explanation": "Brussel is de hoofdstad van Belgiï¿½ en tevens de zetel van de Europese Unie.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": ["belgium", "capitals"],
@@ -27,7 +27,7 @@
       "id": "geo-002",
       "category": "Geografie",
       "difficulty": 2,
-      "question": "Hoeveel provincies heeft België?",
+      "question": "Hoeveel provincies heeft Belgiï¿½?",
       "options": [
         { "key": "A", "text": "8" },
         { "key": "B", "text": "9" },
@@ -35,7 +35,7 @@
         { "key": "D", "text": "11" }
       ],
       "correctOptionKey": "C",
-      "explanation": "België heeft 10 provincies: 5 in Vlaanderen en 5 in Wallonië.",
+      "explanation": "Belgiï¿½ heeft 10 provincies: 5 in Vlaanderen en 5 in Walloniï¿½.",
       "shuffleOptions": true,
       "tags": ["belgium", "provinces"],
       "source": { "type": "original" }
@@ -61,7 +61,7 @@
       "id": "history-001",
       "category": "Geschiedenis",
       "difficulty": 2,
-      "question": "In welk jaar werd België onafhankelijk?",
+      "question": "In welk jaar werd Belgiï¿½ onafhankelijk?",
       "options": [
         { "key": "A", "text": "1815" },
         { "key": "B", "text": "1830" },
@@ -69,7 +69,7 @@
         { "key": "D", "text": "1848" }
       ],
       "correctOptionKey": "B",
-      "explanation": "De Belgische Revolutie vond plaats in 1830, waarna België onafhankelijk werd van Nederland.",
+      "explanation": "De Belgische Revolutie vond plaats in 1830, waarna Belgiï¿½ onafhankelijk werd van Nederland.",
       "shuffleOptions": true,
       "tags": ["belgium", "independence"],
       "source": { "type": "original" }
@@ -78,7 +78,7 @@
       "id": "history-002",
       "category": "Geschiedenis",
       "difficulty": 3,
-      "question": "Wie was de eerste koning van België?",
+      "question": "Wie was de eerste koning van Belgiï¿½?",
       "options": [
         { "key": "A", "text": "Leopold I" },
         { "key": "B", "text": "Leopold II" },
@@ -86,7 +86,7 @@
         { "key": "D", "text": "Boudewijn" }
       ],
       "correctOptionKey": "A",
-      "explanation": "Leopold I van Saksen-Coburg werd in 1831 de eerste koning van België.",
+      "explanation": "Leopold I van Saksen-Coburg werd in 1831 de eerste koning van Belgiï¿½.",
       "shuffleOptions": true,
       "tags": ["belgium", "royalty"],
       "source": { "type": "original" }
@@ -180,7 +180,7 @@
       "id": "culture-001",
       "category": "Cultuur",
       "difficulty": 1,
-      "question": "Welk stripfiguur werd door de Belg Hergé gecreëerd?",
+      "question": "Welk stripfiguur werd door de Belg Hergï¿½ gecreï¿½erd?",
       "options": [
         { "key": "A", "text": "Asterix" },
         { "key": "B", "text": "Kuifje" },
@@ -188,7 +188,7 @@
         { "key": "D", "text": "De Smurfen" }
       ],
       "correctOptionKey": "B",
-      "explanation": "Kuifje (Tintin) werd gecreëerd door de Belgische striptekenaar Hergé in 1929.",
+      "explanation": "Kuifje (Tintin) werd gecreï¿½erd door de Belgische striptekenaar Hergï¿½ in 1929.",
       "shuffleOptions": true,
       "tags": ["comics", "belgium", "herge"],
       "source": { "type": "original" }
@@ -214,7 +214,7 @@
       "id": "food-001",
       "category": "Eten & Drinken",
       "difficulty": 1,
-      "question": "Welk gerecht wordt traditioneel in België met frieten gegeten?",
+      "question": "Welk gerecht wordt traditioneel in Belgiï¿½ met frieten gegeten?",
       "options": [
         { "key": "A", "text": "Currywurst" },
         { "key": "B", "text": "Moules-frites" },
@@ -231,7 +231,7 @@
       "id": "geo-004",
       "category": "Geografie",
       "difficulty": 4,
-      "question": "Wat is de hoogste berg van België?",
+      "question": "Wat is de hoogste berg van Belgiï¿½?",
       "options": [
         { "key": "A", "text": "Signal de Botrange" },
         { "key": "B", "text": "Baraque Michel" },
@@ -239,7 +239,7 @@
         { "key": "D", "text": "Kluisberg" }
       ],
       "correctOptionKey": "A",
-      "explanation": "Signal de Botrange in de Hoge Venen is met 694 meter het hoogste punt van België.",
+      "explanation": "Signal de Botrange in de Hoge Venen is met 694 meter het hoogste punt van Belgiï¿½.",
       "shuffleOptions": true,
       "tags": ["belgium", "mountains"],
       "source": { "type": "original" }
@@ -248,7 +248,7 @@
       "id": "science-004",
       "category": "Wetenschap",
       "difficulty": 4,
-      "question": "Wat is de snelheid van het licht in vacuüm (afgerond)?",
+      "question": "Wat is de snelheid van het licht in vacuï¿½m (afgerond)?",
       "options": [
         { "key": "A", "text": "300.000 km/s" },
         { "key": "B", "text": "150.000 km/s" },

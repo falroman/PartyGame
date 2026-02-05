@@ -16,17 +16,42 @@ public class QuizGameState
     /// <summary>
     /// Current phase of the quiz.
     /// </summary>
-    public QuizPhase Phase { get; set; } = QuizPhase.Question;
+    public QuizPhase Phase { get; set; } = QuizPhase.CategorySelection;
 
     /// <summary>
-    /// Current question number (1-based).
+    /// Current question number (1-based, across all rounds).
     /// </summary>
-    public int QuestionNumber { get; set; } = 1;
+    public int QuestionNumber { get; set; } = 0;
 
     /// <summary>
     /// Total number of questions in the game.
     /// </summary>
     public int TotalQuestions { get; set; } = 10;
+
+    /// <summary>
+    /// Current round number (1-based).
+    /// </summary>
+    public int RoundNumber { get; set; } = 0;
+
+    /// <summary>
+    /// The current active round.
+    /// </summary>
+    public GameRound? CurrentRound { get; set; }
+
+    /// <summary>
+    /// List of completed rounds.
+    /// </summary>
+    public List<GameRound> CompletedRounds { get; set; } = new();
+
+    /// <summary>
+    /// Categories that have already been used in previous rounds.
+    /// </summary>
+    public HashSet<string> UsedCategories { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Categories available for selection in the current CategorySelection phase.
+    /// </summary>
+    public List<string> AvailableCategories { get; set; } = new();
 
     /// <summary>
     /// ID of the current question.
@@ -77,6 +102,16 @@ public class QuizGameState
     /// Points awarded for a correct answer.
     /// </summary>
     public int PointsPerCorrectAnswer { get; set; } = 100;
+
+    /// <summary>
+    /// Player IDs who have already been round leaders (to ensure fairness).
+    /// </summary>
+    public List<Guid> PreviousRoundLeaders { get; set; } = new();
+
+    /// <summary>
+    /// Locale for questions (e.g., "nl-BE").
+    /// </summary>
+    public string Locale { get; set; } = "nl-BE";
 }
 
 /// <summary>

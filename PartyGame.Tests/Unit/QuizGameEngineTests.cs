@@ -47,7 +47,7 @@ public class QuizGameEngineTests
         return (room, playerIds);
     }
 
-    private QuizQuestion CreateTestQuestion(string id = "q1")
+    private QuizQuestion CreateTestQuestion(string id = "q1", string category = "Math")
     {
         return new QuizQuestion
         {
@@ -63,7 +63,7 @@ public class QuizGameEngineTests
             CorrectOptionKey = "B",
             Explanation = "2 + 2 = 4",
             Difficulty = 1,
-            Category = "Math"
+            Category = category
         };
     }
 
@@ -76,6 +76,15 @@ public class QuizGameEngineTests
             Arg.Any<IEnumerable<string>?>(),
             Arg.Any<IEnumerable<string>?>())
             .Returns(question);
+    }
+
+    private void SetupCategoryMock(params string[] categories)
+    {
+        _questionBank.GetRandomCategories(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<IEnumerable<string>?>())
+            .Returns(categories.ToList());
     }
 
     #region InitializeGame Tests
@@ -92,9 +101,11 @@ public class QuizGameEngineTests
         // Assert
         state.Should().NotBeNull();
         state.RoomCode.Should().Be("TEST");
-        state.Phase.Should().Be(QuizPhase.Question);
+        state.Phase.Should().Be(QuizPhase.CategorySelection);
         state.QuestionNumber.Should().Be(0);
         state.TotalQuestions.Should().Be(10);
+        state.RoundNumber.Should().Be(0);
+        state.Locale.Should().Be("nl-BE");
         state.Scoreboard.Should().HaveCount(3);
         state.Answers.Should().HaveCount(3);
         state.Scoreboard.Should().AllSatisfy(p => p.Score.Should().Be(0));
@@ -115,6 +126,167 @@ public class QuizGameEngineTests
 
     #endregion
 
+    #region StartNewRound Tests
+
+    [Fact]
+    public void StartNewRound_CreatesNewRoundWithCorrectLeader()
+    {
+        // Arrange
+        var (room, playerIds) = CreateTestRoom(3);
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 9);
+
+        // Act
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+
+        // Assert
+        state.RoundNumber.Should().Be(1);
+        state.CurrentRound.Should().NotBeNull();
+        state.CurrentRound!.RoundLeaderPlayerId.Should().NotBeEmpty();
+        state.Phase.Should().Be(QuizPhase.CategorySelection);
+        state.AvailableCategories.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void StartNewRound_ExcludesUsedCategories()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom(2);
+        SetupCategoryMock("Science", "History", "Geography");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        state.UsedCategories.Add("Math"); // Previously used
+
+        // Act
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+
+        // Assert
+        _questionBank.Received().GetRandomCategories(
+            "nl-BE",
+            3,
+            Arg.Is<IEnumerable<string>>(x => x.Contains("Math")));
+    }
+
+    #endregion
+
+    #region SelectRoundLeader Tests
+
+    [Fact]
+    public void SelectRoundLeader_PicksPlayerWithLowestScore()
+    {
+        // Arrange
+        var (room, playerIds) = CreateTestRoom(3);
+        var state = _sut.InitializeGame(room, "nl-BE", 9);
+
+        // Give players different scores
+        state.Scoreboard.First(p => p.PlayerId == playerIds[0]).Score = 200;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[1]).Score = 100;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[2]).Score = 300;
+
+        // Act
+        var leaderId = _sut.SelectRoundLeader(state);
+
+        // Assert
+        leaderId.Should().Be(playerIds[1]); // Player with 100 points
+    }
+
+    [Fact]
+    public void SelectRoundLeader_BreaksTiesByOrder()
+    {
+        // Arrange
+        var (room, playerIds) = CreateTestRoom(3);
+        var state = _sut.InitializeGame(room, "nl-BE", 9);
+
+        // All players have same score
+        state.Scoreboard.ForEach(p => p.Score = 100);
+
+        // Act
+        var leaderId = _sut.SelectRoundLeader(state);
+
+        // Assert
+        leaderId.Should().Be(playerIds[0]); // First player in list
+    }
+
+    [Fact]
+    public void SelectRoundLeader_AvoidsSameLeaderTwiceInRow()
+    {
+        // Arrange
+        var (room, playerIds) = CreateTestRoom(3);
+        var state = _sut.InitializeGame(room, "nl-BE", 9);
+
+        // Player 0 has lowest score but was last leader
+        state.Scoreboard.First(p => p.PlayerId == playerIds[0]).Score = 0;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[1]).Score = 100;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[2]).Score = 200;
+        state.PreviousRoundLeaders.Add(playerIds[0]); // Was already leader
+
+        // Act
+        var leaderId = _sut.SelectRoundLeader(state);
+
+        // Assert
+        leaderId.Should().Be(playerIds[1]); // Next lowest scorer
+    }
+
+    #endregion
+
+    #region SetRoundCategory Tests
+
+    [Fact]
+    public void SetRoundCategory_SetsCategoryAndMarksAsUsed()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom(2);
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+
+        // Act
+        _sut.SetRoundCategory(state, "Science");
+
+        // Assert
+        state.CurrentRound!.Category.Should().Be("Science");
+        state.UsedCategories.Should().Contain("Science");
+    }
+
+    #endregion
+
+    #region IsValidCategory Tests
+
+    [Fact]
+    public void IsValidCategory_ReturnsTrueForAvailableCategory()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom(2);
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+
+        // Act & Assert
+        _sut.IsValidCategory(state, "Math").Should().BeTrue();
+        _sut.IsValidCategory(state, "Science").Should().BeTrue();
+        _sut.IsValidCategory(state, "math").Should().BeTrue(); // Case insensitive
+    }
+
+    [Fact]
+    public void IsValidCategory_ReturnsFalseForUnavailableCategory()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom(2);
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 9);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+
+        // Act & Assert
+        _sut.IsValidCategory(state, "Geography").Should().BeFalse();
+        _sut.IsValidCategory(state, "").Should().BeFalse();
+    }
+
+    #endregion
+
     #region StartNewQuestion Tests
 
     [Fact]
@@ -124,8 +296,11 @@ public class QuizGameEngineTests
         var (room, _) = CreateTestRoom();
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         var now = DateTime.UtcNow;
 
         // Act
@@ -143,14 +318,42 @@ public class QuizGameEngineTests
     }
 
     [Fact]
+    public void StartNewQuestion_FiltersByRoundCategory()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom();
+        var question = CreateTestQuestion();
+        SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Science");
+
+        // Act
+        _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
+
+        // Assert
+        _questionBank.Received().GetRandom(
+            "nl-BE",
+            "Science",
+            Arg.Any<int?>(),
+            Arg.Any<IEnumerable<string>?>(),
+            Arg.Any<IEnumerable<string>?>());
+    }
+
+    [Fact]
     public void StartNewQuestion_ClearsPreviousAnswers()
     {
         // Arrange
         var (room, playerIds) = CreateTestRoom();
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         state.Answers[playerIds[0]] = "A"; // Simulate previous answer
 
         // Act
@@ -172,14 +375,77 @@ public class QuizGameEngineTests
             Arg.Any<IEnumerable<string>?>(),
             Arg.Any<IEnumerable<string>?>())
             .Returns((QuizQuestion?)null);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
 
         // Act
         var newState = _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
 
         // Assert
         newState.Should().BeNull();
+    }
+
+    [Fact]
+    public void StartNewQuestion_IncrementsRoundQuestionIndex()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom();
+        var question = CreateTestQuestion();
+        SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
+
+        // Act
+        _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
+
+        // Assert
+        state.CurrentRound!.CurrentQuestionIndex.Should().Be(1);
+    }
+
+    #endregion
+
+    #region HasMoreQuestionsInRound Tests
+
+    [Fact]
+    public void HasMoreQuestionsInRound_ReturnsTrueWhenMoreQuestionsAvailable()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom();
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        state.CurrentRound!.CurrentQuestionIndex = 1;
+
+        // Act
+        var result = _sut.HasMoreQuestionsInRound(state);
+
+        // Assert
+        result.Should().BeTrue(); // 3 questions per round, only 1 done
+    }
+
+    [Fact]
+    public void HasMoreQuestionsInRound_ReturnsFalseWhenRoundComplete()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom();
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        state.CurrentRound!.CurrentQuestionIndex = 3; // All 3 questions done
+
+        // Act
+        var result = _sut.HasMoreQuestionsInRound(state);
+
+        // Assert
+        result.Should().BeFalse();
     }
 
     #endregion
@@ -193,8 +459,11 @@ public class QuizGameEngineTests
         var (room, playerIds) = CreateTestRoom();
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
         _sut.StartAnsweringPhase(state, 15, DateTime.UtcNow);
 
@@ -212,8 +481,11 @@ public class QuizGameEngineTests
         var (room, playerIds) = CreateTestRoom();
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
         _sut.StartAnsweringPhase(state, 15, DateTime.UtcNow);
 
@@ -232,8 +504,11 @@ public class QuizGameEngineTests
         var (room, playerIds) = CreateTestRoom();
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
         _sut.StartAnsweringPhase(state, 15, DateTime.UtcNow);
 
@@ -255,8 +530,11 @@ public class QuizGameEngineTests
         var (room, playerIds) = CreateTestRoom(2);
         var question = CreateTestQuestion(); // Correct answer is "B"
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
         _sut.StartAnsweringPhase(state, 15, DateTime.UtcNow);
 
@@ -288,8 +566,11 @@ public class QuizGameEngineTests
         var (room, playerIds) = CreateTestRoom(3);
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
         _sut.StartAnsweringPhase(state, 15, DateTime.UtcNow);
 
@@ -319,8 +600,11 @@ public class QuizGameEngineTests
         var (room, _) = CreateTestRoom();
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 3, DateTime.UtcNow);
         var now = DateTime.UtcNow;
 
@@ -360,6 +644,24 @@ public class QuizGameEngineTests
         state.Phase.Should().Be(QuizPhase.Finished);
     }
 
+    [Fact]
+    public void FinishGame_CompletesCurrentRound()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom();
+        SetupCategoryMock("Math", "Science", "History");
+
+        var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+
+        // Act
+        _sut.FinishGame(state);
+
+        // Assert
+        state.CurrentRound!.IsCompleted.Should().BeTrue();
+        state.CompletedRounds.Should().HaveCount(1);
+    }
+
     #endregion
 
     #region Helper Method Tests
@@ -371,8 +673,11 @@ public class QuizGameEngineTests
         var (room, playerIds) = CreateTestRoom(2);
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
         _sut.StartAnsweringPhase(state, 15, DateTime.UtcNow);
 
@@ -393,8 +698,11 @@ public class QuizGameEngineTests
         var (room, playerIds) = CreateTestRoom(2);
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
         _sut.StartAnsweringPhase(state, 15, DateTime.UtcNow);
 
@@ -445,8 +753,11 @@ public class QuizGameEngineTests
         var (room, _) = CreateTestRoom();
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
 
         // Act & Assert
@@ -464,8 +775,11 @@ public class QuizGameEngineTests
         var (room, _) = CreateTestRoom();
         var question = CreateTestQuestion();
         SetupQuestionBankMock(question);
+        SetupCategoryMock("Math", "Science", "History");
 
         var state = _sut.InitializeGame(room, "nl-BE", 10);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
         _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
 
         // Act & Assert

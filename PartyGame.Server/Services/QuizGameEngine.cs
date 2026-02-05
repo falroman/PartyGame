@@ -25,9 +25,11 @@ public class QuizGameEngine : IQuizGameEngine
         var state = new QuizGameState
         {
             RoomCode = room.Code,
-            Phase = QuizPhase.Question,
-            QuestionNumber = 0, // Will be incremented when first question starts
+            Locale = locale,
+            Phase = QuizPhase.CategorySelection,
+            QuestionNumber = 0,
             TotalQuestions = totalQuestions,
+            RoundNumber = 0,
             Scoreboard = room.Players.Values
                 .Select((p, idx) => new PlayerScoreState
                 {
@@ -49,13 +51,114 @@ public class QuizGameEngine : IQuizGameEngine
     }
 
     /// <inheritdoc />
+    public QuizGameState StartNewRound(QuizGameState state, int categorySelectionDurationSeconds, DateTime currentTime)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        // Complete current round if exists
+        if (state.CurrentRound != null && !state.CurrentRound.IsCompleted)
+        {
+            state.CurrentRound.IsCompleted = true;
+            state.CompletedRounds.Add(state.CurrentRound);
+        }
+
+        // Select round leader
+        var roundLeaderId = SelectRoundLeader(state);
+
+        // Create new round
+        state.RoundNumber++;
+        state.CurrentRound = GameRound.Create(roundLeaderId);
+        state.PreviousRoundLeaders.Add(roundLeaderId);
+
+        // Get available categories (excluding used ones)
+        var availableCategories = _questionBank.GetRandomCategories(
+            state.Locale,
+            count: 3,
+            excludeCategories: state.UsedCategories);
+
+        state.AvailableCategories = availableCategories.ToList();
+        state.Phase = QuizPhase.CategorySelection;
+        state.PhaseEndsUtc = currentTime.AddSeconds(categorySelectionDurationSeconds);
+
+        return state;
+    }
+
+    /// <inheritdoc />
+    public Guid SelectRoundLeader(QuizGameState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        // Get the last round leader (to avoid picking same player twice in a row)
+        var lastRoundLeader = state.PreviousRoundLeaders.LastOrDefault();
+
+        // Find player(s) with lowest score
+        var minScore = state.Scoreboard.Min(p => p.Score);
+        var lowestScorePlayers = state.Scoreboard
+            .Where(p => p.Score == minScore)
+            .ToList();
+
+        // If there's only one player with lowest score
+        if (lowestScorePlayers.Count == 1)
+        {
+            var candidate = lowestScorePlayers[0].PlayerId;
+            
+            // If this player was the last leader, pick the next lowest scorer
+            if (candidate == lastRoundLeader && state.Scoreboard.Count > 1)
+            {
+                var nextLowestScore = state.Scoreboard
+                    .Where(p => p.PlayerId != lastRoundLeader)
+                    .Min(p => p.Score);
+                    
+                return state.Scoreboard
+                    .Where(p => p.Score == nextLowestScore && p.PlayerId != lastRoundLeader)
+                    .First().PlayerId;
+            }
+            
+            return candidate;
+        }
+
+        // Multiple players tied - pick first one that wasn't the last leader
+        var nonLastLeader = lowestScorePlayers
+            .FirstOrDefault(p => p.PlayerId != lastRoundLeader);
+
+        if (nonLastLeader != null)
+        {
+            return nonLastLeader.PlayerId;
+        }
+
+        // Fallback: just pick first player with lowest score
+        return lowestScorePlayers[0].PlayerId;
+    }
+
+    /// <inheritdoc />
+    public QuizGameState SetRoundCategory(QuizGameState state, string category)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentException.ThrowIfNullOrWhiteSpace(category);
+
+        if (state.CurrentRound == null)
+        {
+            throw new InvalidOperationException("No active round to set category for.");
+        }
+
+        state.CurrentRound.Category = category;
+        state.UsedCategories.Add(category);
+
+        return state;
+    }
+
+    /// <inheritdoc />
     public QuizGameState? StartNewQuestion(QuizGameState state, int questionDurationSeconds, DateTime currentTime)
     {
         ArgumentNullException.ThrowIfNull(state);
 
+        // Determine category filter
+        string? categoryFilter = state.CurrentRound?.Category;
+
         // Get a random question that hasn't been used
         var question = _questionBank.GetRandom(
-            locale: "nl-BE", // TODO: Make configurable
+            locale: state.Locale,
+            category: categoryFilter,
             excludeIds: state.UsedQuestionIds);
 
         if (question == null)
@@ -77,11 +180,17 @@ public class QuizGameEngine : IQuizGameEngine
         state.Options = question.Options
             .Select(o => new QuizOptionState { Key = o.Key, Text = o.Text })
             .ToList();
-        state.CorrectOptionKey = question.CorrectOptionKey; // Stored but not sent to clients yet
+        state.CorrectOptionKey = question.CorrectOptionKey;
         state.Explanation = question.Explanation;
         state.Phase = QuizPhase.Question;
         state.PhaseEndsUtc = currentTime.AddSeconds(questionDurationSeconds);
         state.UsedQuestionIds.Add(question.Id);
+
+        // Increment question index in current round
+        if (state.CurrentRound != null)
+        {
+            state.CurrentRound.CurrentQuestionIndex++;
+        }
 
         // Reset answer status in scoreboard
         foreach (var player in state.Scoreboard)
@@ -180,6 +289,13 @@ public class QuizGameEngine : IQuizGameEngine
     {
         ArgumentNullException.ThrowIfNull(state);
 
+        // Complete current round if exists
+        if (state.CurrentRound != null && !state.CurrentRound.IsCompleted)
+        {
+            state.CurrentRound.IsCompleted = true;
+            state.CompletedRounds.Add(state.CurrentRound);
+        }
+
         state.Phase = QuizPhase.Finished;
         UpdatePositions(state.Scoreboard);
 
@@ -193,6 +309,19 @@ public class QuizGameEngine : IQuizGameEngine
 
         return playerIds.All(id => 
             state.Answers.TryGetValue(id, out var answer) && answer != null);
+    }
+
+    /// <inheritdoc />
+    public bool HasMoreQuestionsInRound(QuizGameState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        if (state.CurrentRound == null)
+        {
+            return false;
+        }
+
+        return state.CurrentRound.CurrentQuestionIndex < GameRound.QuestionsPerRound;
     }
 
     /// <inheritdoc />
@@ -213,6 +342,17 @@ public class QuizGameEngine : IQuizGameEngine
 
         return state.Options.Any(o => 
             o.Key.Equals(optionKey, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <inheritdoc />
+    public bool IsValidCategory(QuizGameState state, string category)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        if (string.IsNullOrWhiteSpace(category))
+            return false;
+
+        return state.AvailableCategories.Contains(category, StringComparer.OrdinalIgnoreCase);
     }
 
     private static void UpdatePositions(List<PlayerScoreState> scoreboard)

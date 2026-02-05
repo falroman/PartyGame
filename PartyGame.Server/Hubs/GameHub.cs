@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using PartyGame.Core.Enums;
+using PartyGame.Core.Models.Quiz;
 using PartyGame.Server.DTOs;
 using PartyGame.Server.Services;
 
@@ -170,6 +171,25 @@ public class GameHub : Hub
     }
 
     /// <summary>
+    /// Host selects a category for the current round. Only the host can select a category.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="playerId">The player's ID (must be the round host).</param>
+    /// <param name="category">The selected category name.</param>
+    public async Task SelectCategory(string roomCode, Guid playerId, string category)
+    {
+        _logger.LogInformation("SelectCategory called for room {RoomCode} by player {PlayerId} with category '{Category}'", 
+            roomCode, playerId, category);
+
+        var (success, error) = await _quizOrchestrator.SelectCategoryAsync(roomCode, playerId, category);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+        }
+    }
+
+    /// <summary>
     /// Player submits their answer for the current question.
     /// </summary>
     /// <param name="roomCode">The room code.</param>
@@ -205,7 +225,7 @@ public class GameHub : Hub
         }
     }
 
-    private QuizGameStateDto CreateSafeQuizDto(Core.Models.Quiz.QuizGameState state)
+    private QuizGameStateDto CreateSafeQuizDto(QuizGameState state)
     {
         var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.Scoreboard or QuizPhase.Finished;
         var remainingSeconds = Math.Max(0, (int)(state.PhaseEndsUtc - DateTime.UtcNow).TotalSeconds);
@@ -218,10 +238,19 @@ public class GameHub : Hub
             ))
             .ToList();
 
+        var questionsInRound = GameRound.QuestionsPerRound;
+        var currentQuestionInRound = state.CurrentRound?.CurrentQuestionIndex ?? 0;
+
         return new QuizGameStateDto(
             Phase: state.Phase,
             QuestionNumber: state.QuestionNumber,
             TotalQuestions: state.TotalQuestions,
+            RoundNumber: state.RoundNumber,
+            QuestionsInRound: questionsInRound,
+            CurrentQuestionInRound: currentQuestionInRound,
+            CurrentCategory: state.CurrentRound?.Category,
+            RoundLeaderPlayerId: state.CurrentRound?.RoundLeaderPlayerId,
+            AvailableCategories: state.Phase == QuizPhase.CategorySelection ? state.AvailableCategories : null,
             QuestionId: state.QuestionId,
             QuestionText: state.QuestionText,
             Options: state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList(),

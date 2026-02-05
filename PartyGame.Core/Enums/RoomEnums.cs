@@ -49,10 +49,26 @@ public enum GameType
 }
 
 /// <summary>
+/// Represents the type of a game round.
+/// </summary>
+public enum RoundType
+{
+    /// <summary>
+    /// A round with questions from a single category, chosen by a player.
+    /// </summary>
+    CategoryQuiz
+}
+
+/// <summary>
 /// Represents the phases of a quiz game.
 /// </summary>
 public enum QuizPhase
 {
+    /// <summary>
+    /// Waiting for the round leader to select a category.
+    /// </summary>
+    CategorySelection,
+
     /// <summary>
     /// Displaying the question to players (pre-answer phase).
     /// </summary>

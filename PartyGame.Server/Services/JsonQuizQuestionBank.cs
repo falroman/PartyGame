@@ -332,4 +332,57 @@ public class JsonQuizQuestionBank : IQuizQuestionBank
 
         return 0;
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> GetRandomCategories(
+        string locale,
+        int count = 3,
+        IEnumerable<string>? excludeCategories = null)
+    {
+        var normalizedLocale = locale.ToLowerInvariant();
+        
+        if (!_categoriesByLocale.TryGetValue(normalizedLocale, out var allCategories))
+        {
+            return Array.Empty<string>();
+        }
+
+        var availableCategories = allCategories.AsEnumerable();
+
+        if (excludeCategories != null)
+        {
+            var excludeSet = new HashSet<string>(excludeCategories, StringComparer.OrdinalIgnoreCase);
+            availableCategories = availableCategories.Where(c => !excludeSet.Contains(c));
+        }
+
+        var categoryList = availableCategories.ToList();
+        
+        if (categoryList.Count <= count)
+        {
+            // Return all available categories if we don't have enough
+            return categoryList.OrderBy(_ => _random.Next()).ToList();
+        }
+
+        // Fisher-Yates shuffle and take first 'count' elements
+        for (int i = categoryList.Count - 1; i > 0; i--)
+        {
+            int j = _random.Next(i + 1);
+            (categoryList[i], categoryList[j]) = (categoryList[j], categoryList[i]);
+        }
+
+        return categoryList.Take(count).ToList();
+    }
+
+    /// <inheritdoc />
+    public int GetCountByCategory(string locale, string category)
+    {
+        var normalizedLocale = locale.ToLowerInvariant();
+        
+        if (!_questionsByLocale.TryGetValue(normalizedLocale, out var questions))
+        {
+            return 0;
+        }
+
+        return questions.Count(q => 
+            q.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
+    }
 }

@@ -179,6 +179,20 @@ class GameClient {
     }
 
     /**
+     * Select category for current round (round leader only)
+     * @param {string} category - The selected category name
+     */
+    async selectCategory(category) {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.playerId) {
+            throw new Error('No player ID set');
+        }
+        await this.connection.invoke('SelectCategory', this.roomCode, this.playerId, category);
+    }
+
+    /**
      * Advance to next question (host only)
      */
     async nextQuestion() {
@@ -346,7 +360,10 @@ const GameUtils = {
             'NOT_HOST': 'Only the host can perform this action.',
             'CONNECTION_FAILED': 'Failed to connect to server. Please try again.',
             'INVALID_STATE': 'This action cannot be performed in the current game state.',
-            'NOT_ENOUGH_PLAYERS': 'At least 2 players are required to start the game.'
+            'NOT_ENOUGH_PLAYERS': 'At least 2 players are required to start the game.',
+            'NOT_ROUND_LEADER': 'Only the round leader can select a category.',
+            'INVALID_CATEGORY': 'Invalid category selection.',
+            'ROUND_ALREADY_STARTED': 'The round has already started.'
         };
         
         if (error && error.code && errorMessages[error.code]) {

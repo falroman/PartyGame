@@ -35,4 +35,13 @@ public static class ErrorCodes
 
     /// <summary>Not enough players to start the game (minimum 2 required).</summary>
     public const string NotEnoughPlayers = "NOT_ENOUGH_PLAYERS";
+
+    /// <summary>Only the round leader can select a category.</summary>
+    public const string NotRoundLeader = "NOT_ROUND_LEADER";
+
+    /// <summary>The selected category is not available or invalid.</summary>
+    public const string InvalidCategory = "INVALID_CATEGORY";
+
+    /// <summary>The round has already started (category already selected).</summary>
+    public const string RoundAlreadyStarted = "ROUND_ALREADY_STARTED";
 }

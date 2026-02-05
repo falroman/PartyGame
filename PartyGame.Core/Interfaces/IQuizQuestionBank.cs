@@ -52,9 +52,29 @@ public interface IQuizQuestionBank
     IReadOnlySet<string> GetAvailableCategories(string locale);
 
     /// <summary>
+    /// Gets a random selection of categories for a locale.
+    /// </summary>
+    /// <param name="locale">The locale code.</param>
+    /// <param name="count">Number of categories to return.</param>
+    /// <param name="excludeCategories">Categories to exclude from selection.</param>
+    /// <returns>List of randomly selected categories.</returns>
+    IReadOnlyList<string> GetRandomCategories(
+        string locale,
+        int count = 3,
+        IEnumerable<string>? excludeCategories = null);
+
+    /// <summary>
     /// Gets the total count of questions for a locale.
     /// </summary>
     /// <param name="locale">The locale code.</param>
     /// <returns>Number of questions available.</returns>
     int GetCount(string locale);
+
+    /// <summary>
+    /// Gets the count of questions for a specific category.
+    /// </summary>
+    /// <param name="locale">The locale code.</param>
+    /// <param name="category">The category name.</param>
+    /// <returns>Number of questions in the category.</returns>
+    int GetCountByCategory(string locale, string category);
 }
