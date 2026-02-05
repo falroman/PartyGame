@@ -208,7 +208,9 @@
         }
 
         .scoreboard-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: 24px;
             padding: 32px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
@@ -226,28 +228,45 @@
             list-style: none;
             padding: 0;
             margin: 0;
+            position: relative;
         }
 
+        /* Glassy scoreboard rows */
         .scoreboard-item {
             display: flex;
             align-items: center;
-            padding: 16px;
-            border-radius: 12px;
+            padding: 16px 20px;
+            border-radius: 16px;
             margin-bottom: 12px;
-            background: var(--bg-color);
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: visible;
+        }
+
+        .scoreboard-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
         }
 
         .scoreboard-item.first {
-            background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.9) 0%, rgba(255, 179, 71, 0.9) 100%);
+            border: 2px solid rgba(255, 215, 0, 0.5);
             color: #333;
         }
 
         .scoreboard-item.second {
-            background: linear-gradient(135deg, #c0c0c0 0%, #a0a0a0 100%);
+            background: linear-gradient(135deg, rgba(192, 192, 192, 0.9) 0%, rgba(169, 169, 169, 0.9) 100%);
+            border: 2px solid rgba(192, 192, 192, 0.5);
         }
 
         .scoreboard-item.third {
-            background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.9) 0%, rgba(184, 115, 51, 0.9) 100%);
+            border: 2px solid rgba(205, 127, 50, 0.5);
             color: white;
         }
 
@@ -265,36 +284,89 @@
             gap: 12px;
         }
 
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.875rem;
+        }
+
         .scoreboard-name {
             font-weight: 600;
             font-size: 1.125rem;
         }
 
-        .scoreboard-score {
-            font-size: 1.5rem;
+        /* Score with tabular nums */
+        .score-value {
+            font-size: 1.75rem;
             font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            min-width: 80px;
+            text-align: right;
         }
 
-        .scoreboard-delta {
+        /* Delta badge */
+        .delta-badge {
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 4px 12px;
+            border-radius: 20px;
             font-size: 0.875rem;
-            margin-left: 8px;
+            font-weight: bold;
+            white-space: nowrap;
+            z-index: 10;
+            pointer-events: none;
         }
 
-        .scoreboard-delta.positive {
-            color: var(--success-color);
+        .delta-badge.positive {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .delta-badge.negative {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Winner highlight pulse */
+        .scoreboard-item.winner-highlight {
+            z-index: 5;
+        }
+
+        @keyframes winner-glow {
+            0%, 100% { box-shadow: 0 0 20px 5px rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: 0 0 40px 15px rgba(255, 215, 0, 0.6); }
         }
 
         /* Finished State */
         .game-finished {
             text-align: center;
             padding: 60px 40px;
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
             border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
 
         .winner-crown {
             font-size: 6rem;
             margin-bottom: 24px;
+            animation: crown-bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes crown-bounce {
+            0%, 100% { transform: translateY(0) rotate(-5deg); }
+            50% { transform: translateY(-10px) rotate(5deg); }
         }
 
         .winner-name {
@@ -324,7 +396,7 @@
                 <span class="phase-badge" id="phaseBadge">Question</span>
             </div>
             <div class="timer" id="timer">
-                <span>??</span>
+                <span>⏱️</span>
                 <span id="timerValue">15</span>
             </div>
             <div>
@@ -345,7 +417,7 @@
                 </div>
 
                 <div class="explanation-card" id="explanationCard">
-                    <div class="explanation-title">?? Explanation</div>
+                    <div class="explanation-title">💡 Explanation</div>
                     <div id="explanationText"></div>
                 </div>
 
@@ -358,16 +430,16 @@
             <!-- Scoreboard View -->
             <div class="scoreboard-container" id="scoreboardView">
                 <div class="scoreboard-card">
-                    <div class="scoreboard-title" id="scoreboardTitle">?? Scoreboard</div>
+                    <div class="scoreboard-title" id="scoreboardTitle">🏆 Scoreboard</div>
                     <ul class="scoreboard-list" id="scoreboardList">
-                        <!-- Scores will be inserted here -->
+                        <!-- Scores will be inserted here via ScoreboardAnimations -->
                     </ul>
                 </div>
             </div>
 
             <!-- Game Finished View -->
             <div class="game-finished hidden" id="finishedView">
-                <div class="winner-crown">??</div>
+                <div class="winner-crown">👑</div>
                 <div class="winner-name" id="winnerName">Winner!</div>
                 <div class="winner-score" id="winnerScore">0 points</div>
                 <button class="btn btn-primary btn-large" style="margin-top: 32px;" onclick="window.location.href='/tv.html'">
@@ -377,10 +449,15 @@
         </div>
     </div>
 
+    <!-- GSAP + Flip Plugin for animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
+    
     <!-- SignalR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="/js/config.js"></script>
     <script src="/js/game-client.js"></script>
+    <script src="/js/scoreboard-animations.js"></script>
     <script>
         // Get room code from URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -392,6 +469,9 @@
 
         const SERVER_URL = GameConfig.getServerUrl();
         const client = new GameClient(SERVER_URL);
+
+        // Initialize scoreboard animations
+        const scoreboardAnimator = new ScoreboardAnimations('#scoreboardList');
 
         // DOM Elements
         const questionNumberEl = document.getElementById('questionNumber');
@@ -413,8 +493,8 @@
         const winnerNameEl = document.getElementById('winnerName');
         const winnerScoreEl = document.getElementById('winnerScore');
 
-        // Timer interval
-        let timerInterval = null;
+        // Track previous phase for animation decisions
+        let previousPhase = null;
 
         // Phase names
         const phaseNames = {
@@ -433,6 +513,12 @@
         // Initialize
         async function init() {
             roomCodeEl.textContent = roomCode;
+
+            // Register GSAP Flip plugin
+            if (typeof gsap !== 'undefined' && typeof Flip !== 'undefined') {
+                gsap.registerPlugin(Flip);
+                console.log('GSAP + Flip plugin loaded successfully');
+            }
 
             client.on('onConnected', () => console.log('Connected'));
             client.on('onQuizStateUpdated', onQuizStateUpdated);
@@ -457,13 +543,18 @@
             const phase = typeof state.phase === 'number' ? state.phase : 
                 ['Question', 'Answering', 'Reveal', 'Scoreboard', 'Finished'].indexOf(state.phase);
 
+            // Determine if we're transitioning to scoreboard (for animation)
+            const isEnteringScoreboard = phase === 3 && previousPhase !== 3;
+
             if (phase === 4) { // Finished
                 showFinished(state);
             } else if (phase === 3) { // Scoreboard
-                showScoreboard(state);
+                showScoreboard(state, isEnteringScoreboard);
             } else { // Question, Answering, Reveal
                 showQuestion(state);
             }
+
+            previousPhase = phase;
         }
 
         function updateTimer(seconds) {
@@ -494,7 +585,7 @@
                 if (state.correctOptionKey) {
                     if (opt.key === state.correctOptionKey) {
                         classes += ' correct';
-                        indicator = '?';
+                        indicator = '✓';
                     } else {
                         classes += ' incorrect';
                     }
@@ -522,49 +613,36 @@
                 const answered = status.hasAnswered;
                 return `
                     <div class="player-answer-badge ${answered ? 'answered' : 'waiting'}">
-                        ${answered ? '?' : '?'} ${escapeHtml(status.displayName)}
+                        ${answered ? '✓' : '⏳'} ${escapeHtml(status.displayName)}
                     </div>
                 `;
             }).join('');
         }
 
-        function showScoreboard(state) {
+        function showScoreboard(state, animate = true) {
             questionViewEl.classList.add('hidden');
             scoreboardViewEl.classList.add('visible');
             finishedViewEl.classList.add('hidden');
 
             scoreboardTitleEl.textContent = state.questionNumber >= state.totalQuestions 
-                ? '?? Final Scores' 
-                : '?? Scores';
+                ? '🏆 Final Scores' 
+                : '📊 Scores';
 
-            scoreboardListEl.innerHTML = state.scoreboard.map((player, idx) => {
-                let positionClass = '';
-                if (player.position === 1) positionClass = 'first';
-                else if (player.position === 2) positionClass = 'second';
-                else if (player.position === 3) positionClass = 'third';
-
-                const positionEmoji = player.position === 1 ? '??' : 
-                                     player.position === 2 ? '??' : 
-                                     player.position === 3 ? '??' : `#${player.position}`;
-
-                let delta = '';
-                if (player.answeredCorrectly === true) {
-                    delta = '<span class="scoreboard-delta positive">+100</span>';
-                } else if (player.answeredCorrectly === false) {
-                    delta = '<span class="scoreboard-delta">+0</span>';
+            // Find round winner (player with highest delta this round)
+            let roundWinnerId = null;
+            if (state.scoreboard.some(p => p.answeredCorrectly === true)) {
+                // Winner is whoever answered correctly (could be multiple, pick first by position)
+                const correctPlayers = state.scoreboard.filter(p => p.answeredCorrectly === true);
+                if (correctPlayers.length > 0) {
+                    roundWinnerId = correctPlayers[0].playerId;
                 }
+            }
 
-                return `
-                    <li class="scoreboard-item ${positionClass}">
-                        <div class="scoreboard-position">${positionEmoji}</div>
-                        <div class="scoreboard-player">
-                            <div class="player-avatar">${GameUtils.getInitials(player.displayName)}</div>
-                            <div class="scoreboard-name">${escapeHtml(player.displayName)}</div>
-                        </div>
-                        <div class="scoreboard-score">${player.score}${delta}</div>
-                    </li>
-                `;
-            }).join('');
+            // Use animated scoreboard
+            scoreboardAnimator.applyUpdate(state.scoreboard, {
+                animate: animate,
+                highlightWinnerId: roundWinnerId
+            });
         }
 
         function showFinished(state) {
@@ -576,6 +654,23 @@
             if (winner) {
                 winnerNameEl.textContent = winner.displayName;
                 winnerScoreEl.textContent = `${winner.score} points`;
+
+                // Animate winner reveal
+                if (typeof gsap !== 'undefined') {
+                    gsap.from(winnerNameEl, {
+                        opacity: 0,
+                        y: 30,
+                        duration: 0.6,
+                        ease: 'back.out(1.7)'
+                    });
+                    gsap.from(winnerScoreEl, {
+                        opacity: 0,
+                        y: 20,
+                        duration: 0.6,
+                        delay: 0.2,
+                        ease: 'power2.out'
+                    });
+                }
             }
         }
 

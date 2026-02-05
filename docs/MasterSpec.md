@@ -567,6 +567,35 @@ int GetCount(string locale);
   - Added 8 integration tests for quiz gameplay
   - 145 total tests passing
 
+### v0.10.0 (Scoreboard Animations)
+- **Animation Module**:
+  - Added `scoreboard-animations.js` - centralized animation module
+  - `ScoreboardAnimations` class with:
+    - FLIP reorder animation when ranks change
+    - Score tick-up counter animation (0 ? 100)
+    - Delta badge pop/fade animation (+100)
+    - Winner highlight pulse glow
+
+- **Dependencies**:
+  - Added GSAP 3.12.5 (CDN) for animations
+  - Added GSAP Flip plugin for smooth reorder transitions
+
+- **Styling Updates**:
+  - Glassy scoreboard rows with backdrop-filter blur
+  - Tabular nums for stable score widths
+  - Gradient delta badges (green/red)
+  - Medal gradients for top 3 positions
+  - Winner glow pulse animation
+
+- **Graceful Degradation**:
+  - Scoreboard works without animations if GSAP fails to load
+  - Console warnings for missing libraries
+
+- **Documentation**:
+  - Added Section 13: Scoreboard Animations in MasterSpec.md
+  - Animation API documentation
+  - Test checklist for animations
+
 ---
 
 ## 12. Quiz Game Flow
@@ -656,3 +685,96 @@ interface PlayerScoreDto {
 - [ ] After 10 questions, game shows "Finished" with winner
 - [ ] Phone shows final position and "Play Again" button
 - [ ] TV "Back to Lobby" returns to tv.html
+
+---
+
+## 13. Scoreboard Animations (TV View)
+
+### 13.1 Overview
+
+The TV scoreboard features professional, TV-worthy animations using GSAP + Flip plugin:
+
+- **FLIP Reorder**: Smooth position changes when ranks shift
+- **Score Tick-up**: Counter animation from old to new score
+- **Delta Badge**: Pop/fade badge showing points gained (+100)
+- **Winner Highlight**: Golden pulse glow on round winner
+
+### 13.2 Architecture
+
+```
+PartyGame.Web/wwwroot/
+??? js/
+?   ??? scoreboard-animations.js   # Animation module (ScoreboardAnimations class)
+??? quiz-tv.html                   # TV view with GSAP integration
+```
+
+### 13.3 Dependencies (CDN)
+
+```html
+<!-- GSAP Core + Flip Plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
+```
+
+### 13.4 ScoreboardAnimations API
+
+```javascript
+const animator = new ScoreboardAnimations('#scoreboardList');
+
+// Apply scoreboard update with animations
+animator.applyUpdate(scoreboard, {
+    animate: true,                    // Enable animations
+    highlightWinnerId: 'player-guid'  // Optional: highlight specific player
+});
+
+// Reset stored scores (call when starting new game)
+animator.reset();
+```
+
+### 13.5 DOM Structure (Required)
+
+Each scoreboard row must have:
+```html
+<li class="scoreboard-item" data-player-id="GUID">
+    <div class="scoreboard-position">??</div>
+    <div class="scoreboard-player">
+        <div class="player-avatar">JD</div>
+        <div class="scoreboard-name">John Doe</div>
+    </div>
+    <div class="score-value" data-score="500">500</div>
+</li>
+```
+
+### 13.6 Styling Features
+
+- **Glassy rows**: `backdrop-filter: blur()` with subtle borders
+- **Tabular nums**: `font-variant-numeric: tabular-nums` for stable score widths
+- **Delta badge pill**: Absolute positioned, gradient background
+- **Winner glow**: Box-shadow pulse animation
+- **Medal gradients**: Gold/Silver/Bronze for top 3
+
+### 13.7 Graceful Degradation
+
+If GSAP/Flip fails to load:
+- Scoreboard renders normally without animations
+- Console warnings indicate missing libraries
+- No JavaScript errors
+
+### 13.8 Performance Notes
+
+- DOM nodes reused via `data-player-id` matching (no thrashing)
+- FLIP uses transforms (GPU-accelerated)
+- Staggered animations prevent simultaneous repaints
+- Tested with 10-12 players smoothly
+
+### 13.9 Animation Test Checklist
+
+- [ ] Start quiz game with 3+ players on TV
+- [ ] After first question, scoreboard phase shows
+- [ ] **Tick-up**: Scores animate from 0 to new value
+- [ ] **Delta badge**: "+100" appears and fades out
+- [ ] **Winner glow**: Correct answerer has golden pulse
+- [ ] Answer second question, different player correct
+- [ ] **FLIP reorder**: Rows smoothly swap positions
+- [ ] Verify no console errors
+- [ ] Verify smooth 60fps on TV display
