@@ -61,6 +61,211 @@
             margin-top: 4px;
         }
 
+        /* Booster Card */
+        .booster-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 16px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+        }
+
+        .booster-card.used {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            opacity: 0.7;
+            box-shadow: none;
+        }
+
+        .booster-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .booster-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .booster-name {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+
+        .booster-description {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            line-height: 1.3;
+        }
+
+        .booster-status {
+            font-size: 0.65rem;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .booster-activate-btn {
+            background: white;
+            color: #f5576c;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-weight: bold;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .booster-activate-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .booster-activate-btn:disabled {
+            background: rgba(255,255,255,0.3);
+            color: rgba(255,255,255,0.7);
+            cursor: not-allowed;
+        }
+
+        .booster-used-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        /* Target Selection Modal */
+        .target-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .target-modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 320px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .target-modal-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .target-modal-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .target-player-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-color);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            transition: all 0.2s;
+        }
+
+        .target-player-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .target-player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .target-player-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .target-player-score {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+
+        .target-modal-cancel {
+            width: 100%;
+            padding: 12px;
+            background: none;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            animation: toastSlide 0.3s ease;
+            text-align: center;
+            max-width: 300px;
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        }
+
+        .toast.blocked {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+
+        @keyframes toastSlide {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         /* Category Selection */
         .category-selection-phone {
             background: white;
@@ -214,6 +419,7 @@
         .answer-btn.selected { box-shadow: 0 0 0 4px white, 0 0 0 8px currentColor; }
         .answer-btn.correct { background: #27ae60 !important; color: white !important; }
         .answer-btn.incorrect { background: #95a5a6 !important; }
+        .answer-btn.removed { opacity: 0.3; pointer-events: none; }
 
         .answer-key { font-size: 2rem; }
         .answer-text { font-size: 0.875rem; text-align: center; line-height: 1.2; }
@@ -276,6 +482,23 @@
         .score-name { flex: 1; font-weight: 500; }
         .score-value { font-weight: bold; }
 
+        /* Noped state */
+        .noped-overlay {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 24px;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .noped-icon { font-size: 4rem; margin-bottom: 16px; }
+        .noped-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 8px; color: #e74c3c; }
+        .noped-subtitle { color: var(--text-light); }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -287,6 +510,20 @@
             <div class="round-info" id="roundInfo">Round 1</div>
             <div class="timer-display" id="timer">--</div>
             <div class="phase-indicator" id="phaseIndicator">Get ready...</div>
+        </div>
+
+        <!-- Booster Card -->
+        <div class="booster-card hidden" id="boosterCard">
+            <div class="booster-icon" id="boosterIcon">🎁</div>
+            <div class="booster-info">
+                <div class="booster-name" id="boosterName">Loading...</div>
+                <div class="booster-description" id="boosterDescription">...</div>
+                <div class="booster-status" id="boosterStatus"></div>
+            </div>
+            <button class="booster-activate-btn" id="boosterActivateBtn" onclick="onBoosterActivateClick()">
+                Use
+            </button>
+            <div class="booster-used-badge hidden" id="boosterUsedBadge">✓ Used</div>
         </div>
 
         <!-- Category Selection (for round leader) -->
@@ -312,6 +549,13 @@
             <div class="current-category-badge" id="currentCategoryBadge">Category</div>
             <div class="question-number" id="questionNumber">Question 1 of 9</div>
             <div class="question-text-phone" id="questionText">Loading...</div>
+        </div>
+
+        <!-- Noped State (blocked from answering) -->
+        <div class="noped-overlay hidden" id="nopedState">
+            <div class="noped-icon">🚫</div>
+            <div class="noped-title">Blocked!</div>
+            <div class="noped-subtitle">Someone used NOPE on you.<br>You can't answer this question.</div>
         </div>
 
         <!-- Answer Buttons (shown during Answering phase) -->
@@ -372,6 +616,19 @@
         </div>
     </div>
 
+    <!-- Target Selection Modal -->
+    <div class="target-modal hidden" id="targetModal">
+        <div class="target-modal-content">
+            <div class="target-modal-title" id="targetModalTitle">Select Target</div>
+            <div class="target-modal-subtitle" id="targetModalSubtitle">Choose a player</div>
+            <div id="targetPlayerList"></div>
+            <button class="target-modal-cancel" onclick="closeTargetModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <!-- SignalR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="/js/config.js"></script>
@@ -395,6 +652,10 @@
         let previousPhase = null;
         let myScore = 0;
         let selectedCategory = null;
+        let isSelectingCategory = false; // Debounce flag for category selection
+        let currentState = null;
+        let myBooster = null;
+        let pendingBoosterActivation = null;
         
         // Smooth timer state
         let phaseEndsUtc = null;
@@ -404,6 +665,13 @@
         const roundInfoEl = document.getElementById('roundInfo');
         const timerEl = document.getElementById('timer');
         const phaseIndicatorEl = document.getElementById('phaseIndicator');
+        const boosterCardEl = document.getElementById('boosterCard');
+        const boosterIconEl = document.getElementById('boosterIcon');
+        const boosterNameEl = document.getElementById('boosterName');
+        const boosterDescriptionEl = document.getElementById('boosterDescription');
+        const boosterStatusEl = document.getElementById('boosterStatus');
+        const boosterActivateBtnEl = document.getElementById('boosterActivateBtn');
+        const boosterUsedBadgeEl = document.getElementById('boosterUsedBadge');
         const categorySelectionStateEl = document.getElementById('categorySelectionState');
         const categorySubtitleEl = document.getElementById('categorySubtitle');
         const categoryButtonsEl = document.getElementById('categoryButtons');
@@ -413,6 +681,7 @@
         const currentCategoryBadgeEl = document.getElementById('currentCategoryBadge');
         const questionNumberEl = document.getElementById('questionNumber');
         const questionTextEl = document.getElementById('questionText');
+        const nopedStateEl = document.getElementById('nopedState');
         const answerButtonsEl = document.getElementById('answerButtons');
         const waitingStateEl = document.getElementById('waitingState');
         const submittedStateEl = document.getElementById('submittedState');
@@ -426,6 +695,11 @@
         const finishedStateEl = document.getElementById('finishedState');
         const finishedTitleEl = document.getElementById('finishedTitle');
         const finishedSubtitleEl = document.getElementById('finishedSubtitle');
+        const targetModalEl = document.getElementById('targetModal');
+        const targetModalTitleEl = document.getElementById('targetModalTitle');
+        const targetModalSubtitleEl = document.getElementById('targetModalSubtitle');
+        const targetPlayerListEl = document.getElementById('targetPlayerList');
+        const toastContainerEl = document.getElementById('toastContainer');
 
         const categoryIcons = {
             'Wetenschap': '🔬', 'Science': '🔬',
@@ -455,9 +729,10 @@
         async function init() {
             client.on('onConnected', () => console.log('Connected'));
             client.on('onQuizStateUpdated', onQuizStateUpdated);
+            client.on('onBoosterActivated', onBoosterActivated);
             client.on('onError', (error) => {
                 console.error('Error:', error);
-                alert(GameUtils.formatError(error));
+                showToast(GameUtils.formatError(error), 'error');
             });
 
             await client.connect();
@@ -488,12 +763,12 @@
 
         function onQuizStateUpdated(state) {
             console.log('Quiz state:', state);
+            currentState = state;
 
             // Update header
             roundInfoEl.textContent = `Round ${state.roundNumber || 1}${state.currentCategory ? ` - ${state.currentCategory}` : ''}`;
             
             // Update phaseEndsUtc for smooth timer
-            // Calculate from remainingSeconds if phaseEndsUtc not provided
             if (state.phaseEndsUtc) {
                 phaseEndsUtc = new Date(state.phaseEndsUtc).getTime();
             } else if (state.remainingSeconds !== undefined) {
@@ -505,9 +780,10 @@
             const phaseMap = { 'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5 };
             const phase = typeof state.phase === 'number' ? state.phase : (phaseMap[state.phase] ?? state.phase);
             
-            // Detect phase transition - reset selectedCategory when entering CategorySelection
-            if (phase === 0 && previousPhase !== 0) {
+            // Detect phase transition - reset category selection state when entering CategorySelection
+            if (phase === 0 && currentPhase !== 0) {
                 selectedCategory = null;
+                isSelectingCategory = false;
             }
             
             previousPhase = currentPhase;
@@ -539,6 +815,9 @@
             const myScoreData = (state.scoreboard || []).find(s => s.playerId === playerId);
             if (myScoreData) myScore = myScoreData.score;
 
+            // Update booster UI
+            updateBoosterUI(state);
+
             // Handle different phases
             if (phase === 5) { // Finished
                 showFinished(state);
@@ -547,7 +826,11 @@
             } else if (phase === 3) { // Reveal
                 showReveal(state, myScoreData);
             } else if (phase === 2) { // Answering
-                if (myStatus?.hasAnswered) {
+                // Check if noped
+                const myEffects = state.myAnsweringEffects;
+                if (myEffects?.isNoped) {
+                    showNoped();
+                } else if (myStatus?.hasAnswered) {
                     showSubmitted();
                 } else {
                     showAnswering(state);
@@ -559,6 +842,153 @@
             }
         }
 
+        function updateBoosterUI(state) {
+            // Find my booster
+            myBooster = (state.playerBoosters || []).find(b => b.playerId === playerId);
+            
+            if (!myBooster) {
+                boosterCardEl.classList.add('hidden');
+                return;
+            }
+
+            boosterCardEl.classList.remove('hidden');
+            boosterCardEl.classList.toggle('used', myBooster.isUsed);
+            
+            // Get booster type as number
+            const boosterTypeNum = typeof myBooster.boosterType === 'number' 
+                ? myBooster.boosterType 
+                : GameUtils.BoosterTypes[myBooster.boosterType] ?? 0;
+            
+            boosterIconEl.textContent = GameUtils.getBoosterEmoji(boosterTypeNum);
+            boosterNameEl.textContent = myBooster.boosterName || 'Unknown Booster';
+            boosterDescriptionEl.textContent = myBooster.boosterDescription || '';
+            
+            if (myBooster.isUsed) {
+                boosterActivateBtnEl.classList.add('hidden');
+                boosterUsedBadgeEl.classList.remove('hidden');
+                boosterStatusEl.textContent = '';
+            } else {
+                boosterActivateBtnEl.classList.remove('hidden');
+                boosterUsedBadgeEl.classList.add('hidden');
+                
+                // Check if can activate in current phase
+                const canActivate = canActivateBooster(state, myBooster);
+                boosterActivateBtnEl.disabled = !canActivate;
+                
+                if (canActivate) {
+                    boosterStatusEl.textContent = '✨ Ready to use!';
+                } else {
+                    const validPhases = (myBooster.validPhases || []).join(', ');
+                    boosterStatusEl.textContent = `Use during: ${validPhases}`;
+                }
+            }
+        }
+
+        function canActivateBooster(state, booster) {
+            if (!booster || booster.isUsed) return false;
+            
+            // Get current phase name
+            const phaseNames = ['CategorySelection', 'Question', 'Answering', 'Reveal', 'Scoreboard', 'Finished'];
+            const currentPhaseName = phaseNames[currentPhase] || '';
+            
+            // Check if current phase is in valid phases
+            const validPhases = booster.validPhases || [];
+            return validPhases.includes(currentPhaseName);
+        }
+
+        function onBoosterActivateClick() {
+            if (!myBooster || myBooster.isUsed) return;
+            
+            const boosterTypeNum = typeof myBooster.boosterType === 'number' 
+                ? myBooster.boosterType 
+                : GameUtils.BoosterTypes[myBooster.boosterType] ?? 0;
+            
+            if (myBooster.requiresTarget) {
+                showTargetModal(boosterTypeNum);
+            } else {
+                activateBooster(boosterTypeNum, null);
+            }
+        }
+
+        function showTargetModal(boosterType) {
+            pendingBoosterActivation = boosterType;
+            
+            // Get other players from scoreboard
+            const otherPlayers = (currentState?.scoreboard || []).filter(p => p.playerId !== playerId);
+            
+            targetModalTitleEl.textContent = `${myBooster.boosterName}`;
+            targetModalSubtitleEl.textContent = 'Select a target player';
+            
+            targetPlayerListEl.innerHTML = otherPlayers.map(player => `
+                <button class="target-player-btn" onclick="selectTarget('${player.playerId}')">
+                    <div class="target-player-avatar">${GameUtils.getInitials(player.displayName)}</div>
+                    <div class="target-player-name">${escapeHtml(player.displayName)}</div>
+                    <div class="target-player-score">${player.score} pts</div>
+                </button>
+            `).join('');
+            
+            targetModalEl.classList.remove('hidden');
+        }
+
+        function closeTargetModal() {
+            targetModalEl.classList.add('hidden');
+            pendingBoosterActivation = null;
+        }
+
+        function selectTarget(targetId) {
+            if (pendingBoosterActivation !== null) {
+                activateBooster(pendingBoosterActivation, targetId);
+            }
+            closeTargetModal();
+        }
+
+        async function activateBooster(boosterType, targetId) {
+            try {
+                await client.activateBooster(boosterType, targetId);
+            } catch (error) {
+                console.error('Failed to activate booster:', error);
+                showToast('Failed to activate booster', 'error');
+            }
+        }
+
+        function onBoosterActivated(event) {
+            console.log('Booster activated event:', event);
+            
+            let message;
+            let toastClass = 'success';
+            
+            const emoji = GameUtils.getBoosterEmoji(typeof event.boosterType === 'number' 
+                ? event.boosterType 
+                : GameUtils.BoosterTypes[event.boosterType] ?? 0);
+            
+            if (event.wasBlockedByShield) {
+                message = `${emoji} ${event.activatorName}'s ${event.boosterName} was blocked by ${event.shieldBlockerName}'s Shield! 🛡️`;
+                toastClass = 'blocked';
+            } else if (event.targetName) {
+                message = `${emoji} ${event.activatorName} used ${event.boosterName} on ${event.targetName}!`;
+            } else {
+                message = `${emoji} ${event.activatorName} activated ${event.boosterName}!`;
+            }
+            
+            showToast(message, toastClass);
+        }
+
+        function showToast(message, type = 'default') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toastContainerEl.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /* Category selection */
+        let debounceTimeout = null;
+
         function showCategorySelection(state) {
             hideAll();
             
@@ -569,7 +999,7 @@
                 categorySelectionStateEl.classList.remove('hidden');
                 categorySubtitleEl.textContent = "You're the round leader!";
                 
-                // Render category buttons - use raw category value in data attribute
+                // Render category buttons
                 const categories = state.availableCategories || [];
                 categoryButtonsEl.innerHTML = categories.map(cat => `
                     <button class="category-btn ${selectedCategory === cat ? 'selected' : ''}" data-category="${cat}">
@@ -578,7 +1008,7 @@
                     </button>
                 `).join('');
 
-                // Add click handlers - buttons are NOT disabled initially
+                // Add click handlers
                 document.querySelectorAll('.category-btn').forEach(btn => {
                     btn.addEventListener('click', () => selectCategory(btn.dataset.category));
                 });
@@ -589,27 +1019,35 @@
         }
 
         async function selectCategory(category) {
-            if (selectedCategory) return;
+            // Only allow in CategorySelection phase
+            if (currentPhase !== 0) return;
             
+            // Debounce: prevent multiple rapid clicks during request
+            if (isSelectingCategory) return;
+            
+            isSelectingCategory = true;
             selectedCategory = category;
             
-            // Visual feedback - disable all buttons after selection
+            // UI: highlight selection and temporarily disable buttons during request
             document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.disabled = true;
-                if (btn.dataset.category === category) {
-                    btn.classList.add('selected');
-                }
+                btn.classList.toggle('selected', btn.dataset.category === category);
+                btn.disabled = true; // Temporarily disable during request
             });
 
             try {
                 await client.selectCategory(category);
+                // Success: buttons stay disabled until server changes phase
+                // (hideAll() will be called when phase changes)
             } catch (error) {
                 console.error('Failed to select category:', error);
+                // On error: reset state so user can try again
                 selectedCategory = null;
                 document.querySelectorAll('.category-btn').forEach(btn => {
                     btn.disabled = false;
                     btn.classList.remove('selected');
                 });
+            } finally {
+                isSelectingCategory = false;
             }
         }
 
@@ -620,14 +1058,29 @@
             selectedAnswer = null;
         }
 
+        function showNoped() {
+            hideAll();
+            questionCardEl.classList.remove('hidden');
+            nopedStateEl.classList.remove('hidden');
+        }
+
         function showAnswering(state) {
             hideAll();
             questionCardEl.classList.remove('hidden');
             answerButtonsEl.classList.remove('hidden');
 
+            // Check for 50/50 effect
+            const removedOptions = state.myAnsweringEffects?.removedOptions || [];
+
             answerBtns.forEach(btn => {
                 btn.disabled = false;
-                btn.classList.remove('selected', 'correct', 'incorrect');
+                btn.classList.remove('selected', 'correct', 'incorrect', 'removed');
+                
+                // Apply 50/50 effect
+                if (removedOptions.includes(btn.dataset.key)) {
+                    btn.classList.add('removed');
+                    btn.disabled = true;
+                }
             });
             selectedAnswer = null;
         }
@@ -644,16 +1097,18 @@
             resultStateEl.classList.remove('hidden');
 
             const wasCorrect = myScoreData?.answeredCorrectly === true;
+            const pointsEarned = myScoreData?.pointsEarned || 0;
+            
             resultIconEl.textContent = wasCorrect ? '✓' : '✗';
             resultTextEl.textContent = wasCorrect ? 'Correct!' : 'Wrong!';
-            resultPointsEl.textContent = wasCorrect ? '+100 points' : '+0 points';
-            resultPointsEl.classList.toggle('positive', wasCorrect);
+            resultPointsEl.textContent = pointsEarned > 0 ? `+${pointsEarned} points` : '+0 points';
+            resultPointsEl.classList.toggle('positive', pointsEarned > 0);
 
             answerButtonsEl.classList.remove('hidden');
             answerBtns.forEach(btn => {
                 btn.disabled = true;
                 const key = btn.dataset.key;
-                btn.classList.remove('selected');
+                btn.classList.remove('selected', 'removed');
                 
                 if (key === state.correctOptionKey) {
                     btn.classList.add('correct');
@@ -707,6 +1162,7 @@
             waitingForCategoryStateEl.classList.add('hidden');
             questionCardEl.classList.add('hidden');
             waitingStateEl.classList.add('hidden');
+            nopedStateEl.classList.add('hidden');
             submittedStateEl.classList.add('hidden');
             answerButtonsEl.classList.add('hidden');
             resultStateEl.classList.add('hidden');

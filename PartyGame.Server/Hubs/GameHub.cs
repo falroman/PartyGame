@@ -19,6 +19,7 @@ public class GameHub : Hub
     private readonly IQuizGameOrchestrator _quizOrchestrator;
     private readonly IAutoplayService _autoplayService;
     private readonly IBoosterService _boosterService;
+    private readonly IRoomStore _roomStore;
     private readonly AutoplayOptions _autoplayOptions;
     private readonly IHostEnvironment _environment;
     private readonly ILogger<GameHub> _logger;
@@ -28,6 +29,7 @@ public class GameHub : Hub
         IQuizGameOrchestrator quizOrchestrator,
         IAutoplayService autoplayService,
         IBoosterService boosterService,
+        IRoomStore roomStore,
         IOptions<AutoplayOptions> autoplayOptions,
         IHostEnvironment environment,
         ILogger<GameHub> logger)
@@ -36,6 +38,7 @@ public class GameHub : Hub
         _quizOrchestrator = quizOrchestrator;
         _autoplayService = autoplayService;
         _boosterService = boosterService;
+        _roomStore = roomStore;
         _autoplayOptions = autoplayOptions.Value;
         _environment = environment;
         _logger = logger;
@@ -462,11 +465,41 @@ public class GameHub : Hub
         // Broadcast booster activation to all clients in room
         await Clients.Group($"room:{roomCode.ToUpperInvariant()}").SendAsync("BoosterActivated", eventDto);
 
-        // Broadcast updated game state
-        await Clients.Group($"room:{roomCode.ToUpperInvariant()}").SendAsync("QuizStateUpdated", CreateSafeQuizDto(state));
+        // Broadcast updated game state per-player (with private data)
+        await BroadcastQuizStatePerPlayerAsync(roomCode.ToUpperInvariant(), state);
 
         _logger.LogInformation("Booster {BoosterType} activated successfully by {PlayerId} in room {RoomCode}",
             boosterTypeEnum, playerId, roomCode);
+    }
+
+    /// <summary>
+    /// Broadcasts quiz state to all players with per-player private data.
+    /// </summary>
+    private async Task BroadcastQuizStatePerPlayerAsync(string roomCode, QuizGameState state)
+    {
+        if (!_roomStore.TryGetRoom(roomCode, out var room) || room == null)
+        {
+            // Fallback to simple broadcast
+            await Clients.Group($"room:{roomCode}").SendAsync("QuizStateUpdated", CreateSafeQuizDto(state));
+            return;
+        }
+
+        // Send to host (no private player data)
+        if (!string.IsNullOrEmpty(room.HostConnectionId))
+        {
+            var hostDto = CreateSafeQuizDto(state);
+            await Clients.Client(room.HostConnectionId).SendAsync("QuizStateUpdated", hostDto);
+        }
+
+        // Send to each player with their private data
+        foreach (var player in room.Players.Values)
+        {
+            if (player.IsBot || string.IsNullOrEmpty(player.ConnectionId))
+                continue;
+
+            var playerDto = CreateSafeQuizDto(state, player.PlayerId);
+            await Clients.Client(player.ConnectionId).SendAsync("QuizStateUpdated", playerDto);
+        }
     }
 
     private QuizGameStateDto CreateSafeQuizDto(QuizGameState state, Guid? requestingPlayerId = null)

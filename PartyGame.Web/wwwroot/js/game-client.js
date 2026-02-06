@@ -18,6 +18,7 @@ class GameClient {
             onGameStarted: () => {},
             onQuizStateUpdated: () => {},
             onAutoplayStatusUpdated: () => {},
+            onBoosterActivated: () => {},
             onError: () => {}
         };
     }
@@ -53,6 +54,11 @@ class GameClient {
         this.connection.on('AutoplayStatusUpdated', (status) => {
             console.log('AutoplayStatusUpdated:', status);
             this.callbacks.onAutoplayStatusUpdated(status);
+        });
+
+        this.connection.on('BoosterActivated', (event) => {
+            console.log('BoosterActivated:', event);
+            this.callbacks.onBoosterActivated(event);
         });
 
         this.connection.on('Error', (error) => {
@@ -281,6 +287,21 @@ class GameClient {
             this.callbacks[event] = callback;
         }
     }
+
+    /**
+     * Activate the player's booster
+     * @param {number} boosterType - The booster type enum value
+     * @param {string|null} targetPlayerId - Optional target player ID (GUID string)
+     */
+    async activateBooster(boosterType, targetPlayerId = null) {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.playerId) {
+            throw new Error('No player ID set');
+        }
+        await this.connection.invoke('ActivateBooster', this.roomCode, this.playerId, boosterType, targetPlayerId);
+    }
 }
 
 /**
@@ -423,7 +444,12 @@ const GameUtils = {
             'NOT_ROUND_LEADER': 'Only the round leader can select a category.',
             'INVALID_CATEGORY': 'Invalid category selection.',
             'ROUND_ALREADY_STARTED': 'The round has already started.',
-            'FEATURE_DISABLED': 'This feature is disabled in the current environment.'
+            'FEATURE_DISABLED': 'This feature is disabled in the current environment.',
+            'BOOSTER_NOT_OWNED': 'You don\'t have this booster.',
+            'BOOSTER_ALREADY_USED': 'Your booster has already been used.',
+            'BOOSTER_INVALID_PHASE': 'Booster cannot be used in this phase.',
+            'BOOSTER_INVALID_TARGET': 'Invalid target for this booster.',
+            'BOOSTER_INVALID': 'Cannot use booster right now.'
         };
         
         if (error && error.code && errorMessages[error.code]) {
@@ -431,6 +457,45 @@ const GameUtils = {
         }
         
         return error?.message || 'An unexpected error occurred.';
+    },
+
+    /**
+     * Booster type enum mapping (matches BoosterType C# enum)
+     */
+    BoosterTypes: {
+        DoublePoints: 0,
+        FiftyFifty: 1,
+        BackToZero: 2,
+        Nope: 3,
+        PositionSwitch: 4,
+        LateLock: 5,
+        Mirror: 6,
+        JuryDuty: 7,
+        ChaosMode: 8,
+        Shield: 9,
+        Wildcard: 10,
+        Spotlight: 11
+    },
+
+    /**
+     * Get booster emoji by type
+     */
+    getBoosterEmoji(boosterType) {
+        const emojis = {
+            0: '?', // DoublePoints
+            1: '??', // FiftyFifty
+            2: '??', // BackToZero
+            3: '??', // Nope
+            4: '??', // PositionSwitch
+            5: '?', // LateLock
+            6: '??', // Mirror
+            7: '??', // JuryDuty
+            8: '??', // ChaosMode
+            9: '???', // Shield
+            10: '??', // Wildcard
+            11: '??'  // Spotlight
+        };
+        return emojis[boosterType] || '??';
     }
 };
 

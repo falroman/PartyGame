@@ -171,7 +171,71 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
             if (!_engine.IsValidOptionKey(state, optionKey))
                 return (false, new ErrorDto(ErrorCodes.InvalidState, "Invalid option."));
 
-            _engine.SubmitAnswer(state, playerId, optionKey);
+            // Check booster effects
+            var answeringEffects = _boosterService.GetAnsweringEffects(state);
+            if (answeringEffects.TryGetValue(playerId, out var playerEffects))
+            {
+                // Check if player is NOPEd
+                if (playerEffects.IsNoped)
+                {
+                    return (false, new ErrorDto("PLAYER_NOPED", "You have been blocked from answering this question."));
+                }
+
+                // Check if trying to select a removed option (50/50)
+                if (playerEffects.RemovedOptions.Contains(optionKey))
+                {
+                    return (false, new ErrorDto(ErrorCodes.InvalidState, "This option has been removed."));
+                }
+
+                // Check for extended deadline (LateLock)
+                if (playerEffects.ExtendedDeadline.HasValue)
+                {
+                    if (_clock.UtcNow > playerEffects.ExtendedDeadline.Value)
+                    {
+                        return (false, new ErrorDto(ErrorCodes.InvalidState, "Time has expired."));
+                    }
+                }
+                else if (_clock.UtcNow > state.PhaseEndsUtc)
+                {
+                    return (false, new ErrorDto(ErrorCodes.InvalidState, "Time has expired."));
+                }
+
+                // Check for Wildcard (allow changing answer)
+                var hasExistingAnswer = state.Answers.TryGetValue(playerId, out var existingAnswer) && existingAnswer != null;
+                if (hasExistingAnswer && !playerEffects.CanChangeAnswer)
+                {
+                    return (false, new ErrorDto(ErrorCodes.InvalidState, "You have already submitted an answer."));
+                }
+            }
+            else
+            {
+                // Normal deadline check
+                if (_clock.UtcNow > state.PhaseEndsUtc)
+                {
+                    return (false, new ErrorDto(ErrorCodes.InvalidState, "Time has expired."));
+                }
+
+                // Check if already answered
+                if (state.Answers.TryGetValue(playerId, out var existingAnswer) && existingAnswer != null)
+                {
+                    return (false, new ErrorDto(ErrorCodes.InvalidState, "You have already submitted an answer."));
+                }
+            }
+
+            // Submit the answer (force overwrite for Wildcard)
+            state.Answers[playerId] = optionKey;
+
+            // Handle Mirror effect: if someone is mirroring this player, copy their answer
+            foreach (var (mirroringPlayerId, effects) in answeringEffects)
+            {
+                if (effects.MirrorTargetId == playerId && 
+                    (!state.Answers.TryGetValue(mirroringPlayerId, out var mirrorAnswer) || mirrorAnswer == null))
+                {
+                    state.Answers[mirroringPlayerId] = optionKey;
+                    _logger.LogInformation("Player {MirroringId} mirrored answer from {TargetId} in room {RoomCode}", 
+                        mirroringPlayerId, playerId, normalizedCode);
+                }
+            }
 
             _logger.LogInformation("Player {PlayerId} submitted answer {Option} in room {RoomCode}", 
                 playerId, optionKey, normalizedCode);
@@ -713,11 +777,18 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         var connectedPlayerIds = room.Players.Values
             .Where(p => p.IsConnected)
-            .Select(p => p.PlayerId);
+            .Select(p => p.PlayerId)
+            .ToList();
 
-        if (allAnsweredCheck(connectedPlayerIds))
+        // Filter out NOPEd players - they can't answer so shouldn't block advancement
+        var answeringEffects = _boosterService.GetAnsweringEffects(state);
+        var eligiblePlayerIds = connectedPlayerIds
+            .Where(id => !answeringEffects.TryGetValue(id, out var effects) || !effects.IsNoped)
+            .ToList();
+
+        if (allAnsweredCheck(eligiblePlayerIds))
         {
-            _logger.LogInformation("All players answered in room {RoomCode}, advancing early", roomCode);
+            _logger.LogInformation("All eligible players answered in room {RoomCode}, advancing early", roomCode);
             CancelTimer(roomCode);
             await advanceAction();
             return true;
@@ -790,11 +861,34 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
     private async Task BroadcastStateAsync(string roomCode, QuizGameState state)
     {
-        var dto = CreateSafeDto(state);
-        await _hubContext.Clients.Group($"room:{roomCode}").SendAsync("QuizStateUpdated", dto);
+        // Get room for player connection info
+        if (!_roomStore.TryGetRoom(roomCode, out var room) || room == null)
+        {
+            // Fallback to simple broadcast if room not found
+            var dto = CreateSafeDto(state, null);
+            await _hubContext.Clients.Group($"room:{roomCode}").SendAsync("QuizStateUpdated", dto);
+            return;
+        }
+
+        // Send to host (no private player data)
+        if (!string.IsNullOrEmpty(room.HostConnectionId))
+        {
+            var hostDto = CreateSafeDto(state, null);
+            await _hubContext.Clients.Client(room.HostConnectionId).SendAsync("QuizStateUpdated", hostDto);
+        }
+
+        // Send to each player with their private data
+        foreach (var player in room.Players.Values)
+        {
+            if (player.IsBot || string.IsNullOrEmpty(player.ConnectionId))
+                continue;
+
+            var playerDto = CreateSafeDto(state, player.PlayerId);
+            await _hubContext.Clients.Client(player.ConnectionId).SendAsync("QuizStateUpdated", playerDto);
+        }
     }
 
-    private QuizGameStateDto CreateSafeDto(QuizGameState state)
+    private QuizGameStateDto CreateSafeDto(QuizGameState state, Guid? requestingPlayerId)
     {
         var remainingSeconds = Math.Max(0, (int)(state.PhaseEndsUtc - _clock.UtcNow).TotalSeconds);
         var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.RankingReveal or QuizPhase.Scoreboard or QuizPhase.Finished;
@@ -820,6 +914,23 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         var playerBoosters = BuildPlayerBoosterDtos(state);
         var activeEffects = BuildActiveEffectDtos(state);
 
+        // Build per-player private effects if we have a requesting player
+        var myAnsweringEffects = requestingPlayerId.HasValue 
+            ? BuildMyAnsweringEffectsDto(state, requestingPlayerId.Value)
+            : null;
+
+        // Get options - potentially with per-player modifications for ChaosMode
+        var options = GetOptions(state, showCorrectAnswer, requestingPlayerId, myAnsweringEffects);
+
+        // Calculate personal deadline if player has LateLock active
+        var personalPhaseEndsUtc = state.PhaseEndsUtc;
+        if (myAnsweringEffects?.ExtendedDeadline != null)
+        {
+            personalPhaseEndsUtc = myAnsweringEffects.ExtendedDeadline.Value;
+        }
+
+        var personalRemainingSeconds = Math.Max(0, (int)(personalPhaseEndsUtc - _clock.UtcNow).TotalSeconds);
+
         return new QuizGameStateDto(
             Phase: state.Phase,
             QuestionNumber: state.QuestionNumber,
@@ -833,14 +944,14 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
             RoundType: state.CurrentRound?.Type,
             QuestionId: state.QuestionId,
             QuestionText: GetQuestionText(state),
-            Options: GetOptions(state, showCorrectAnswer),
+            Options: options,
             PlayerOptions: playerOptions,
             CorrectOptionKey: showCorrectAnswer ? GetCorrectOptionKey(state) : null,
             Explanation: showCorrectAnswer ? GetExplanation(state) : null,
             RankingWinnerIds: showCorrectAnswer ? state.RankingResult?.WinnerPlayerIds : null,
             RankingVoteCounts: showCorrectAnswer ? state.RankingResult?.VoteCounts : null,
-            RemainingSeconds: remainingSeconds,
-            PhaseEndsUtc: state.PhaseEndsUtc,
+            RemainingSeconds: requestingPlayerId.HasValue ? personalRemainingSeconds : remainingSeconds,
+            PhaseEndsUtc: personalPhaseEndsUtc,
             AnswerStatuses: answerStatuses,
             Scoreboard: state.Scoreboard
                 .Select(p => new PlayerScoreDto(
@@ -859,95 +970,38 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
                 .ToList(),
             PlayerBoosters: playerBoosters,
             ActiveEffects: activeEffects,
-            MyAnsweringEffects: null // Set per-player in hub when sending to specific players
+            MyAnsweringEffects: myAnsweringEffects
         );
     }
 
-    private List<PlayerBoosterStateDto> BuildPlayerBoosterDtos(QuizGameState state)
+    private PlayerAnsweringEffectsDto? BuildMyAnsweringEffectsDto(QuizGameState state, Guid playerId)
     {
-        var result = new List<PlayerBoosterStateDto>();
-        
-        foreach (var (playerId, boosterState) in state.PlayerBoosters)
+        var allEffects = _boosterService.GetAnsweringEffects(state);
+        if (!allEffects.TryGetValue(playerId, out var effects))
+            return null;
+
+        // Only return effects if there's something meaningful
+        if (!effects.IsNoped && 
+            effects.RemovedOptions.Count == 0 && 
+            effects.ShuffledOptionOrder == null && 
+            effects.ExtendedDeadline == null && 
+            effects.MirrorTargetId == null && 
+            !effects.CanChangeAnswer)
         {
-            var handler = _boosterService.GetHandler(boosterState.Type);
-            if (handler == null) continue;
-            
-            result.Add(new PlayerBoosterStateDto(
-                PlayerId: playerId,
-                BoosterType: boosterState.Type,
-                BoosterName: handler.Name,
-                BoosterDescription: handler.Description,
-                IsUsed: boosterState.IsUsed,
-                RequiresTarget: handler.RequiresTarget,
-                ValidPhases: handler.ValidPhases.Select(p => p.ToString()).ToArray()
-            ));
+            return null;
         }
-        
-        return result;
+
+        return new PlayerAnsweringEffectsDto(
+            IsNoped: effects.IsNoped,
+            RemovedOptions: effects.RemovedOptions.Count > 0 ? effects.RemovedOptions : null,
+            ShuffledOptionOrder: effects.ShuffledOptionOrder,
+            ExtendedDeadline: effects.ExtendedDeadline,
+            MirrorTargetId: effects.MirrorTargetId,
+            CanChangeAnswer: effects.CanChangeAnswer
+        );
     }
 
-    private List<ActiveBoosterEffectDto> BuildActiveEffectDtos(QuizGameState state)
-    {
-        var effects = _boosterService.GetActiveEffects(state);
-        return effects.Select(e =>
-        {
-            var activator = state.Scoreboard.FirstOrDefault(p => p.PlayerId == e.ActivatorPlayerId);
-            var target = e.TargetPlayerId.HasValue 
-                ? state.Scoreboard.FirstOrDefault(p => p.PlayerId == e.TargetPlayerId.Value) 
-                : null;
-
-            return new ActiveBoosterEffectDto(
-                BoosterType: e.BoosterType,
-                ActivatorPlayerId: e.ActivatorPlayerId,
-                ActivatorName: activator?.DisplayName ?? "Unknown",
-                TargetPlayerId: e.TargetPlayerId,
-                TargetName: target?.DisplayName,
-                QuestionNumber: e.QuestionNumber
-            );
-        }).ToList();
-    }
-
-    private bool GetHasAnswered(QuizGameState state, Guid playerId)
-    {
-        return state.CurrentRound?.Type switch
-        {
-            RoundType.DictionaryGame => state.DictionaryAnswers.TryGetValue(playerId, out var da) && da != null,
-            RoundType.RankingStars => state.RankingVotes.TryGetValue(playerId, out var rv) && rv != null,
-            _ => state.Answers.TryGetValue(playerId, out var a) && a != null
-        };
-    }
-
-    private int GetQuestionsInRound(QuizGameState state)
-    {
-        return state.CurrentRound?.Type switch
-        {
-            RoundType.DictionaryGame => QuizGameState.DictionaryWordsPerRound,
-            RoundType.RankingStars => QuizGameState.RankingPromptsPerRound,
-            _ => GameRound.QuestionsPerRound
-        };
-    }
-
-    private int GetCurrentQuestionInRound(QuizGameState state)
-    {
-        return state.CurrentRound?.Type switch
-        {
-            RoundType.DictionaryGame => state.DictionaryWordIndex,
-            RoundType.RankingStars => state.RankingPromptIndex,
-            _ => state.CurrentRound?.CurrentQuestionIndex ?? 0
-        };
-    }
-
-    private string GetQuestionText(QuizGameState state)
-    {
-        return state.CurrentRound?.Type switch
-        {
-            RoundType.DictionaryGame => state.DictionaryQuestion?.Word ?? string.Empty,
-            RoundType.RankingStars => state.RankingPromptText ?? string.Empty,
-            _ => state.QuestionText
-        };
-    }
-
-    private List<QuizOptionDto> GetOptions(QuizGameState state, bool showCorrectAnswer)
+    private List<QuizOptionDto> GetOptions(QuizGameState state, bool showCorrectAnswer, Guid? requestingPlayerId = null, PlayerAnsweringEffectsDto? myEffects = null)
     {
         if (state.CurrentRound?.Type == RoundType.DictionaryGame)
         {
@@ -965,7 +1019,24 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
             return new List<QuizOptionDto>();
         }
 
-        return state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList();
+        var options = state.Options.Select(o => new QuizOptionDto(o.Key, o.Text)).ToList();
+
+        // Apply ChaosMode shuffle if applicable for this player
+        if (myEffects?.ShuffledOptionOrder != null && myEffects.ShuffledOptionOrder.Count > 0)
+        {
+            var shuffledOptions = new List<QuizOptionDto>();
+            foreach (var key in myEffects.ShuffledOptionOrder)
+            {
+                var option = options.FirstOrDefault(o => o.Key == key);
+                if (option != null)
+                {
+                    shuffledOptions.Add(option);
+                }
+            }
+            return shuffledOptions;
+        }
+
+        return options;
     }
 
     private string? GetCorrectOptionKey(QuizGameState state)
@@ -1011,6 +1082,90 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         room.Status = status;
         _roomStore.Update(room);
+    }
+
+    private bool GetHasAnswered(QuizGameState state, Guid playerId)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryAnswers.TryGetValue(playerId, out var da) && da != null,
+            RoundType.RankingStars => state.RankingVotes.TryGetValue(playerId, out var rv) && rv != null,
+            _ => state.Answers.TryGetValue(playerId, out var a) && a != null
+        };
+    }
+
+    private int GetQuestionsInRound(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => QuizGameState.DictionaryWordsPerRound,
+            RoundType.RankingStars => QuizGameState.RankingPromptsPerRound,
+            _ => GameRound.QuestionsPerRound
+        };
+    }
+
+    private int GetCurrentQuestionInRound(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryWordIndex,
+            RoundType.RankingStars => state.RankingPromptIndex,
+            _ => state.CurrentRound?.CurrentQuestionIndex ?? 0
+        };
+    }
+
+    private string GetQuestionText(QuizGameState state)
+    {
+        return state.CurrentRound?.Type switch
+        {
+            RoundType.DictionaryGame => state.DictionaryQuestion?.Word ?? string.Empty,
+            RoundType.RankingStars => state.RankingPromptText ?? string.Empty,
+            _ => state.QuestionText
+        };
+    }
+
+    private List<PlayerBoosterStateDto> BuildPlayerBoosterDtos(QuizGameState state)
+    {
+        var result = new List<PlayerBoosterStateDto>();
+        
+        foreach (var (playerId, boosterState) in state.PlayerBoosters)
+        {
+            var handler = _boosterService.GetHandler(boosterState.Type);
+            if (handler == null) continue;
+            
+            result.Add(new PlayerBoosterStateDto(
+                PlayerId: playerId,
+                BoosterType: boosterState.Type,
+                BoosterName: handler.Name,
+                BoosterDescription: handler.Description,
+                IsUsed: boosterState.IsUsed,
+                RequiresTarget: handler.RequiresTarget,
+                ValidPhases: handler.ValidPhases.Select(p => p.ToString()).ToArray()
+            ));
+        }
+        
+        return result;
+    }
+
+    private List<ActiveBoosterEffectDto> BuildActiveEffectDtos(QuizGameState state)
+    {
+        var effects = _boosterService.GetActiveEffects(state);
+        return effects.Select(e =>
+        {
+            var activator = state.Scoreboard.FirstOrDefault(p => p.PlayerId == e.ActivatorPlayerId);
+            var target = e.TargetPlayerId.HasValue 
+                ? state.Scoreboard.FirstOrDefault(p => p.PlayerId == e.TargetPlayerId.Value) 
+                : null;
+
+            return new ActiveBoosterEffectDto(
+                BoosterType: e.BoosterType,
+                ActivatorPlayerId: e.ActivatorPlayerId,
+                ActivatorName: activator?.DisplayName ?? "Unknown",
+                TargetPlayerId: e.TargetPlayerId,
+                TargetName: target?.DisplayName,
+                QuestionNumber: e.QuestionNumber
+            );
+        }).ToList();
     }
 
     #endregion

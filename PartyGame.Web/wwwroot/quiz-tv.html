@@ -85,6 +85,79 @@
             gap: 20px;
         }
 
+        /* Booster Toast Overlay */
+        .booster-toast-overlay {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .booster-toast {
+            background: linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(30,30,30,0.95) 100%);
+            color: white;
+            padding: 20px 32px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 1.25rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            animation: boosterToastIn 0.4s ease-out;
+            max-width: 600px;
+        }
+
+        .booster-toast.blocked {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+
+        .booster-toast-icon {
+            font-size: 2.5rem;
+        }
+
+        .booster-toast-text {
+            line-height: 1.4;
+        }
+
+        .booster-toast-activator {
+            font-weight: bold;
+            color: #f093fb;
+        }
+
+        .booster-toast-target {
+            font-weight: bold;
+            color: #f5576c;
+        }
+
+        .booster-toast-name {
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        @keyframes boosterToastIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes boosterToastOut {
+            from {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.9);
+            }
+        }
+
         /* Category Selection View */
         .category-selection {
             display: none;
@@ -572,6 +645,9 @@
         </div>
     </div>
 
+    <!-- Booster Toast Overlay -->
+    <div class="booster-toast-overlay" id="boosterToastOverlay"></div>
+
     <!-- GSAP + Flip Plugin for animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
@@ -626,6 +702,7 @@
         const autoplayStatusEl = document.getElementById('autoplayStatus');
         const backToLobbyBtn = document.getElementById('backToLobbyBtn');
         const backToLobbyFinishedBtn = document.getElementById('backToLobbyFinishedBtn');
+        const boosterToastOverlayEl = document.getElementById('boosterToastOverlay');
 
         let previousPhase = null;
         let selectedCategory = null;
@@ -674,6 +751,7 @@
             client.on('onConnected', () => console.log('Connected'));
             client.on('onQuizStateUpdated', onQuizStateUpdated);
             client.on('onAutoplayStatusUpdated', updateAutoplayStatus);
+            client.on('onBoosterActivated', onBoosterActivated);
             client.on('onError', (error) => console.error('Error:', error));
 
             await client.connect();
@@ -714,9 +792,53 @@
                 window.location.href = `/tv.html?room=${roomCode}`;
             } catch (error) {
                 console.error('Failed to reset to lobby:', error);
-                // Navigate anyway, the tv.html will handle reconnection
                 window.location.href = `/tv.html?room=${roomCode}`;
             }
+        }
+
+        function onBoosterActivated(event) {
+            console.log('Booster activated (TV):', event);
+            
+            const boosterTypeNum = typeof event.boosterType === 'number' 
+                ? event.boosterType 
+                : GameUtils.BoosterTypes[event.boosterType] ?? 0;
+            const emoji = GameUtils.getBoosterEmoji(boosterTypeNum);
+            
+            let message;
+            let isBlocked = false;
+            
+            if (event.wasBlockedByShield) {
+                message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span>'s ` +
+                          `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span> was blocked by ` +
+                          `<span class="booster-toast-target">${escapeHtml(event.shieldBlockerName)}</span>'s Shield! 🛡️`;
+                isBlocked = true;
+            } else if (event.targetName) {
+                message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span> used ` +
+                          `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span> on ` +
+                          `<span class="booster-toast-target">${escapeHtml(event.targetName)}</span>!`;
+            } else {
+                message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span> activated ` +
+                          `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span>!`;
+            }
+            
+            showBoosterToast(emoji, message, isBlocked);
+        }
+
+        function showBoosterToast(emoji, message, isBlocked = false) {
+            const toast = document.createElement('div');
+            toast.className = `booster-toast ${isBlocked ? 'blocked' : ''}`;
+            toast.innerHTML = `
+                <div class="booster-toast-icon">${emoji}</div>
+                <div class="booster-toast-text">${message}</div>
+            `;
+            
+            boosterToastOverlayEl.appendChild(toast);
+            
+            // Animate out and remove after 4 seconds
+            setTimeout(() => {
+                toast.style.animation = 'boosterToastOut 0.4s ease-in forwards';
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
         }
 
         function onQuizStateUpdated(state) {
@@ -779,7 +901,7 @@
                 leaderNameEl.textContent = leader.displayName;
             }
 
-            // Render categories - use raw category in data attribute
+            // Render categories
             const categories = state.availableCategories || [];
             categoriesGridEl.innerHTML = categories.map(cat => `
                 <div class="category-option ${selectedCategory === cat ? 'selected' : ''}" data-category="${cat}">
@@ -913,7 +1035,6 @@
                 console.warn('Dev panel disabled:', error);
             }
 
-            // Only add event listeners once to prevent duplicate handlers on reconnect
             if (!devPanelListenersAdded) {
                 addBotsBtn?.addEventListener('click', async () => {
                     await client.addBots();
