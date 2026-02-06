@@ -571,56 +571,60 @@
             opacity: 0.6;
         }
 
-        /* Audio Unlock Overlay */
-        .audio-unlock-overlay {
+        /* Audio Enable Banner - Non-blocking, appears at bottom */
+        .audio-enable-banner {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
             cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            animation: slideUp 0.5s ease-out;
         }
 
-        .audio-unlock-overlay.hidden {
+        .audio-enable-banner:hover {
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+        }
+
+        .audio-enable-banner.hidden {
             display: none;
         }
 
-        .audio-unlock-icon {
-            font-size: 6rem;
-            margin-bottom: 24px;
-            animation: bounce 1s infinite;
-        }
-
-        .audio-unlock-text {
+        .audio-enable-banner .icon {
             font-size: 1.5rem;
+        }
+
+        .audio-enable-banner .text {
             font-weight: 600;
-            margin-bottom: 8px;
         }
 
-        .audio-unlock-subtext {
-            font-size: 1rem;
-            opacity: 0.7;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Audio Unlock Overlay -->
-    <div class="audio-unlock-overlay" id="audioUnlockOverlay">
-        <div class="audio-unlock-icon">🔊</div>
-        <div class="audio-unlock-text">Click anywhere to enable sound</div>
-        <div class="audio-unlock-subtext">Audio enhances the quiz experience!</div>
+    <!-- Audio Enable Banner - Non-blocking -->
+    <div class="audio-enable-banner" id="audioEnableBanner">
+        <span class="icon">🔊</span>
+        <span class="text">Click to enable sound</span>
     </div>
 
     <div class="quiz-container">
@@ -639,7 +643,7 @@
                 Room: <strong id="roomCode">----</strong>
             </div>
             <button class="audio-control" id="audioControlBtn" title="Toggle sound">
-                🔊
+                🔇
             </button>
             <button class="back-to-lobby-btn" id="backToLobbyBtn" title="Return to lobby (keeps players)">
                 🏠 Back to Lobby
@@ -791,7 +795,7 @@
         const backToLobbyBtn = document.getElementById('backToLobbyBtn');
         const backToLobbyFinishedBtn = document.getElementById('backToLobbyFinishedBtn');
         const boosterToastOverlayEl = document.getElementById('boosterToastOverlay');
-        const audioUnlockOverlayEl = document.getElementById('audioUnlockOverlay');
+        const audioEnableBannerEl = document.getElementById('audioEnableBanner');
         const audioControlBtnEl = document.getElementById('audioControlBtn');
 
         let previousPhase = null;
@@ -846,8 +850,8 @@
             // Initialize audio manager
             audio.init();
 
-            // Setup audio unlock overlay
-            setupAudioUnlock();
+            // Setup audio enable banner (non-blocking)
+            setupAudioBanner();
 
             client.on('onConnected', () => console.log('Connected'));
             client.on('onQuizStateUpdated', onQuizStateUpdated);
@@ -871,22 +875,34 @@
             audioControlBtnEl.addEventListener('click', toggleAudio);
         }
 
-        // Audio unlock overlay handling
-        function setupAudioUnlock() {
-            audioUnlockOverlayEl.addEventListener('click', () => {
-                audio.unlock();
-                audioEnabled = true;
-                audioUnlockOverlayEl.classList.add('hidden');
-                updateAudioButton();
-            });
+        // Audio enable banner handling (non-blocking)
+        function setupAudioBanner() {
+            audioEnableBannerEl.addEventListener('click', enableAudio);
+            
+            // Also enable audio on any click on the page (first interaction)
+            document.addEventListener('click', function firstClick() {
+                if (!audioEnabled) {
+                    enableAudio();
+                }
+                document.removeEventListener('click', firstClick);
+            }, { once: true });
+        }
+
+        function enableAudio() {
+            if (audioEnabled) return;
+            
+            audio.unlock();
+            audioEnabled = true;
+            audioEnableBannerEl.classList.add('hidden');
+            updateAudioButton();
         }
 
         function toggleAudio() {
             if (!audioEnabled) {
-                audio.unlock();
-                audioEnabled = true;
+                enableAudio();
+                return;
             }
-            const isMuted = audio.toggleMute();
+            audio.toggleMute();
             updateAudioButton();
         }
 
