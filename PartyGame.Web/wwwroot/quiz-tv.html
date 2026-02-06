@@ -12,7 +12,7 @@
         }
 
         .quiz-container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
             min-height: 100vh;
@@ -30,12 +30,14 @@
             margin-bottom: 20px;
             color: white;
             gap: 16px;
+            flex-wrap: wrap;
         }
 
         .quiz-progress {
             display: flex;
             align-items: center;
             gap: 16px;
+            flex-wrap: wrap;
         }
 
         .question-counter {
@@ -76,6 +78,7 @@
             padding: 8px 16px;
             border-radius: 20px;
             font-weight: 500;
+            font-size: 0.9rem;
         }
 
         .quiz-main {
@@ -83,6 +86,47 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+        }
+
+        /* TV Mode enhancements - using min(vw, vh) for proportional scaling */
+        .tv-mode .quiz-container {
+            max-width: 100%;
+            padding: 0;
+            min-height: calc(100vh - var(--tv-safe-margin) * 2);
+        }
+
+        .tv-mode .quiz-header {
+            padding: var(--gap-lg) var(--gap-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--gap-lg);
+        }
+
+        .tv-mode .quiz-progress {
+            gap: var(--gap-lg);
+        }
+
+        .tv-mode .question-counter {
+            font-size: var(--font-xl);
+        }
+
+        .tv-mode .round-badge {
+            font-size: var(--font-base);
+            padding: var(--gap-sm) var(--gap);
+        }
+
+        .tv-mode .phase-badge {
+            font-size: var(--font-base);
+            padding: var(--gap-sm) var(--gap);
+        }
+
+        .tv-mode .timer {
+            font-size: var(--font-2xl);
+            padding: var(--gap) var(--gap-xl);
+            gap: var(--gap-sm);
+        }
+
+        .tv-mode .quiz-main {
+            gap: var(--gap-xl);
         }
 
         /* Booster Toast Overlay */
@@ -93,6 +137,10 @@
             transform: translateX(-50%);
             z-index: 1000;
             pointer-events: none;
+        }
+
+        .tv-mode .booster-toast-overlay {
+            top: clamp(100px, 12vh, 160px);
         }
 
         .booster-toast {
@@ -109,12 +157,24 @@
             max-width: 600px;
         }
 
+        .tv-mode .booster-toast {
+            padding: var(--gap-xl) var(--gap-xl);
+            border-radius: var(--radius-xl);
+            gap: var(--gap-lg);
+            font-size: var(--font-xl);
+            max-width: clamp(500px, 50vw, 800px);
+        }
+
         .booster-toast.blocked {
             background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
         }
 
         .booster-toast-icon {
             font-size: 2.5rem;
+        }
+
+        .tv-mode .booster-toast-icon {
+            font-size: var(--font-3xl);
         }
 
         .booster-toast-text {
@@ -137,25 +197,13 @@
         }
 
         @keyframes boosterToastIn {
-            from {
-                opacity: 0;
-                transform: translateY(-30px) scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
+            from { opacity: 0; transform: translateY(-30px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         @keyframes boosterToastOut {
-            from {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-            to {
-                opacity: 0;
-                transform: translateY(-30px) scale(0.9);
-            }
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to { opacity: 0; transform: translateY(-30px) scale(0.9); }
         }
 
         /* Category Selection View */
@@ -176,6 +224,11 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
 
+        .tv-mode .category-card {
+            border-radius: var(--radius-xl);
+            padding: var(--gap-xl);
+        }
+
         .category-title {
             font-size: 2rem;
             font-weight: bold;
@@ -183,10 +236,20 @@
             color: var(--text-color);
         }
 
+        .tv-mode .category-title {
+            font-size: var(--font-3xl);
+            margin-bottom: var(--gap-sm);
+        }
+
         .category-subtitle {
             font-size: 1.25rem;
             color: var(--text-light);
             margin-bottom: 32px;
+        }
+
+        .tv-mode .category-subtitle {
+            font-size: var(--font-xl);
+            margin-bottom: var(--gap-xl);
         }
 
         .round-leader-info {
@@ -201,6 +264,13 @@
             color: white;
         }
 
+        .tv-mode .round-leader-info {
+            gap: var(--gap-lg);
+            margin-bottom: var(--gap-xl);
+            padding: var(--gap-lg) var(--gap-xl);
+            border-radius: var(--radius-lg);
+        }
+
         .round-leader-avatar {
             width: 48px;
             height: 48px;
@@ -213,8 +283,18 @@
             font-size: 1.25rem;
         }
 
+        .tv-mode .round-leader-avatar {
+            width: clamp(48px, min(5vw, 9vh), 80px);
+            height: clamp(48px, min(5vw, 9vh), 80px);
+            font-size: var(--font-xl);
+        }
+
         .round-leader-text {
             font-size: 1.25rem;
+        }
+
+        .tv-mode .round-leader-text {
+            font-size: var(--font-xl);
         }
 
         .round-leader-name {
@@ -229,6 +309,12 @@
             margin: 0 auto;
         }
 
+        .tv-mode .categories-grid {
+            grid-template-columns: repeat(auto-fit, minmax(clamp(220px, min(18vw, 32vh), 360px), 1fr));
+            gap: var(--gap-xl);
+            max-width: 1200px;
+        }
+
         .category-option {
             background: white;
             border: 3px solid #e5e7eb;
@@ -238,6 +324,11 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+        }
+
+        .tv-mode .category-option {
+            border-radius: var(--radius-xl);
+            padding: var(--gap-xl) var(--gap-lg);
         }
 
         .category-option::before {
@@ -266,10 +357,19 @@
             margin-bottom: 16px;
         }
 
+        .tv-mode .category-icon {
+            font-size: var(--font-4xl);
+            margin-bottom: var(--gap-lg);
+        }
+
         .category-name {
             font-size: 1.5rem;
             font-weight: bold;
             color: var(--text-color);
+        }
+
+        .tv-mode .category-name {
+            font-size: var(--font-2xl);
         }
 
         .waiting-instruction {
@@ -280,6 +380,13 @@
             color: var(--text-light);
         }
 
+        .tv-mode .waiting-instruction {
+            margin-top: var(--gap-xl);
+            padding: var(--gap-lg);
+            border-radius: var(--radius-lg);
+            font-size: var(--font-lg);
+        }
+
         /* Question Card */
         .question-card {
             background: white;
@@ -287,6 +394,11 @@
             padding: 40px;
             text-align: center;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .tv-mode .question-card {
+            border-radius: var(--radius-xl);
+            padding: var(--gap-xl);
         }
 
         .round-category-banner {
@@ -299,12 +411,24 @@
             margin-bottom: 16px;
         }
 
+        .tv-mode .round-category-banner {
+            padding: var(--gap-sm) var(--gap-lg);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--gap-lg);
+            font-size: var(--font-lg);
+        }
+
         .question-text {
             font-size: 2rem;
             font-weight: 600;
             color: var(--text-color);
             margin-bottom: 32px;
             line-height: 1.4;
+        }
+
+        .tv-mode .question-text {
+            font-size: var(--font-3xl);
+            margin-bottom: var(--gap-xl);
         }
 
         /* Options Grid */
@@ -316,6 +440,11 @@
             margin: 0 auto;
         }
 
+        .tv-mode .options-grid {
+            gap: var(--gap-lg);
+            max-width: 1100px;
+        }
+
         .option-card {
             background: var(--bg-color);
             border: 3px solid transparent;
@@ -325,6 +454,12 @@
             align-items: center;
             gap: 16px;
             transition: all 0.3s;
+        }
+
+        .tv-mode .option-card {
+            border-radius: var(--radius-lg);
+            padding: var(--gap-xl);
+            gap: var(--gap-lg);
         }
 
         .option-card.correct {
@@ -347,6 +482,14 @@
             font-size: 1.5rem;
             font-weight: bold;
             color: white;
+            flex-shrink: 0;
+        }
+
+        .tv-mode .option-key {
+            width: clamp(48px, min(5vw, 9vh), 80px);
+            height: clamp(48px, min(5vw, 9vh), 80px);
+            border-radius: var(--radius);
+            font-size: var(--font-2xl);
         }
 
         .option-key.a { background: #e74c3c; }
@@ -361,8 +504,16 @@
             flex: 1;
         }
 
+        .tv-mode .option-text {
+            font-size: var(--font-xl);
+        }
+
         .option-indicator {
             font-size: 1.5rem;
+        }
+
+        .tv-mode .option-indicator {
+            font-size: var(--font-2xl);
         }
 
         /* Explanation - inside question card */
@@ -373,6 +524,12 @@
             padding: 20px 24px;
             margin-top: 24px;
             display: none;
+        }
+
+        .tv-mode .explanation-card {
+            border-radius: var(--radius-lg);
+            padding: var(--gap-lg) var(--gap-xl);
+            margin-top: var(--gap-xl);
         }
 
         .explanation-card.visible {
@@ -386,10 +543,19 @@
             font-size: 1.1rem;
         }
 
+        .tv-mode .explanation-title {
+            margin-bottom: var(--gap-sm);
+            font-size: var(--font-xl);
+        }
+
         .explanation-text {
             color: var(--text-color);
             line-height: 1.5;
             font-size: 1rem;
+        }
+
+        .tv-mode .explanation-text {
+            font-size: var(--font-lg);
         }
 
         /* Answer Status */
@@ -399,6 +565,11 @@
             gap: 12px;
             justify-content: center;
             margin-top: 20px;
+        }
+
+        .tv-mode .answer-status {
+            gap: var(--gap);
+            margin-top: var(--gap-xl);
         }
 
         .player-answer-badge {
@@ -412,6 +583,12 @@
             gap: 8px;
         }
 
+        .tv-mode .player-answer-badge {
+            padding: var(--gap-sm) var(--gap-lg);
+            font-size: var(--font-base);
+            gap: var(--gap-sm);
+        }
+
         .player-answer-badge.answered {
             background: rgba(46, 204, 113, 0.3);
         }
@@ -420,9 +597,10 @@
             opacity: 0.6;
         }
 
-        /* Scoreboard styles remain unchanged */
+        /* Scoreboard styles */
         .scoreboard-container { display: none; }
         .scoreboard-container.visible { display: block; }
+
         .scoreboard-card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
@@ -430,6 +608,12 @@
             padding: 32px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
+
+        .tv-mode .scoreboard-card {
+            border-radius: var(--radius-xl);
+            padding: var(--gap-xl);
+        }
+
         .scoreboard-title {
             text-align: center;
             font-size: 2rem;
@@ -437,7 +621,14 @@
             margin-bottom: 24px;
             color: var(--text-color);
         }
+
+        .tv-mode .scoreboard-title {
+            font-size: var(--font-3xl);
+            margin-bottom: var(--gap-xl);
+        }
+
         .scoreboard-list { list-style: none; padding: 0; margin: 0; position: relative; }
+
         .scoreboard-item {
             display: flex;
             align-items: center;
@@ -452,36 +643,78 @@
             position: relative;
             overflow: visible;
         }
+
+        .tv-mode .scoreboard-item {
+            padding: var(--gap-lg) var(--gap-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--gap);
+        }
+
         .scoreboard-item:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); }
+
         .scoreboard-item.first {
             background: linear-gradient(135deg, rgba(255, 215, 0, 0.9) 0%, rgba(255, 179, 71, 0.9) 100%);
-            border: 2px solid rgba(255, 215, 0, 0.5);
+            border: 2px solid rgba(255,215,0,0.5);
             color: #333;
         }
         .scoreboard-item.second {
             background: linear-gradient(135deg, rgba(192, 192, 192, 0.9) 0%, rgba(169, 169, 169, 0.9) 100%);
-            border: 2px solid rgba(192, 192, 192, 0.5);
+            border: 2px solid rgba(192,192,192,0.5);
         }
         .scoreboard-item.third {
             background: linear-gradient(135deg, rgba(205, 127, 50, 0.9) 0%, rgba(184, 115, 51, 0.9) 100%);
-            border: 2px solid rgba(205, 127, 50, 0.5);
+            border: 2px solid rgba(205,127,50,0.5);
             color: white;
         }
-        .scoreboard-position { font-size: 1.5rem; font-weight: bold; width: 50px; text-align: center; }
-        .scoreboard-player { flex: 1; display: flex; align-items: center; gap: 12px; }
-        .player-avatar {
-            width: 40px; height: 40px; border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 0.875rem;
+
+        .scoreboard-position { 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            width: 50px; 
+            text-align: center; 
         }
+
+        .tv-mode .scoreboard-position {
+            font-size: var(--font-2xl);
+            width: clamp(50px, min(5vw, 9vh), 100px);
+        }
+
+        .scoreboard-player { flex: 1; display: flex; align-items: center; gap: 12px; }
+
+        .tv-mode .scoreboard-player {
+            gap: var(--gap-lg);
+        }
+
         .scoreboard-name { font-weight: 600; font-size: 1.125rem; }
-        .score-value { font-size: 1.75rem; font-weight: bold; font-variant-numeric: tabular-nums; min-width: 80px; text-align: right; }
+
+        .tv-mode .scoreboard-name {
+            font-size: var(--font-xl);
+        }
+
+        .score-value { 
+            font-size: 1.75rem; 
+            font-weight: bold; 
+            font-variant-numeric: tabular-nums; 
+            min-width: 80px; 
+            text-align: right; 
+        }
+
+        .tv-mode .score-value {
+            font-size: var(--font-2xl);
+            min-width: clamp(80px, min(8vw, 14vh), 160px);
+        }
+
         .delta-badge {
             position: absolute; right: -10px; top: 50%; transform: translateY(-50%);
             padding: 4px 12px; border-radius: 20px; font-size: 0.875rem; font-weight: bold;
             white-space: nowrap; z-index: 10; pointer-events: none;
         }
+
+        .tv-mode .delta-badge {
+            padding: var(--gap-sm) var(--gap);
+            font-size: var(--font-base);
+        }
+
         .delta-badge.positive { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
         .delta-badge.negative { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
         .scoreboard-item.winner-highlight { z-index: 5; }
@@ -495,16 +728,52 @@
             border-radius: 24px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
-        .winner-crown { font-size: 6rem; margin-bottom: 24px; animation: crown-bounce 2s ease-in-out infinite; }
+
+        .tv-mode .game-finished {
+            padding: var(--gap-xl);
+            border-radius: var(--radius-xl);
+        }
+
+        .winner-crown { 
+            font-size: 6rem; 
+            margin-bottom: 24px; 
+            animation: crown-bounce 2s ease-in-out infinite; 
+        }
+
+        .tv-mode .winner-crown {
+            font-size: clamp(80px, min(12vw, 22vh), 200px);
+            margin-bottom: var(--gap-xl);
+        }
+
         @keyframes crown-bounce {
             0%, 100% { transform: translateY(0) rotate(-5deg); }
             50% { transform: translateY(-10px) rotate(5deg); }
         }
-        .winner-name { font-size: 2.5rem; font-weight: bold; color: var(--text-color); margin-bottom: 8px; }
-        .winner-score { font-size: 1.5rem; color: var(--text-light); }
+
+        .winner-name { 
+            font-size: 2.5rem; 
+            font-weight: bold; 
+            color: var(--text-color); 
+            margin-bottom: 8px; 
+        }
+
+        .tv-mode .winner-name {
+            font-size: var(--font-4xl);
+            margin-bottom: var(--gap-sm);
+        }
+
+        .winner-score { 
+            font-size: 1.5rem; 
+            color: var(--text-light); 
+        }
+
+        .tv-mode .winner-score {
+            font-size: var(--font-2xl);
+        }
 
         .hidden { display: none !important; }
 
+        /* DEV Panel */
         .dev-panel {
             background: rgba(0,0,0,0.35);
             border: 1px solid rgba(255,255,255,0.2);
@@ -515,6 +784,7 @@
             gap: 12px;
             color: #fff;
             font-size: 0.9rem;
+            flex-wrap: wrap;
         }
 
         .dev-panel .dev-badge {
@@ -533,6 +803,7 @@
             padding: 6px 12px;
             cursor: pointer;
             font-weight: 600;
+            font-size: 0.85rem;
         }
 
         .dev-panel button:hover {
@@ -540,9 +811,52 @@
         }
 
         .dev-panel .status {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             opacity: 0.9;
         }
+
+        .dev-panel-effects {
+            display: flex;
+            gap: 8px;
+            margin-left: 16px;
+            padding-left: 16px;
+            border-left: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .dev-panel-effects button {
+            background: rgba(147,51,234,0.5);
+        }
+
+        .dev-panel-effects button:hover {
+            background: rgba(147,51,234,0.7);
+        }
+
+        /* Diagnostics Overlay */
+        .diagnostics-overlay {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 10000;
+            max-width: 300px;
+            pointer-events: none;
+        }
+
+        .diagnostics-overlay .diag-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .diagnostics-overlay .diag-label { color: #888; }
+        .diagnostics-overlay .diag-ok { color: #0f0; }
+        .diagnostics-overlay .diag-warn { color: #ff0; }
+        .diagnostics-overlay .diag-err { color: #f00; }
         
         .back-to-lobby-btn {
             background: rgba(255,255,255,0.2);
@@ -553,10 +867,16 @@
             cursor: pointer;
             font-weight: 600;
             margin-left: auto;
+            font-size: 0.9rem;
         }
         
         .back-to-lobby-btn:hover {
             background: rgba(255,255,255,0.3);
+        }
+
+        .tv-mode .back-to-lobby-btn {
+            padding: var(--gap-sm) var(--gap-lg);
+            font-size: var(--font-base);
         }
 
         /* Audio Control Button */
@@ -580,7 +900,12 @@
             opacity: 0.6;
         }
 
-        /* Audio Enable Banner - Non-blocking, appears at bottom */
+        .tv-mode .audio-control {
+            padding: var(--gap-sm) var(--gap);
+            font-size: var(--font-xl);
+        }
+
+        /* Audio Enable Banner */
         .audio-enable-banner {
             position: fixed;
             top: 20px;
@@ -598,6 +923,14 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
             animation: slideUp 0.5s ease-out;
+            font-size: 1rem;
+        }
+
+        .tv-mode .audio-enable-banner {
+            top: var(--gap-xl);
+            padding: var(--gap-lg) var(--gap-xl);
+            font-size: var(--font-lg);
+            gap: var(--gap);
         }
 
         .audio-enable-banner:hover {
@@ -613,19 +946,54 @@
             font-size: 1.5rem;
         }
 
+        .tv-mode .audio-enable-banner .icon {
+            font-size: var(--font-2xl);
+        }
+
         .audio-enable-banner .text {
             font-weight: 600;
         }
 
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateX(-50%) translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* TV Mode specific enhancements for quiz */
+        .tv-mode .question-text {
+            font-size: var(--font-3xl);
+        }
+
+        .tv-mode .option-card {
+            padding: var(--gap-xl);
+        }
+
+        .tv-mode .option-text {
+            font-size: var(--font-xl);
+        }
+
+        .tv-mode .category-title {
+            font-size: var(--font-3xl);
+        }
+
+        .tv-mode .scoreboard-item {
+            padding: var(--gap-lg) var(--gap-xl);
+        }
+
+        .tv-mode .scoreboard-position {
+            font-size: var(--font-2xl);
+        }
+
+        .tv-mode .scoreboard-player {
+            font-size: var(--font-lg);
+        }
+
+        .tv-mode .winner-crown {
+            font-size: clamp(80px, min(12vw, 22vh), 200px);
+        }
+
+        .tv-mode .winner-name {
+            font-size: var(--font-4xl);
         }
     </style>
 </head>
@@ -648,7 +1016,7 @@
                 <span>⏱️</span>
                 <span id="timerValue">--</span>
             </div>
-            <div>
+            <div style="font-size: var(--font-base);">
                 Room: <strong id="roomCode">----</strong>
             </div>
             <button class="audio-control" id="audioControlBtn" title="Toggle sound">
@@ -664,6 +1032,13 @@
             <button id="startAutoplayBtn">Start Autoplay</button>
             <button id="stopAutoplayBtn">Stop Autoplay</button>
             <span class="status" id="autoplayStatus">Autoplay: stopped · Bots: 0</span>
+            <div class="dev-panel-effects">
+                <button id="testSplashBtn" title="Test splash effect">🎬 Splash</button>
+                <button id="testDoubleBtn" title="Test DoublePoints effect">⚡ ×2</button>
+                <button id="testBackToZeroBtn" title="Test BackToZero effect">💥 Reset</button>
+                <button id="testNopeBtn" title="Test Nope effect">🚫 Nope</button>
+                <button id="testCountdownBtn" title="Test countdown sounds">⏱️ Countdown</button>
+            </div>
         </div>
 
         <!-- Main Content -->
@@ -725,7 +1100,7 @@
                 <div class="winner-crown">👑</div>
                 <div class="winner-name" id="winnerName">Winner!</div>
                 <div class="winner-score" id="winnerScore">0 points</div>
-                <button class="btn btn-primary btn-large" style="margin-top: 32px;" id="backToLobbyFinishedBtn">
+                <button class="btn btn-primary btn-large" style="margin-top: var(--gap-xl);" id="backToLobbyFinishedBtn">
                     Back to Lobby
                 </button>
             </div>
@@ -734,6 +1109,30 @@
 
     <!-- Booster Toast Overlay -->
     <div class="booster-toast-overlay" id="boosterToastOverlay"></div>
+
+    <!-- Diagnostics Overlay (DEV only) -->
+    <div class="diagnostics-overlay hidden" id="diagnosticsOverlay">
+        <div class="diag-row">
+            <span class="diag-label">Effects:</span>
+            <span id="diagEffects" class="diag-warn">--</span>
+        </div>
+        <div class="diag-row">
+            <span class="diag-label">Audio:</span>
+            <span id="diagAudio" class="diag-warn">--</span>
+        </div>
+        <div class="diag-row">
+            <span class="diag-label">Phase:</span>
+            <span id="diagPhase">--</span>
+        </div>
+        <div class="diag-row">
+            <span class="diag-label">Track:</span>
+            <span id="diagTrack">--</span>
+        </div>
+        <div class="diag-row">
+            <span class="diag-label">Last tick:</span>
+            <span id="diagTick">--</span>
+        </div>
+    </div>
 
     <!-- GSAP + Flip Plugin for animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -753,6 +1152,24 @@
     <script src="/js/effects-manager.js"></script>
     <script src="/js/audio-manager.js"></script>
     <script>
+        // ===========================================
+        // TV MODE DETECTION
+        // Automatically add 'tv-mode' class for large screens
+        // ===========================================
+        function updateTvMode() {
+            const isTvMode = window.innerWidth >= 1200;
+            document.documentElement.classList.toggle('tv-mode', isTvMode);
+            console.log(`TV Mode: ${isTvMode ? 'enabled' : 'disabled'} (width: ${window.innerWidth}px)`);
+        }
+        
+        // Initialize and listen for resize
+        window.addEventListener('resize', updateTvMode);
+        updateTvMode();
+
+        // ===========================================
+        // QUIZ GAME LOGIC
+        // ===========================================
+        
         // Get room code from URL
         const urlParams = new URLSearchParams(window.location.search);
         const roomCode = urlParams.get('room');
@@ -770,6 +1187,15 @@
         const audio = new AudioManager();
         let audioEnabled = false;
         let splashShownThisSession = false;
+        let isDevelopment = false;
+
+        // Diagnostics elements
+        const diagnosticsOverlayEl = document.getElementById('diagnosticsOverlay');
+        const diagEffectsEl = document.getElementById('diagEffects');
+        const diagAudioEl = document.getElementById('diagAudio');
+        const diagPhaseEl = document.getElementById('diagPhase');
+        const diagTrackEl = document.getElementById('diagTrack');
+        const diagTickEl = document.getElementById('diagTick');
 
         // DOM Elements
         const roundBadgeEl = document.getElementById('roundBadge');
@@ -794,8 +1220,6 @@
         const scoreboardViewEl = document.getElementById('scoreboardView');
         const scoreboardTitleEl = document.getElementById('scoreboardTitle');
         const finishedViewEl = document.getElementById('finishedView');
-        const winnerNameEl = document.getElementById('winnerName');
-        const winnerScoreEl = document.getElementById('winnerScore');
         const devPanelEl = document.getElementById('devPanel');
         const addBotsBtn = document.getElementById('addBotsBtn');
         const startAutoplayBtn = document.getElementById('startAutoplayBtn');
@@ -810,7 +1234,7 @@
         let previousPhase = null;
         let selectedCategory = null;
         let isFirstQuestionOfGame = true;
-        let categoryAnimationPlayed = false; // Track if category animation has played for this round
+        let categoryAnimationPlayed = false;
         
         // Smooth timer state
         let phaseEndsUtc = null;
@@ -854,17 +1278,16 @@
                 gsap.registerPlugin(Flip);
             }
 
-            // Initialize effects manager (Pixi overlay) - async for Pixi.js v7
             try {
                 await effects.init();
+                updateDiagnostics();
             } catch (e) {
                 console.warn('Effects initialization failed:', e);
+                updateDiagnostics();
             }
             
-            // Initialize audio manager
             audio.init();
-
-            // Setup audio enable banner (non-blocking)
+            updateDiagnostics();
             setupAudioBanner();
 
             client.on('onConnected', () => console.log('Connected'));
@@ -877,34 +1300,25 @@
             await client.registerHost(roomCode);
 
             await configureDevPanel();
-            
-            // Start smooth timer loop (includes countdown sounds)
             startTimerLoop();
             
-            // Setup back to lobby buttons
             backToLobbyBtn.addEventListener('click', handleBackToLobby);
             backToLobbyFinishedBtn.addEventListener('click', handleBackToLobby);
-            
-            // Setup audio control button
             audioControlBtnEl.addEventListener('click', toggleAudio);
+            
+            setInterval(updateDiagnostics, 500);
         }
 
-        // Audio enable banner handling (non-blocking)
         function setupAudioBanner() {
             audioEnableBannerEl.addEventListener('click', enableAudio);
-            
-            // Also enable audio on any click on the page (first interaction)
             document.addEventListener('click', function firstClick() {
-                if (!audioEnabled) {
-                    enableAudio();
-                }
+                if (!audioEnabled) enableAudio();
                 document.removeEventListener('click', firstClick);
             }, { once: true });
         }
 
         function enableAudio() {
             if (audioEnabled) return;
-            
             audio.unlock();
             audioEnabled = true;
             audioEnableBannerEl.classList.add('hidden');
@@ -912,10 +1326,7 @@
         }
 
         function toggleAudio() {
-            if (!audioEnabled) {
-                enableAudio();
-                return;
-            }
+            if (!audioEnabled) { enableAudio(); return; }
             audio.toggleMute();
             updateAudioButton();
         }
@@ -930,7 +1341,6 @@
             }
         }
         
-        // Smooth timer functions with countdown sounds
         function startTimerLoop() {
             if (timerIntervalId) clearInterval(timerIntervalId);
             timerIntervalId = setInterval(updateTimerDisplay, 200);
@@ -942,25 +1352,18 @@
                 timerEl.classList.remove('warning');
                 return;
             }
-            
             const now = Date.now();
             const remaining = Math.max(0, Math.ceil((phaseEndsUtc - now) / 1000));
             timerValueEl.textContent = remaining;
             timerEl.classList.toggle('warning', remaining <= 5);
-            
-            // Handle countdown sounds (only during Answering phase)
-            if (audioEnabled) {
-                audio.handleCountdown(remaining);
-            }
+            if (audioEnabled) audio.handleCountdown(remaining);
         }
         
         async function handleBackToLobby() {
-            // Reset states for new game
             splashShownThisSession = false;
             isFirstQuestionOfGame = true;
             effects.resetSplash();
             audio.stopAll();
-            
             try {
                 await client.resetToLobby();
                 window.location.href = `/tv.html?room=${roomCode}`;
@@ -972,60 +1375,38 @@
 
         function onBoosterActivated(event) {
             console.log('Booster activated (TV):', event);
-            
             const boosterTypeNum = typeof event.boosterType === 'number' 
-                ? event.boosterType 
-                : GameUtils.BoosterTypes[event.boosterType] ?? 0;
+                ? event.boosterType : GameUtils.BoosterTypes[event.boosterType] ?? 0;
             const emoji = GameUtils.getBoosterEmoji(boosterTypeNum);
             
-            let message;
-            let isBlocked = false;
+            let message, isBlocked = false;
             
             if (event.wasBlockedByShield) {
                 message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span>'s ` +
                           `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span> was blocked by ` +
                           `<span class="booster-toast-target">${escapeHtml(event.shieldBlockerName)}</span>'s Shield! 🛡️`;
                 isBlocked = true;
-                
-                // Play shield effect
                 effects.playBooster('Shield', { playerName: event.shieldBlockerName });
             } else if (event.targetName) {
                 message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span> used ` +
                           `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span> on ` +
                           `<span class="booster-toast-target">${escapeHtml(event.targetName)}</span>!`;
-                
-                // Play booster effect
-                effects.playBooster(boosterTypeNum, { 
-                    playerName: event.activatorName, 
-                    targetName: event.targetName 
-                });
+                effects.playBooster(boosterTypeNum, { playerName: event.activatorName, targetName: event.targetName });
             } else {
                 message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span> activated ` +
                           `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span>!`;
-                
-                // Play booster effect
                 effects.playBooster(boosterTypeNum, { playerName: event.activatorName });
             }
             
-            // Play booster sound
-            if (audioEnabled) {
-                audio.playBooster();
-            }
-            
+            if (audioEnabled) audio.playBooster();
             showBoosterToast(emoji, message, isBlocked);
         }
 
         function showBoosterToast(emoji, message, isBlocked = false) {
             const toast = document.createElement('div');
             toast.className = `booster-toast ${isBlocked ? 'blocked' : ''}`;
-            toast.innerHTML = `
-                <div class="booster-toast-icon">${emoji}</div>
-                <div class="booster-toast-text">${message}</div>
-            `;
-            
+            toast.innerHTML = `<div class="booster-toast-icon">${emoji}</div><div class="booster-toast-text">${message}</div>`;
             boosterToastOverlayEl.appendChild(toast);
-            
-            // Animate out and remove after 4 seconds
             setTimeout(() => {
                 toast.style.animation = 'boosterToastOut 0.4s ease-in forwards';
                 setTimeout(() => toast.remove(), 400);
@@ -1034,14 +1415,11 @@
 
         function onQuizStateUpdated(state) {
             console.log('Quiz state:', state);
-
-            // Update header
             roundBadgeEl.textContent = `Round ${state.roundNumber || 1}`;
             questionNumberEl.textContent = state.questionNumber || '-';
             totalQuestionsEl.textContent = state.totalQuestions;
             phaseBadgeEl.textContent = phaseNames[state.phase] || state.phase;
             
-            // Update phaseEndsUtc for smooth timer
             if (state.phaseEndsUtc) {
                 phaseEndsUtc = new Date(state.phaseEndsUtc).getTime();
             } else if (state.remainingSeconds !== undefined) {
@@ -1049,118 +1427,68 @@
             }
             updateTimerDisplay();
 
-            // Keep original phase for special handling
             const phaseRaw = state.phase;
             const phaseStr = String(state.phase);
-            
-            // Map phase to numeric
-            // QuizPhase enum: CategorySelection=0, Question=1, Answering=2, Reveal=3, Scoreboard=4, Finished=5
-            // DictionaryWord=6, DictionaryAnswering=7, RankingPrompt=8, RankingVoting=9, RankingReveal=10
             let phase;
             if (typeof phaseRaw === 'number') {
                 phase = phaseRaw;
             } else {
                 const phaseMap = { 
                     'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5,
-                    'DictionaryWord': 6, 'DictionaryAnswering': 7,
-                    'RankingPrompt': 8, 'RankingVoting': 9, 'RankingReveal': 10
+                    'DictionaryWord': 6, 'DictionaryAnswering': 7, 'RankingPrompt': 8, 'RankingVoting': 9, 'RankingReveal': 10
                 };
                 phase = phaseMap[phaseStr] ?? phaseRaw;
             }
             
-            // Check if this is a Ranking Stars or Dictionary phase
             const isRankingPhase = phase === 8 || phase === 9 || phase === 10;
             const isDictionaryPhase = phase === 6 || phase === 7;
 
-            // Reset selectedCategory when entering new CategorySelection phase
             if (phase === 0 && previousPhase !== 0) {
                 selectedCategory = null;
-                categoryAnimationPlayed = false; // Reset animation flag for new round
+                categoryAnimationPlayed = false;
             }
 
-            // Handle phase transitions for audio and effects
             handlePhaseTransition(previousPhase, phase, state);
-
             const isEnteringScoreboard = phase === 4 && previousPhase !== 4;
 
-            // Handle different phases based on numeric phase values
-            if (phase === 5) { // Finished
-                showFinished(state);
-            } else if (phase === 4) { // Scoreboard
-                showScoreboard(state, isEnteringScoreboard);
-            } else if (phase === 0) { // CategorySelection
-                showCategorySelection(state);
-            } else if (isRankingPhase || isDictionaryPhase || phase === 1 || phase === 2 || phase === 3) {
-                // Question, Answering, Reveal, RankingPrompt/Voting/Reveal, DictionaryWord/Answering
-                showQuestion(state);
-            }
+            if (phase === 5) showFinished(state);
+            else if (phase === 4) showScoreboard(state, isEnteringScoreboard);
+            else if (phase === 0) showCategorySelection(state);
+            else if (isRankingPhase || isDictionaryPhase || phase === 1 || phase === 2 || phase === 3) showQuestion(state);
 
             previousPhase = phase;
         }
 
-        /**
-         * Handle phase transitions for audio and visual effects
-         */
         function handlePhaseTransition(oldPhase, newPhase, state) {
             if (oldPhase === newPhase) return;
-            
-            // Reset countdown state on phase change
             lastCountdownSecond = -1;
+            if (audioEnabled) audio.setPhase(newPhase);
             
-            // Update audio for new phase
-            if (audioEnabled) {
-                audio.setPhase(newPhase);
-            }
+            const isGameplayPhase = newPhase === 1 || newPhase === 2 || newPhase === 6 || newPhase === 7 || newPhase === 8 || newPhase === 9;
+            const wasInCategoryOrStart = oldPhase === null || oldPhase === 0;
             
-            // Check for quiz start splash (first question of the game)
-            if (newPhase === 1 && isFirstQuestionOfGame && state.roundNumber === 1 && state.questionNumber === 1) {
-                // Show splash screen
-                if (!splashShownThisSession) {
-                    effects.playSplash('QuizStart');
-                    if (audioEnabled) {
-                        audio.playSplash();
-                    }
-                    splashShownThisSession = true;
-                }
-                isFirstQuestionOfGame = false;
-            }
-
-            // Play category selection animation only on first entry to CategorySelection phase
-            if (newPhase === 0 && !categoryAnimationPlayed) {
-                // Animate categories in
-                if (typeof gsap !== 'undefined') {
-                    gsap.from('.category-option', {
-                        opacity: 0,
-                        y: 30,
-                        stagger: 0.1,
-                        duration: 0.5,
-                        ease: 'back.out(1.4)'
-                    });
-                }
-                categoryAnimationPlayed = true;
+            if (isGameplayPhase && wasInCategoryOrStart && !splashShownThisSession) {
+                console.log('🎬 Triggering quiz splash (first gameplay phase)');
+                effects.playSplash('QuizStart');
+                if (audioEnabled) audio.playSplash();
+                splashShownThisSession = true;
             }
         }
 
-        function getCategoryIcon(category) {
-            return categoryIcons[category] || categoryIcons['default'];
-        }
+        function getCategoryIcon(category) { return categoryIcons[category] || categoryIcons['default']; }
 
         function showCategorySelection(state) {
             hideAllViews();
             categoryViewEl.classList.add('visible');
-
             categorySubtitleEl.textContent = `Round ${state.roundNumber} - ${state.questionsInRound || 3} questions`;
 
-            // Find round leader info
             const leaderId = state.roundLeaderPlayerId;
             const leader = state.scoreboard?.find(p => p.playerId === leaderId);
-            
             if (leader) {
                 leaderAvatarEl.textContent = GameUtils.getInitials(leader.displayName);
                 leaderNameEl.textContent = leader.displayName;
             }
 
-            // Render categories - all categories should be fully visible (no selected/faded state on TV)
             const categories = state.availableCategories || [];
             categoriesGridEl.innerHTML = categories.map(cat => `
                 <div class="category-option" data-category="${cat}">
@@ -1169,16 +1497,9 @@
                 </div>
             `).join('');
 
-            // Only animate categories on first entry to this phase (not on every state update)
             if (typeof gsap !== 'undefined' && !categoryAnimationPlayed) {
                 categoryAnimationPlayed = true;
-                gsap.from('.category-option', {
-                    opacity: 0,
-                    y: 30,
-                    stagger: 0.1,
-                    duration: 0.5,
-                    ease: 'back.out(1.4)'
-                });
+                gsap.from('.category-option', { opacity: 0, y: 30, stagger: 0.1, duration: 0.5, ease: 'back.out(1.4)' });
             }
         }
 
@@ -1186,17 +1507,13 @@
             hideAllViews();
             questionViewEl.classList.remove('hidden');
 
-            // Determine round type (numeric values: CategoryQuiz=0, RankingStars=1, DictionaryGame=2)
             const roundType = state.roundType;
             const isRankingStars = roundType === 'RankingStars' || roundType === 1;
             const isDictionary = roundType === 'DictionaryGame' || roundType === 2;
-            
-            // Also check phase for special round types
             const phaseRaw = state.phase;
             const isRankingPhase = phaseRaw === 8 || phaseRaw === 9 || phaseRaw === 10;
             const isDictionaryPhase = phaseRaw === 6 || phaseRaw === 7;
 
-            // Show current category or round type banner
             if (isRankingStars || isRankingPhase) {
                 currentCategoryBannerEl.textContent = '⭐ Ranking Stars';
                 currentCategoryBannerEl.style.display = 'inline-block';
@@ -1211,96 +1528,34 @@
             }
 
             questionTextEl.textContent = state.questionText;
-
-            // Standard option colors mapping
             const optionKeys = ['A', 'B', 'C', 'D'];
             const optionColors = { A: 'a', B: 'b', C: 'c', D: 'd', '0': 'a', '1': 'b', '2': 'c', '3': 'd' };
 
-            // Render options based on round type
             if ((isRankingStars || isRankingPhase) && state.playerOptions && state.playerOptions.length > 0) {
-                // Ranking Stars: Show player names as options
                 optionsGridEl.innerHTML = state.playerOptions.map((player, index) => {
                     const key = optionKeys[index] || String.fromCharCode(65 + index);
                     const colorClass = optionColors[key] || 'a';
-                    let classes = 'option-card';
-                    let indicator = '';
-
-                    // Check if this player is a winner (during reveal phase=10)
-                    if (state.rankingWinnerIds && state.rankingWinnerIds.includes(player.playerId)) {
-                        classes += ' correct';
-                        indicator = '⭐';
-                    }
-
-                    // Show vote count during reveal
+                    let classes = 'option-card', indicator = '';
+                    if (state.rankingWinnerIds && state.rankingWinnerIds.includes(player.playerId)) { classes += ' correct'; indicator = '⭐'; }
                     const voteCount = state.rankingVoteCounts?.[player.playerId] || 0;
                     const voteText = state.rankingWinnerIds ? ` (${voteCount} votes)` : '';
-
-                    return `
-                        <div class="${classes}">
-                            <div class="option-key ${colorClass}">${key}</div>
-                            <div class="option-text">${escapeHtml(player.displayName)}${voteText}</div>
-                            <div class="option-indicator">${indicator}</div>
-                        </div>
-                    `;
-                }).join('');
-            } else if ((isDictionary || isDictionaryPhase) && state.options && state.options.length > 0) {
-                // Dictionary Game: Show options with A, B, C, D colors
-                optionsGridEl.innerHTML = state.options.map((opt, index) => {
-                    const key = optionKeys[index] || opt.key;
-                    const colorClass = optionColors[key] || optionColors[opt.key] || 'a';
-                    let classes = 'option-card';
-                    let indicator = '';
-
-                    if (state.correctOptionKey) {
-                        if (opt.key === state.correctOptionKey || String(index) === state.correctOptionKey) {
-                            classes += ' correct';
-                            indicator = '✓';
-                        } else {
-                            classes += ' incorrect';
-                        }
-                    }
-
-                    return `
-                        <div class="${classes}">
-                            <div class="option-key ${colorClass}">${key}</div>
-                            <div class="option-text">${escapeHtml(opt.text)}</div>
-                            <div class="option-indicator">${indicator}</div>
-                        </div>
-                    `;
+                    return `<div class="${classes}"><div class="option-key ${colorClass}">${key}</div><div class="option-text">${escapeHtml(player.displayName)}${voteText}</div><div class="option-indicator">${indicator}</div></div>`;
                 }).join('');
             } else {
-                // Standard Category Quiz
-                optionsGridEl.innerHTML = (state.options || []).map(opt => {
+                optionsGridEl.innerHTML = state.options.map(opt => {
+                    const key = opt.key;
+                    const colorClass = optionColors[key];
                     let classes = 'option-card';
                     let indicator = '';
-
-                    if (state.correctOptionKey) {
-                        if (opt.key === state.correctOptionKey) {
-                            classes += ' correct';
-                            indicator = '✓';
-                        } else {
-                            classes += ' incorrect';
-                        }
-                    }
-
-                    return `
-                        <div class="${classes}">
-                            <div class="option-key ${optionColors[opt.key]}">${opt.key}</div>
-                            <div class="option-text">${escapeHtml(opt.text)}</div>
-                            <div class="option-indicator">${indicator}</div>
-                        </div>
-                    `;
+                    if (state.correctOptionKey && key === state.correctOptionKey) { classes += ' correct'; indicator = '✓'; }
+                    else if (state.playerDidNotAnswer) { classes += ' faded'; }
+                    return `<div class="${classes}"><div class="option-key ${colorClass}">${key}</div><div class="option-text">${escapeHtml(opt.text)}</div><div class="option-indicator">${indicator}</div></div>`;
                 }).join('');
             }
 
-            // Show explanation for Dictionary (definition) or regular quiz
             if (state.explanation && state.correctOptionKey) {
                 explanationCardEl.classList.add('visible');
-                if (isDictionary || isDictionaryPhase) {
-                    explanationTextEl.textContent = `Definition: ${state.explanation}`;
-                } else {
-                    explanationTextEl.textContent = state.explanation;
-                }
+                explanationTextEl.textContent = state.explanation;
             } else {
                 explanationCardEl.classList.remove('visible');
             }
@@ -1315,32 +1570,20 @@
         function showScoreboard(state, animate = true) {
             hideAllViews();
             scoreboardViewEl.classList.add('visible');
-
-            scoreboardTitleEl.textContent = state.questionNumber >= state.totalQuestions 
-                ? '🏆 Final Scores' 
-                : '📊 Scores';
-
+            scoreboardTitleEl.textContent = state.questionNumber >= state.totalQuestions ? '🏆 Final Scores' : '📊 Scores';
             let roundWinnerId = null;
             const correctPlayers = (state.scoreboard || []).filter(p => p.answeredCorrectly === true);
-            if (correctPlayers.length > 0) {
-                roundWinnerId = correctPlayers[0].playerId;
-            }
-
-            scoreboardAnimator.applyUpdate(state.scoreboard || [], {
-                animate: animate,
-                highlightWinnerId: roundWinnerId
-            });
+            if (correctPlayers.length > 0) roundWinnerId = correctPlayers[0].playerId;
+            scoreboardAnimator.applyUpdate(state.scoreboard || [], { animate, highlightWinnerId: roundWinnerId });
         }
 
         function showFinished(state) {
             hideAllViews();
             finishedViewEl.classList.remove('hidden');
-
             const winner = state.scoreboard?.[0];
             if (winner) {
                 winnerNameEl.textContent = winner.displayName;
                 winnerScoreEl.textContent = `${winner.score} points`;
-
                 if (typeof gsap !== 'undefined') {
                     gsap.from(winnerNameEl, { opacity: 0, y: 30, duration: 0.6, ease: 'back.out(1.7)' });
                     gsap.from(winnerScoreEl, { opacity: 0, y: 20, duration: 0.6, delay: 0.2, ease: 'power2.out' });
@@ -1357,38 +1600,49 @@
 
         function updateAutoplayStatus(status) {
             if (!status || !autoplayStatusEl) return;
-            const running = status.running ? 'running' : 'stopped';
-            autoplayStatusEl.textContent = `Autoplay: ${running} · Bots: ${status.botCount ?? 0}`;
+            autoplayStatusEl.textContent = `Autoplay: ${status.running ? 'running' : 'stopped'} · Bots: ${status.botCount ?? 0}`;
         }
-
-        let devPanelListenersAdded = false;
 
         async function configureDevPanel() {
             try {
                 const response = await fetch(`${SERVER_URL}/health`);
                 const data = await response.json();
                 if (data?.environment === 'Development') {
+                    isDevelopment = true;
                     devPanelEl.classList.remove('hidden');
+                    diagnosticsOverlayEl.classList.remove('hidden');
+                    setupDevPanelListeners();
                 }
-            } catch (error) {
-                console.warn('Dev panel disabled:', error);
-            }
+            } catch (e) { console.warn('Dev panel disabled:', e); }
+        }
 
-            if (!devPanelListenersAdded) {
-                addBotsBtn?.addEventListener('click', async () => {
-                    await client.addBots();
-                });
+        function setupDevPanelListeners() {
+            document.getElementById('addBotsBtn')?.addEventListener('click', () => client.addBots());
+            document.getElementById('startAutoplayBtn')?.addEventListener('click', () => client.startAutoplay());
+            document.getElementById('stopAutoplayBtn')?.addEventListener('click', () => client.stopAutoplay());
+            document.getElementById('testSplashBtn')?.addEventListener('click', () => { effects.resetSplash(); effects.playSplash('QuizStart'); if (audioEnabled) audio.playSplash(); });
+            document.getElementById('testDoubleBtn')?.addEventListener('click', () => { effects.playBooster('DoublePoints', { playerName: 'Test' }); if (audioEnabled) audio.playBooster(); });
+            document.getElementById('testBackToZeroBtn')?.addEventListener('click', () => { effects.playBooster('BackToZero', { playerName: 'Test', targetName: 'Victim' }); if (audioEnabled) audio.playBooster(); });
+            document.getElementById('testNopeBtn')?.addEventListener('click', () => { effects.playBooster('Nope', { playerName: 'Test', targetName: 'Victim' }); if (audioEnabled) audio.playBooster(); });
+            document.getElementById('testCountdownBtn')?.addEventListener('click', () => {
+                let sec = 10;
+                const interval = setInterval(() => {
+                    if (sec >= 0) { if (audioEnabled) sec > 0 ? audio.playSfx('tick') : audio.playSfx('buzzer'); sec--; }
+                    else clearInterval(interval);
+                }, 500);
+            });
+        }
 
-                startAutoplayBtn?.addEventListener('click', async () => {
-                    await client.startAutoplay();
-                });
-
-                stopAutoplayBtn?.addEventListener('click', async () => {
-                    await client.stopAutoplay();
-                });
-
-                devPanelListenersAdded = true;
-            }
+        function updateDiagnostics() {
+            if (!isDevelopment) return;
+            diagEffectsEl.textContent = effects.isInitialized ? 'OK' : 'DISABLED';
+            diagEffectsEl.className = effects.isInitialized ? 'diag-ok' : 'diag-err';
+            if (!audio.isInitialized) { diagAudioEl.textContent = 'NOT INIT'; diagAudioEl.className = 'diag-err'; }
+            else if (!audioEnabled) { diagAudioEl.textContent = 'LOCKED'; diagAudioEl.className = 'diag-warn'; }
+            else if (audio.isMuted) { diagAudioEl.textContent = 'MUTED'; diagAudioEl.className = 'diag-warn'; }
+            else { diagAudioEl.textContent = 'OK'; diagAudioEl.className = 'diag-ok'; }
+            diagPhaseEl.textContent = previousPhase !== null ? `${previousPhase} (${phaseNames[previousPhase] || '?'})` : 'null';
+            diagTrackEl.textContent = audio.currentPhase || 'none';
         }
 
         function escapeHtml(text) {

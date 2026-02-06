@@ -22,10 +22,14 @@ class AudioManager {
         this.sfxVolume = 0.6;
         this.audioUnlocked = false;
         this.loadErrors = new Set();
+        this.loadAttempts = new Set();
         
         // Countdown state
         this.lastPlayedSecond = -1;
         this.countdownEnabled = true;
+        
+        // Track if Howler is available
+        this.howlerAvailable = false;
     }
 
     /**
@@ -33,14 +37,17 @@ class AudioManager {
      * Note: Actual sound loading happens after user interaction due to autoplay policy
      */
     init() {
-        if (this.isInitialized) return;
+        if (this.isInitialized) return true;
 
         // Check if Howler is available
         if (typeof Howl === 'undefined') {
             console.warn('AudioManager: Howler.js not loaded, audio disabled');
+            this.howlerAvailable = false;
             return false;
         }
 
+        this.howlerAvailable = true;
+        
         // Setup sound effects (they load on demand)
         this._setupSounds();
 
@@ -84,6 +91,7 @@ class AudioManager {
      */
     unlock() {
         if (this.audioUnlocked) return;
+        if (!this.howlerAvailable) return;
 
         try {
             // Create a silent sound to unlock audio context
@@ -91,15 +99,35 @@ class AudioManager {
                 src: ['data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwmHAAAAAAD/+9DEAAAH+ANoUAAAIv8AXQ4wBACAIAMN//+sREZG7v/h9Xd3d3cQBAEHd//+IAgCAIB8oc/+D4Pg+D4Ph9YPlDkJB8H/5Q5/gh//+c5znP8hyH//qqqqqgAAAAD/+9DEFQPAAADSAAAAIAAANIAAAAQAAAGkAAAAIAAANIAAAARMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'],
                 volume: 0,
                 onend: () => {
-                    this.audioUnlocked = true;
-                    console.log('AudioManager: Audio unlocked');
+                    console.log('AudioManager: Audio unlocked via silent sound');
+                },
+                onloaderror: () => {
+                    // Fallback - still mark as unlocked
+                    console.log('AudioManager: Audio unlock attempted (no fallback sound)');
                 }
             });
             silentSound.play();
             this.audioUnlocked = true;
         } catch (error) {
             console.warn('AudioManager: Failed to unlock audio', error);
+            // Still mark as unlocked to allow attempts
+            this.audioUnlocked = true;
         }
+    }
+
+    /**
+     * Check if a file has already failed to load
+     */
+    _hasLoadFailed(src) {
+        return this.loadErrors.has(src);
+    }
+
+    /**
+     * Mark a file as having failed to load
+     */
+    _markLoadFailed(src) {
+        this.loadErrors.add(src);
+        console.warn(`AudioManager: Marked ${src} as failed - won't retry`);
     }
 
     /**
@@ -107,7 +135,7 @@ class AudioManager {
      * @param {string} phase - Phase name
      */
     setPhase(phase) {
-        if (!this.isInitialized || this.isMuted) return;
+        if (!this.isInitialized || !this.howlerAvailable || this.isMuted) return;
         
         // Normalize phase name
         const normalizedPhase = this._normalizePhase(phase);
@@ -135,6 +163,11 @@ class AudioManager {
             3: 'reveal',
             4: 'scoreboard',
             5: 'finished',
+            6: 'question',  // DictionaryWord
+            7: 'answering', // DictionaryAnswering
+            8: 'question',  // RankingPrompt
+            9: 'answering', // RankingVoting
+            10: 'reveal',   // RankingReveal
             'CategorySelection': 'categorySelection',
             'Question': 'question',
             'Answering': 'answering',
@@ -154,30 +187,34 @@ class AudioManager {
      * Transition between music tracks
      */
     _transitionMusic(phase) {
+        if (!this.howlerAvailable) return;
+        
         const trackConfig = this.bgTracks[phase];
         if (!trackConfig) return;
 
         // Skip if we already know this track failed to load
-        if (this.loadErrors.has(trackConfig.src)) return;
+        if (this._hasLoadFailed(trackConfig.src)) return;
 
         // Fade out current music
         if (this.bgMusic) {
             const oldMusic = this.bgMusic;
-            if (typeof gsap !== 'undefined') {
-                gsap.to(oldMusic, {
-                    volume: 0,
-                    duration: 0.5,
-                    onComplete: () => {
-                        try { oldMusic.stop(); } catch (e) {}
-                    }
-                });
-            } else {
-                try {
+            try {
+                if (typeof gsap !== 'undefined') {
+                    gsap.to(oldMusic, {
+                        volume: 0,
+                        duration: 0.5,
+                        onComplete: () => {
+                            try { oldMusic.stop(); } catch (e) {}
+                        }
+                    });
+                } else {
                     oldMusic.fade(oldMusic.volume(), 0, 500);
                     setTimeout(() => {
                         try { oldMusic.stop(); } catch (e) {}
                     }, 500);
-                } catch (e) {}
+                }
+            } catch (e) {
+                console.warn('AudioManager: Error fading out music', e);
             }
         }
 
@@ -187,12 +224,12 @@ class AudioManager {
                 src: [trackConfig.src],
                 loop: trackConfig.loop,
                 volume: 0,
+                html5: true, // Use HTML5 audio for better compatibility
                 onloaderror: (id, error) => {
-                    console.warn(`AudioManager: Failed to load ${trackConfig.src} - audio files may not be available`);
-                    this.loadErrors.add(trackConfig.src);
+                    this._markLoadFailed(trackConfig.src);
                 },
                 onplayerror: (id, error) => {
-                    console.warn(`AudioManager: Failed to play ${trackConfig.src}`);
+                    console.warn(`AudioManager: Failed to play ${trackConfig.src} - ${error}`);
                 }
             });
 
@@ -208,7 +245,7 @@ class AudioManager {
                 this.bgMusic.fade(0, this.musicVolume, 500);
             }
         } catch (error) {
-            console.warn('AudioManager: Error playing music', error);
+            console.warn('AudioManager: Error creating music Howl', error);
         }
     }
 
@@ -217,7 +254,7 @@ class AudioManager {
      * @param {string} sfxName - Name of the sound effect
      */
     playSfx(sfxName) {
-        if (!this.isInitialized || this.isMuted) return;
+        if (!this.isInitialized || !this.howlerAvailable || this.isMuted) return;
 
         const config = this.sfxConfig[sfxName.toLowerCase()];
         if (!config) {
@@ -226,7 +263,7 @@ class AudioManager {
         }
 
         // Skip if we already know this sound failed to load
-        if (this.loadErrors.has(config.src)) return;
+        if (this._hasLoadFailed(config.src)) return;
 
         // Create sound on demand if not cached
         if (!this.sfxSounds[sfxName]) {
@@ -234,16 +271,17 @@ class AudioManager {
                 this.sfxSounds[sfxName] = new Howl({
                     src: [config.src],
                     volume: config.volume * this.sfxVolume,
+                    html5: false, // Use Web Audio for SFX for lower latency
                     onloaderror: (id, error) => {
-                        console.warn(`AudioManager: Failed to load SFX ${config.src} - audio files may not be available`);
-                        this.loadErrors.add(config.src);
+                        this._markLoadFailed(config.src);
+                        delete this.sfxSounds[sfxName]; // Remove failed sound
                     },
                     onplayerror: (id, error) => {
                         console.warn(`AudioManager: Failed to play SFX ${config.src}`);
                     }
                 });
             } catch (error) {
-                console.warn('AudioManager: Error creating SFX', error);
+                console.warn('AudioManager: Error creating SFX Howl', error);
                 return;
             }
         }
@@ -260,7 +298,7 @@ class AudioManager {
      * @param {number} remainingSeconds - Seconds remaining
      */
     handleCountdown(remainingSeconds) {
-        if (!this.isInitialized || this.isMuted || !this.countdownEnabled) return;
+        if (!this.isInitialized || !this.howlerAvailable || this.isMuted || !this.countdownEnabled) return;
         
         // Only play during answering phase
         if (this.currentPhase !== 'answering') return;
@@ -367,6 +405,13 @@ class AudioManager {
     }
 
     /**
+     * Get load error count (for diagnostics)
+     */
+    getLoadErrorCount() {
+        return this.loadErrors.size;
+    }
+
+    /**
      * Stop all audio
      */
     stopAll() {
@@ -393,7 +438,9 @@ class AudioManager {
     destroy() {
         this.stopAll();
         try {
-            Howler.unload();
+            if (typeof Howler !== 'undefined') {
+                Howler.unload();
+            }
         } catch (e) {}
         this.isInitialized = false;
     }

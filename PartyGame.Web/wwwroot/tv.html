@@ -10,11 +10,11 @@
         .lock-toggle {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
+            gap: var(--gap);
+            padding: var(--gap) var(--gap-lg);
             background: var(--bg-color);
-            border-radius: 12px;
-            margin-top: 16px;
+            border-radius: var(--radius-lg);
+            margin-top: var(--gap);
         }
         
         .lock-toggle-switch {
@@ -25,6 +25,13 @@
             border-radius: 14px;
             cursor: pointer;
             transition: background 0.3s;
+            flex-shrink: 0;
+        }
+        
+        .tv-mode .lock-toggle-switch {
+            width: clamp(52px, min(4vw, 7vh), 72px);
+            height: clamp(28px, min(2.2vw, 4vh), 40px);
+            border-radius: clamp(14px, min(1.1vw, 2vh), 20px);
         }
         
         .lock-toggle-switch.locked {
@@ -44,23 +51,33 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
+        .tv-mode .lock-toggle-switch::after {
+            width: clamp(24px, min(1.9vw, 3.4vh), 36px);
+            height: clamp(24px, min(1.9vw, 3.4vh), 36px);
+        }
+        
         .lock-toggle-switch.locked::after {
             transform: translateX(24px);
+        }
+        
+        .tv-mode .lock-toggle-switch.locked::after {
+            transform: translateX(clamp(24px, min(1.9vw, 3.4vh), 32px));
         }
         
         .lock-toggle-label {
             font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--gap-sm);
+            font-size: var(--font-base);
         }
         
         .lock-toggle-label .icon {
-            font-size: 1.25rem;
+            font-size: var(--font-lg);
         }
         
         .lock-status {
-            font-size: 0.875rem;
+            font-size: var(--font-sm);
             color: var(--text-light);
         }
         
@@ -97,15 +114,29 @@
             margin-bottom: 24px;
         }
         
+        .tv-mode .game-overlay-icon {
+            font-size: var(--font-4xl);
+            margin-bottom: var(--gap-xl);
+        }
+        
         .game-overlay-title {
             font-size: 2.5rem;
             font-weight: bold;
             margin-bottom: 16px;
         }
         
+        .tv-mode .game-overlay-title {
+            font-size: var(--font-3xl);
+            margin-bottom: var(--gap);
+        }
+        
         .game-overlay-subtitle {
             font-size: 1.25rem;
             opacity: 0.8;
+        }
+        
+        .tv-mode .game-overlay-subtitle {
+            font-size: var(--font-xl);
         }
 
         /* Game Status Card */
@@ -113,22 +144,36 @@
             display: none;
             background: var(--success-color);
             color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            margin-bottom: 16px;
+            padding: var(--gap) var(--gap-lg);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--gap);
         }
         
         .game-status-card.visible {
             display: block;
+        }
+        
+        .game-status-card .status-icon {
+            font-size: var(--font-xl);
+        }
+        
+        .game-status-card .status-title {
+            font-weight: bold;
+            font-size: var(--font-lg);
+        }
+        
+        .game-status-card .status-info {
+            opacity: 0.9;
+            font-size: var(--font-sm);
         }
 
         /* DEV Panel styles */
         .dev-panel {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             border: 2px solid #f97316;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
+            border-radius: var(--radius-lg);
+            padding: var(--gap);
+            margin-bottom: var(--gap);
             display: none;
         }
 
@@ -139,42 +184,42 @@
         .dev-panel-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
+            gap: var(--gap-sm);
+            margin-bottom: var(--gap);
         }
 
         .dev-badge {
             background: #f97316;
             color: white;
-            padding: 4px 10px;
-            border-radius: 6px;
+            padding: var(--gap-xs) var(--gap-sm);
+            border-radius: var(--radius-sm);
             font-weight: 700;
-            font-size: 0.75rem;
+            font-size: var(--font-xs);
             letter-spacing: 0.5px;
         }
 
         .dev-panel-title {
             color: white;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: var(--font-sm);
         }
 
         .dev-panel-controls {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 10px;
+            gap: var(--gap-sm);
+            margin-bottom: var(--gap-sm);
         }
 
         .dev-panel button {
             background: rgba(255,255,255,0.15);
             color: white;
             border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            padding: 8px 14px;
+            border-radius: var(--radius);
+            padding: var(--gap-sm) var(--gap);
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: var(--font-sm);
             transition: all 0.2s;
         }
 
@@ -190,7 +235,21 @@
 
         .dev-panel .status-text {
             color: rgba(255,255,255,0.8);
-            font-size: 0.8rem;
+            font-size: var(--font-xs);
+        }
+        
+        /* TV Mode specific enhancements */
+        .tv-mode .lock-toggle {
+            padding: var(--gap-lg);
+        }
+        
+        .tv-mode .game-status-card {
+            padding: var(--gap-lg) var(--gap-xl);
+        }
+        
+        .tv-mode .player-count-badge {
+            font-size: var(--font-base);
+            padding: var(--gap-sm) var(--gap);
         }
     </style>
 </head>
@@ -204,7 +263,7 @@
             </div>
 
             <!-- Connection Status -->
-            <div id="connectionStatus" class="status status-connecting" style="align-self: flex-start; margin-bottom: 16px;">
+            <div id="connectionStatus" class="status status-connecting" style="align-self: flex-start; margin-bottom: var(--gap);">
                 <span class="status-dot"></span>
                 <span id="statusText">Connecting...</span>
             </div>
@@ -227,17 +286,17 @@
             <div id="errorMessage" class="error-message card"></div>
 
             <!-- Loading State -->
-            <div id="loadingState" class="card" style="text-align: center; padding: 60px;">
-                <div class="spinner" style="margin: 0 auto 20px;"></div>
+            <div id="loadingState" class="card" style="text-align: center; padding: var(--gap-xl);">
+                <div class="spinner" style="margin: 0 auto var(--gap-lg);"></div>
                 <p>Creating room...</p>
             </div>
 
             <!-- Room Info Card -->
             <div id="roomCard" class="card" style="display: none;">
                 <div style="text-align: center;">
-                    <p style="color: var(--text-light); margin-bottom: 8px;">ROOM CODE</p>
+                    <p style="color: var(--text-light); margin-bottom: var(--gap-sm); font-size: var(--font-base);">ROOM CODE</p>
                     <div class="room-code" id="roomCode">----</div>
-                    <p style="color: var(--text-light);">
+                    <p style="color: var(--text-light); font-size: var(--font-base);">
                         Join at: <strong id="joinUrl"></strong>
                     </p>
                 </div>
@@ -258,18 +317,18 @@
             <!-- QR Code Card -->
             <div id="qrCard" class="card qr-container" style="display: none;">
                 <div class="qr-code">
-                    <img id="qrCodeImage" alt="QR Code" width="200" height="200">
+                    <img id="qrCodeImage" alt="QR Code">
                 </div>
                 <p class="qr-hint">Scan with your phone camera to join</p>
             </div>
 
             <!-- Game Status Card (shown when game is in progress) -->
             <div id="gameStatusCard" class="game-status-card">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-size: 1.5rem;">🎯</span>
+                <div style="display: flex; align-items: center; gap: var(--gap);">
+                    <span class="status-icon">🎯</span>
                     <div>
-                        <div style="font-weight: bold;">Game In Progress</div>
-                        <div style="opacity: 0.9; font-size: 0.875rem;">
+                        <div class="status-title">Game In Progress</div>
+                        <div class="status-info">
                             <span id="gameTypeDisplay">Quiz</span> - <span id="gamePhaseDisplay">Starting</span>
                         </div>
                     </div>
@@ -280,9 +339,9 @@
         <!-- Sidebar: Player List -->
         <div class="tv-sidebar">
             <div class="card" style="flex: 1; display: flex; flex-direction: column;">
-                <h2 style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                <h2 style="margin-bottom: var(--gap); display: flex; align-items: center; justify-content: space-between; font-size: var(--font-xl);">
                     Players
-                    <span id="playerCount" style="background: var(--bg-color); padding: 4px 12px; border-radius: 20px; font-size: 0.875rem;">0/8</span>
+                    <span id="playerCount" class="player-count-badge" style="background: var(--bg-color); padding: var(--gap-xs) var(--gap); border-radius: 20px; font-size: var(--font-sm);">0/8</span>
                 </h2>
 
                 <!-- Empty State -->
@@ -295,11 +354,11 @@
                 <ul id="playerList" class="player-list" style="display: none;"></ul>
 
                 <!-- Start Game Button -->
-                <div id="startGameContainer" style="margin-top: auto; padding-top: 20px;">
+                <div id="startGameContainer" style="margin-top: auto; padding-top: var(--gap-lg);">
                     <button id="startGameBtn" class="btn btn-success btn-large" style="width: 100%;" disabled>
                         Start Game
                     </button>
-                    <p id="startGameHint" style="text-align: center; margin-top: 8px; color: var(--text-light); font-size: 0.875rem;">
+                    <p id="startGameHint" style="text-align: center; margin-top: var(--gap-sm); color: var(--text-light); font-size: var(--font-sm);">
                         Need at least 2 players to start
                     </p>
                 </div>
@@ -321,6 +380,24 @@
     <script src="/js/config.js"></script>
     <script src="/js/game-client.js"></script>
     <script>
+        // ===========================================
+        // TV MODE DETECTION
+        // Automatically add 'tv-mode' class for large screens
+        // ===========================================
+        function updateTvMode() {
+            const isTvMode = window.innerWidth >= 1200;
+            document.documentElement.classList.toggle('tv-mode', isTvMode);
+            console.log(`TV Mode: ${isTvMode ? 'enabled' : 'disabled'} (width: ${window.innerWidth}px)`);
+        }
+        
+        // Initialize and listen for resize
+        window.addEventListener('resize', updateTvMode);
+        updateTvMode();
+
+        // ===========================================
+        // GAME CLIENT LOGIC
+        // ===========================================
+        
         // Get server URL from config
         const SERVER_URL = GameConfig.getServerUrl();
         console.log('Using Server URL:', SERVER_URL || '(same origin)');
@@ -367,12 +444,11 @@
         const client = new GameClient(SERVER_URL);
         let currentRoomCode = null;
         let isRoomLocked = false;
-        let currentRoomStatus = 'Lobby'; // Lobby, InGame, Finished
+        let currentRoomStatus = 'Lobby';
 
         // Initialize
         async function init() {
             try {
-                // Set up callbacks
                 client.on('onConnected', onConnected);
                 client.on('onDisconnected', onDisconnected);
                 client.on('onReconnecting', onReconnecting);
@@ -381,17 +457,14 @@
                 client.on('onAutoplayStatusUpdated', onAutoplayStatusUpdated);
                 client.on('onError', onError);
 
-                // Connect to SignalR
                 await client.connect();
 
-                // Either rejoin existing room or create new
                 if (existingRoomCode) {
                     await rejoinExistingRoom(existingRoomCode);
                 } else {
                     await createAndJoinRoom();
                 }
                 
-                // Configure DEV panel
                 await configureDevPanel();
 
             } catch (error) {
@@ -402,14 +475,11 @@
 
         async function rejoinExistingRoom(roomCode) {
             try {
-                // Update loading message
                 loadingState.querySelector('p').textContent = 'Reconnecting to room...';
                 
-                // Check if room still exists
                 const roomState = await GameUtils.getRoomState(SERVER_URL, roomCode);
                 
                 if (!roomState) {
-                    // Room doesn't exist anymore, create a new one
                     console.log('Room not found, creating new room');
                     loadingState.querySelector('p').textContent = 'Creating new room...';
                     await createAndJoinRoom();
@@ -417,32 +487,22 @@
                 }
                 
                 currentRoomCode = roomCode;
-                
-                // Register as host via SignalR
                 await client.registerHost(currentRoomCode);
-                
-                // Update UI
                 showRoomInfo(currentRoomCode);
                 
                 console.log('Rejoined existing room:', roomCode);
 
             } catch (error) {
                 console.error('Failed to rejoin room:', error);
-                // Fallback to creating a new room
                 await createAndJoinRoom();
             }
         }
 
         async function createAndJoinRoom() {
             try {
-                // Create room via REST API
                 const roomData = await GameUtils.createRoom(SERVER_URL);
                 currentRoomCode = roomData.roomCode;
-
-                // Register as host via SignalR
                 await client.registerHost(currentRoomCode);
-
-                // Update UI
                 showRoomInfo(currentRoomCode);
 
             } catch (error) {
@@ -458,12 +518,12 @@
 
             roomCodeEl.textContent = code;
             
-            // Join URL uses the current origin (works for both localhost and LAN)
             const joinUrl = `${GameConfig.getJoinBaseUrl()}/join/${code}`;
             joinUrlEl.textContent = joinUrl;
             
-            // Generate QR code
-            qrCodeImage.src = GameUtils.getQRCodeUrl(joinUrl, 200);
+            // Dynamic QR code size based on viewport
+            const qrSize = Math.min(280, Math.max(160, Math.floor(window.innerWidth * 0.12)));
+            qrCodeImage.src = GameUtils.getQRCodeUrl(joinUrl, qrSize);
         }
 
         function updateLockUI(locked) {
@@ -514,17 +574,11 @@
             const players = roomState.players || [];
             const maxPlayers = 8;
 
-            // Update player count
             playerCount.textContent = `${players.length}/${maxPlayers}`;
-
-            // Update lock state
             updateLockUI(roomState.isLocked);
-
-            // Update room status (can be string "Lobby" or int 0)
             currentRoomStatus = roomState.status;
             updateGameStatusUI(roomState);
 
-            // Update player list
             if (players.length === 0) {
                 emptyState.style.display = 'block';
                 playerList.style.display = 'none';
@@ -547,13 +601,10 @@
                 `).join('');
             }
 
-            // Enable/disable start button based on player count and game status
-            // Status can be string "Lobby" or int 0
             const isLobby = currentRoomStatus === 'Lobby' || currentRoomStatus === 0;
             const canStart = players.length >= 2 && isLobby;
             startGameBtn.disabled = !canStart;
             
-            // Update hint text
             if (!isLobby) {
                 startGameHint.textContent = 'Game is in progress';
             } else if (players.length < 2) {
@@ -562,18 +613,15 @@
                 startGameHint.textContent = 'Ready to start!';
             }
 
-            // Hide error on successful update
             hideError();
         }
 
         function onGameStarted(gameSession) {
             console.log('Game started:', gameSession);
             
-            // Show overlay briefly
             overlayPlayerCount.textContent = playerCount.textContent.split('/')[0];
             gameOverlay.classList.add('visible');
             
-            // Navigate to quiz TV view after short delay
             if (gameSession.gameType === 'Quiz') {
                 setTimeout(() => {
                     window.location.href = `/quiz-tv.html?room=${currentRoomCode}`;
@@ -583,27 +631,21 @@
 
         function updateGameStatusUI(roomState) {
             if (roomState.status === 'InGame' || roomState.status === 1) {
-                // Show game status
                 gameStatusCard.classList.add('visible');
                 headerSubtitle.textContent = 'Game in progress!';
-                
-                // Hide start game container during game
                 startGameContainer.style.display = 'none';
                 
-                // Update game info if available
                 if (roomState.currentGame) {
                     gameTypeDisplay.textContent = roomState.currentGame.gameType || 'Quiz';
                     gamePhaseDisplay.textContent = roomState.currentGame.phase || 'Starting';
                 }
             } else {
-                // Hide game status, show normal lobby
                 gameStatusCard.classList.remove('visible');
                 headerSubtitle.textContent = 'Scan the QR code or enter the room code to join!';
                 startGameContainer.style.display = 'block';
             }
         }
         
-        // DEV Panel functions
         async function configureDevPanel() {
             try {
                 const response = await fetch(`${SERVER_URL}/health`);
@@ -661,7 +703,6 @@
             autoplayStatusEl.textContent = `Autoplay: ${running} · Bots: ${status.botCount ?? 0}`;
         }
 
-        // Start game button click handler
         startGameBtn.addEventListener('click', async () => {
             if (startGameBtn.disabled) return;
             
@@ -698,7 +739,6 @@
             return div.innerHTML;
         }
 
-        // Initialize on load
         init();
     </script>
 </body>

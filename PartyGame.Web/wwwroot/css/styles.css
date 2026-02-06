@@ -1,11 +1,13 @@
 /* PartyGame - Shared Styles */
 
 :root {
+    /* Color Variables */
     --primary-color: #667eea;
     --secondary-color: #764ba2;
     --success-color: #10b981;
     --error-color: #ef4444;
     --warning-color: #f59e0b;
+    --danger-color: #ef4444;
     --text-color: #1f2937;
     --text-light: #6b7280;
     --bg-color: #f9fafb;
@@ -13,6 +15,39 @@
     --border-color: #e5e7eb;
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    
+    /* Base Typography - fixed for mobile/small screens */
+    --font-xs: 12px;
+    --font-sm: 14px;
+    --font-base: 16px;
+    --font-lg: 18px;
+    --font-xl: 24px;
+    --font-2xl: 32px;
+    --font-3xl: 40px;
+    --font-4xl: 48px;
+    
+    /* Base Spacing - fixed for mobile/small screens */
+    --gap-xs: 4px;
+    --gap-sm: 8px;
+    --gap: 12px;
+    --gap-lg: 16px;
+    --gap-xl: 24px;
+    
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    
+    /* Responsive Padding for cards/panels */
+    --padding-card: 16px;
+    --padding-btn: 12px 20px;
+    
+    /* TV Safe Area Margins - default off */
+    --tv-safe-margin: 0px;
+    
+    /* Min touch target */
+    --min-touch-target: 44px;
 }
 
 * {
@@ -26,21 +61,127 @@ body {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     min-height: 100vh;
     color: var(--text-color);
+    font-size: var(--font-base);
+    line-height: 1.5;
 }
+
+/* ===========================================
+   TV MODE - Activated when viewport >= 1200px
+   Uses min(vw, vh * aspect) for proportional scaling
+   =========================================== */
+
+.tv-mode {
+    /* Typography - scales with SMALLER of width or height for proportional sizing */
+    --font-xs: clamp(14px, min(1vw, 1.8vh), 18px);
+    --font-sm: clamp(16px, min(1.2vw, 2.2vh), 22px);
+    --font-base: clamp(18px, min(1.4vw, 2.5vh), 26px);
+    --font-lg: clamp(22px, min(1.8vw, 3.2vh), 36px);
+    --font-xl: clamp(28px, min(2.4vw, 4.3vh), 52px);
+    --font-2xl: clamp(36px, min(3vw, 5.4vh), 72px);
+    --font-3xl: clamp(48px, min(4vw, 7.2vh), 96px);
+    --font-4xl: clamp(64px, min(5vw, 9vh), 120px);
+    
+    /* Spacing - scales proportionally */
+    --gap-xs: clamp(6px, min(0.5vw, 0.9vh), 12px);
+    --gap-sm: clamp(10px, min(0.8vw, 1.4vh), 20px);
+    --gap: clamp(14px, min(1.2vw, 2.2vh), 28px);
+    --gap-lg: clamp(20px, min(1.6vw, 2.9vh), 40px);
+    --gap-xl: clamp(28px, min(2.4vw, 4.3vh), 56px);
+    
+    /* Border Radius - larger on TV */
+    --radius-sm: clamp(6px, min(0.5vw, 0.9vh), 12px);
+    --radius: clamp(10px, min(0.8vw, 1.4vh), 20px);
+    --radius-lg: clamp(14px, min(1vw, 1.8vh), 28px);
+    --radius-xl: clamp(18px, min(1.4vw, 2.5vh), 36px);
+    
+    /* Card padding - larger on TV */
+    --padding-card: clamp(20px, min(2vw, 3.6vh), 48px);
+    --padding-btn: clamp(14px, min(1.2vw, 2.2vh), 28px) clamp(24px, min(2vw, 3.6vh), 48px);
+    
+    /* TV Safe Margins - essential for TV displays */
+    --tv-safe-margin: clamp(24px, min(3vw, 5vh), 80px);
+    
+    /* Touch targets - larger on TV for remote control */
+    --min-touch-target: clamp(52px, min(4vw, 7vh), 80px);
+}
+
+/* Apply TV safe margins to body */
+.tv-mode body {
+    padding: var(--tv-safe-margin);
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+/* Remove double padding from nested containers */
+.tv-mode .tv-layout,
+.tv-mode .quiz-container {
+    padding: 0;
+    min-height: calc(100vh - var(--tv-safe-margin) * 2);
+}
+
+/* TV Mode Typography Enhancements */
+.tv-mode h1 {
+    font-size: var(--font-3xl);
+    line-height: 1.2;
+}
+
+.tv-mode h2 {
+    font-size: var(--font-2xl);
+    line-height: 1.2;
+}
+
+.tv-mode h3 {
+    font-size: var(--font-xl);
+    line-height: 1.3;
+}
+
+/* TV Mode Button Enhancements */
+.tv-mode .btn {
+    min-height: var(--min-touch-target);
+    font-size: var(--font-lg);
+    padding: var(--padding-btn);
+    font-weight: 600;
+}
+
+.tv-mode .btn-large {
+    min-height: clamp(60px, min(5vw, 9vh), 100px);
+    font-size: var(--font-xl);
+}
+
+/* TV Mode Card Enhancements */
+.tv-mode .card {
+    padding: var(--padding-card);
+    border-radius: var(--radius-lg);
+}
+
+/* TV Mode Input Enhancements */
+.tv-mode .input {
+    font-size: var(--font-lg);
+    padding: var(--gap) var(--gap-lg);
+    min-height: var(--min-touch-target);
+}
+
+.tv-mode .input-large {
+    font-size: var(--font-2xl);
+}
+
+/* ===========================================
+   BASE COMPONENTS
+   =========================================== */
 
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: var(--gap-lg);
 }
 
 /* Cards */
 .card {
     background: var(--card-bg);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
-    padding: 24px;
-    margin-bottom: 20px;
+    padding: var(--padding-card);
+    margin-bottom: var(--gap-lg);
 }
 
 /* Buttons */
@@ -48,14 +189,15 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 12px 24px;
-    font-size: 1rem;
+    padding: var(--gap) var(--gap-lg);
+    font-size: var(--font-base);
     font-weight: 600;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius);
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
+    min-height: 44px;
 }
 
 .btn:disabled {
@@ -89,28 +231,29 @@ body {
 }
 
 .btn-large {
-    padding: 16px 32px;
-    font-size: 1.25rem;
+    padding: var(--gap-lg) var(--gap-xl);
+    font-size: var(--font-lg);
 }
 
 /* Inputs */
 .input-group {
-    margin-bottom: 16px;
+    margin-bottom: var(--gap);
 }
 
 .input-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: var(--gap-sm);
     font-weight: 500;
     color: var(--text-color);
+    font-size: var(--font-base);
 }
 
 .input {
     width: 100%;
-    padding: 12px 16px;
-    font-size: 1rem;
+    padding: var(--gap) var(--gap-lg);
+    font-size: var(--font-base);
     border: 2px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--radius);
     transition: border-color 0.2s ease;
 }
 
@@ -120,8 +263,8 @@ body {
 }
 
 .input-large {
-    padding: 16px 20px;
-    font-size: 1.5rem;
+    padding: var(--gap-lg) var(--gap-xl);
+    font-size: var(--font-xl);
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 4px;
@@ -131,10 +274,10 @@ body {
 .status {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
+    gap: var(--gap-sm);
+    padding: var(--gap-sm) var(--gap);
     border-radius: 20px;
-    font-size: 0.875rem;
+    font-size: var(--font-sm);
     font-weight: 500;
 }
 
@@ -186,7 +329,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px;
+    padding: var(--gap);
     border-bottom: 1px solid var(--border-color);
     transition: background-color 0.2s ease;
 }
@@ -202,7 +345,7 @@ body {
 .player-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--gap);
 }
 
 .player-avatar {
@@ -215,16 +358,22 @@ body {
     justify-content: center;
     color: white;
     font-weight: bold;
-    font-size: 1.25rem;
+    font-size: var(--font-lg);
+}
+
+.tv-mode .player-avatar {
+    width: clamp(48px, min(4vw, 7vh), 80px);
+    height: clamp(48px, min(4vw, 7vh), 80px);
+    font-size: var(--font-xl);
 }
 
 .player-name {
     font-weight: 600;
-    font-size: 1.125rem;
+    font-size: var(--font-lg);
 }
 
 .player-status {
-    font-size: 0.875rem;
+    font-size: var(--font-sm);
     color: var(--text-light);
 }
 
@@ -246,35 +395,53 @@ body {
     margin: 20px 0;
 }
 
+/* TV Mode: Much larger room code */
+.tv-mode .room-code {
+    font-size: clamp(72px, min(10vw, 18vh), 180px);
+    letter-spacing: clamp(16px, min(2vw, 3.6vh), 40px);
+    margin: var(--gap-xl) 0;
+}
+
 /* QR Code */
 .qr-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
+    padding: var(--gap-lg);
 }
 
 .qr-code {
     background: white;
-    padding: 16px;
-    border-radius: 12px;
+    padding: var(--gap);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
 }
 
+.qr-code img {
+    width: 200px;
+    height: 200px;
+}
+
+.tv-mode .qr-code img {
+    width: clamp(200px, min(18vw, 32vh), 400px);
+    height: clamp(200px, min(18vw, 32vh), 400px);
+}
+
 .qr-hint {
-    margin-top: 12px;
+    margin-top: var(--gap);
     color: var(--text-light);
-    font-size: 0.875rem;
+    font-size: var(--font-sm);
 }
 
 /* Error messages */
 .error-message {
     background: #fee2e2;
     color: #991b1b;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 16px;
+    padding: var(--gap) var(--gap-lg);
+    border-radius: var(--radius);
+    margin-bottom: var(--gap);
     display: none;
+    font-size: var(--font-base);
 }
 
 .error-message.visible {
@@ -291,17 +458,32 @@ body {
     animation: spin 1s linear infinite;
 }
 
+.tv-mode .spinner {
+    width: clamp(40px, min(4vw, 7vh), 80px);
+    height: clamp(40px, min(4vw, 7vh), 80px);
+    border-width: clamp(4px, min(0.4vw, 0.7vh), 8px);
+}
+
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
-/* TV-specific styles */
+/* ===========================================
+   TV LAYOUT
+   =========================================== */
+   
 .tv-layout {
     display: grid;
     grid-template-columns: 1fr 400px;
     gap: 24px;
     min-height: calc(100vh - 40px);
     padding: 20px;
+}
+
+.tv-mode .tv-layout {
+    grid-template-columns: 1fr clamp(350px, min(28vw, 50vh), 550px);
+    gap: var(--gap-xl);
+    min-height: calc(100vh - var(--tv-safe-margin) * 2);
 }
 
 .tv-main {
@@ -329,7 +511,24 @@ body {
     opacity: 0.9;
 }
 
-/* Phone-specific styles */
+/* TV Mode: Enhanced header */
+.tv-mode .tv-header {
+    margin-bottom: var(--gap-xl);
+}
+
+.tv-mode .tv-header h1 {
+    font-size: var(--font-3xl);
+    margin-bottom: var(--gap-sm);
+}
+
+.tv-mode .tv-header p {
+    font-size: var(--font-xl);
+}
+
+/* ===========================================
+   PHONE LAYOUT
+   =========================================== */
+
 .phone-layout {
     display: flex;
     flex-direction: column;
@@ -344,7 +543,10 @@ body {
     max-width: 400px;
 }
 
-/* Responsive */
+/* ===========================================
+   RESPONSIVE BREAKPOINTS
+   =========================================== */
+
 @media (max-width: 900px) {
     .tv-layout {
         grid-template-columns: 1fr;
@@ -356,7 +558,10 @@ body {
     }
 }
 
-/* Animations */
+/* ===========================================
+   ANIMATIONS
+   =========================================== */
+
 .fade-in {
     animation: fadeIn 0.3s ease;
 }
@@ -366,18 +571,117 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Empty state */
+/* ===========================================
+   EMPTY STATE
+   =========================================== */
+
 .empty-state {
     text-align: center;
-    padding: 40px 20px;
+    padding: var(--gap-xl) var(--gap-lg);
     color: var(--text-light);
 }
 
 .empty-state-icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
+    font-size: var(--font-3xl);
+    margin-bottom: var(--gap);
 }
 
 .empty-state-text {
+    font-size: var(--font-lg);
+}
+
+/* ===========================================
+   SCOREBOARD (TV optimized)
+   =========================================== */
+
+.scoreboard-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.scoreboard-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease;
+}
+
+.tv-mode .scoreboard-item {
+    padding: var(--gap-lg) var(--gap-xl);
+    margin-bottom: var(--gap);
+}
+
+.scoreboard-position {
+    font-size: 1.5rem;
+    font-weight: bold;
+    width: 50px;
+    text-align: center;
+}
+
+.tv-mode .scoreboard-position {
+    font-size: var(--font-2xl);
+    width: clamp(50px, min(5vw, 9vh), 100px);
+}
+
+.scoreboard-player {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--gap);
+}
+
+.scoreboard-name {
+    font-weight: 600;
     font-size: 1.125rem;
+}
+
+.tv-mode .scoreboard-name {
+    font-size: var(--font-xl);
+}
+
+.score-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    min-width: 80px;
+    text-align: right;
+}
+
+.tv-mode .score-value {
+    font-size: var(--font-2xl);
+    min-width: clamp(80px, min(8vw, 14vh), 160px);
+}
+
+/* ===========================================
+   TIMER (TV optimized)
+   =========================================== */
+
+.timer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    background: rgba(255,255,255,0.2);
+    padding: 8px 20px;
+    border-radius: 30px;
+}
+
+.tv-mode .timer {
+    font-size: var(--font-2xl);
+    padding: var(--gap) var(--gap-xl);
+    gap: var(--gap-sm);
+}
+
+/* ===========================================
+   HIDDEN UTILITY
+   =========================================== */
+
+.hidden {
+    display: none !important;
 }

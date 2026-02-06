@@ -235,20 +235,197 @@ All effects are optional - if libraries fail to load:
 - [ ] Mute button toggles all audio
 - [ ] Game works normally if Pixi/Howler fail to load
 
+### DEV Panel Test Buttons (Development Mode Only)
+
+When running in Development mode, the TV view shows a DEV panel with test buttons:
+
+| Button | Action |
+|--------|--------|
+| **?? Splash** | Triggers the quiz start splash effect |
+| **? ×2** | Triggers DoublePoints booster effect |
+| **?? Reset** | Triggers BackToZero booster effect |
+| **?? Nope** | Triggers Nope booster effect |
+| **?? Countdown** | Simulates countdown sounds (10?0) at 2x speed |
+
+These buttons bypass game logic and directly call `EffectsManager` / `AudioManager` for testing.
+
+### Diagnostics Overlay (Development Mode Only)
+
+A small overlay in the bottom-left corner shows:
+
+| Field | Description |
+|-------|-------------|
+| **Effects** | Pixi.js initialization status (OK/DISABLED) |
+| **Audio** | Audio status (OK/LOCKED/MUTED/NOT INIT) |
+| **Phase** | Current game phase number and name |
+| **Track** | Currently playing audio track |
+| **Last tick** | Last countdown second played |
+
+### Audio Graceful Degradation
+
+The AudioManager handles missing audio files gracefully:
+- Files that fail to load are marked and not retried
+- Error count available via `audio.getLoadErrorCount()`
+- No crashes if Howler.js is unavailable
+- Game continues to function normally without audio
+
+### Splash Trigger Logic (Fixed in Iteration 15)
+
+The splash screen now triggers more reliably:
+- **Trigger condition**: First transition from CategorySelection (or null) to a gameplay phase
+- **Gameplay phases**: Question (1), Answering (2), DictionaryWord (6), DictionaryAnswering (7), RankingPrompt (8), RankingVoting (9)
+- **Once per session**: `splashShownThisSession` flag prevents re-triggering
+- **Reset on back to lobby**: Flag resets when host returns to lobby
+
 ---
 
-## Technical Details
+## Iteration 16 – Responsive TV Mode
 
-### Server-side
-- Boosters are assigned in `BoosterService.AssignBoostersAtGameStart()`
-- Activation is handled via `GameHub.ActivateBooster()`
-- State is tracked in `QuizGameState.PlayerBoosters` and `QuizGameState.ActiveEffects`
-- Per-player effects computed by `BoosterService.GetAnsweringEffects()`
-- Per-player broadcasting in `QuizGameOrchestrator.BroadcastStateAsync()`
+### Overview
 
-### Client-side
-- Phone UI: `quiz-phone.html` - Shows booster card, handles activation, respects `MyAnsweringEffects`
-- TV UI: `quiz-tv.html` - Shows toast notifications, VFX overlay, audio
-- GameClient: `game-client.js` - `activateBooster(type, targetId)` method
-- Effects: `effects-manager.js` - Pixi.js visual effects (TV only)
-- Audio: `audio-manager.js` - Howler.js audio system (TV
+The host (TV) UI is now fully responsive, automatically scaling for:
+- Laptop displays (1366×768)
+- Desktop monitors (1920×1080)
+- Large TVs (4K: 3840×2160)
+- Everything in between
+
+### TV Mode Detection
+
+TV mode is automatically activated when `window.innerWidth >= 1200px`:
+
+```javascript
+function updateTvMode() {
+    const isTvMode = window.innerWidth >= 1200;
+    document.documentElement.classList.toggle('tv-mode', isTvMode);
+}
+window.addEventListener('resize', updateTvMode);
+updateTvMode();
+```
+
+No user toggle is provided - detection is fully automatic.
+
+### CSS Variables System
+
+**Key insight**: Using `min(vw, vh)` ensures proportional scaling on widescreen displays where width-only scaling would make elements too wide but not tall enough.
+
+**Base values (mobile/laptop)** - Fixed pixel values:
+```css
+:root {
+    --font-base: 16px;
+    --gap: 12px;
+    /* etc. */
+}
+```
+
+**TV Mode values** - Scale with `min(vw, vh * aspect)`:
+```css
+.tv-mode {
+    /* Typography - scales with SMALLER of width or height */
+    --font-xs: clamp(14px, min(1vw, 1.8vh), 18px);
+    --font-sm: clamp(16px, min(1.2vw, 2.2vh), 22px);
+    --font-base: clamp(18px, min(1.4vw, 2.5vh), 26px);
+    --font-lg: clamp(22px, min(1.8vw, 3.2vh), 36px);
+    --font-xl: clamp(28px, min(2.4vw, 4.3vh), 52px);
+    --font-2xl: clamp(36px, min(3vw, 5.4vh), 72px);
+    --font-3xl: clamp(48px, min(4vw, 7.2vh), 96px);
+    --font-4xl: clamp(64px, min(5vw, 9vh), 120px);
+    
+    /* Spacing - scales proportionally */
+    --gap-xs: clamp(6px, min(0.5vw, 0.9vh), 12px);
+    --gap-sm: clamp(10px, min(0.8vw, 1.4vh), 20px);
+    --gap: clamp(14px, min(1.2vw, 2.2vh), 28px);
+    --gap-lg: clamp(20px, min(1.6vw, 2.9vh), 40px);
+    --gap-xl: clamp(28px, min(2.4vw, 4.3vh), 56px);
+    
+    /* TV Safe Margins */
+    --tv-safe-margin: clamp(24px, min(3vw, 5vh), 80px);
+}
+```
+
+### Why `min(vw, vh)` instead of just `vw`?
+
+On a 16:9 TV (1920×1080), using `vw` alone causes:
+- Elements become too wide
+- Vertical space is wasted
+- Text doesn't fit proportionally
+
+Using `min(vw, vh * 1.78)` ensures:
+- Elements scale proportionally in both dimensions
+- Content fills the screen better
+- Readable from across the room
+
+### Why `clamp()` Over `transform: scale()`
+
+We use `clamp()` instead of `transform: scale()` because:
+
+1. **Sharp fonts**: Text remains pixel-perfect at any size
+2. **Correct hitboxes**: Click/touch targets match visual size
+3. **CSS Grid compatibility**: Layout calculations work correctly
+4. **Performance**: No composite layer overhead
+5. **Accessibility**: Browser zoom works as expected
+
+### TV Safe Margins
+
+Content doesn't touch screen edges on TV displays:
+
+```css
+.tv-mode body {
+    padding: var(--tv-safe-margin);
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+/* Remove double padding from nested containers */
+.tv-mode .tv-layout,
+.tv-mode .quiz-container {
+    padding: 0;
+    min-height: calc(100vh - var(--tv-safe-margin) * 2);
+}
+```
+
+This ensures:
+- QR codes are fully visible
+- Room codes aren't cut off
+- Touch targets aren't at extreme edges
+- Content doesn't "stick" to the top of the screen
+
+### Files Updated
+
+| File | Changes |
+|------|---------|
+| `css/styles.css` | Added CSS variables with `min(vw, vh)`, TV mode classes |
+| `tv.html` | Added `updateTvMode()` JS, base pixel values for mobile |
+| `quiz-tv.html` | Added `updateTvMode()` JS, TV mode overrides |
+
+### Testing Checklist
+
+- [ ] **Laptop 1366×768**: Layout normal, fonts readable (base pixel values)
+- [ ] **Desktop 1920×1080**: TV mode active, proportional scaling
+- [ ] **4K 3840×2160**: Everything scales proportionally in both dimensions
+- [ ] **Ultrawide monitor**: Content doesn't become too wide
+- [ ] **Window resize**: TV mode toggles at 1200px threshold
+- [ ] **Phone UI unchanged**: `quiz-phone.html` and `join.html` still work
+- [ ] **TV safe margins**: Content doesn't touch screen edges
+- [ ] **Room code readable**: Large and clear on all sizes
+- [ ] **Scoreboard readable**: From across the room on TV
+
+### Guidelines for New Components
+
+When adding new UI components, follow these rules:
+
+1. **Use fixed pixel values** for base (mobile/laptop) styles
+2. **Add `.tv-mode` overrides** that use CSS variables
+3. **Variables use `min(vw, vh)`** for proportional scaling
+4. **Always use `clamp(min, preferred, max)`** to set bounds
+5. **Test at 1366px, 1920px, and 3840px** widths
+6. **Minimum touch target**: 44px on mobile, larger on TV
+
+### Browser Support
+
+`min()` and `clamp()` are supported in:
+- Chrome 79+
+- Firefox 75+
+- Safari 13.1+
+- Edge 79+
+
+All modern browsers used for Chromecast/AirPlay support these features.

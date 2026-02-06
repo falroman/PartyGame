@@ -17,6 +17,7 @@ class EffectsManager {
         this.isInitialized = false;
         this.splashShown = false;
         this.activeEffects = [];
+        this.initError = null;
     }
 
     /**
@@ -26,6 +27,7 @@ class EffectsManager {
     async init() {
         // Check if Pixi is available
         if (typeof PIXI === 'undefined') {
+            this.initError = 'Pixi.js not loaded';
             console.warn('EffectsManager: Pixi.js not loaded, effects disabled');
             return false;
         }
@@ -66,14 +68,28 @@ class EffectsManager {
             window.addEventListener('resize', () => this.handleResize());
 
             this.isInitialized = true;
+            this.initError = null;
             console.log('EffectsManager: Initialized successfully');
             return true;
         } catch (error) {
+            this.initError = error.message || 'Unknown error';
             console.error('EffectsManager: Failed to initialize', error);
             // Make sure we don't leave a broken canvas
             this.isInitialized = false;
             return false;
         }
+    }
+
+    /**
+     * Get initialization status for diagnostics
+     */
+    getStatus() {
+        return {
+            initialized: this.isInitialized,
+            error: this.initError,
+            splashShown: this.splashShown,
+            hasCanvas: !!document.getElementById('effects-canvas')
+        };
     }
 
     /**
