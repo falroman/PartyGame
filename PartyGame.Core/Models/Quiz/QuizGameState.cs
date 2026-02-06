@@ -1,4 +1,5 @@
 using PartyGame.Core.Enums;
+using PartyGame.Core.Models.Boosters;
 using PartyGame.Core.Models.Dictionary;
 using PartyGame.Core.Models.Ranking;
 
@@ -241,6 +242,32 @@ public class QuizGameState
     /// Catch-up bonus for players in bottom 50% who voted correctly.
     /// </summary>
     public const int RankingCatchUpBonusPoints = 50;
+
+    #endregion
+
+    #region Booster State
+
+    /// <summary>
+    /// Booster assigned to each player: PlayerId -> PlayerBoosterState.
+    /// </summary>
+    public Dictionary<Guid, PlayerBoosterState> PlayerBoosters { get; set; } = new();
+
+    /// <summary>
+    /// Currently active booster effects.
+    /// </summary>
+    public List<ActiveBoosterEffect> ActiveEffects { get; set; } = new();
+
+    /// <summary>
+    /// Answer timestamps for CategoryQuiz: PlayerId -> SubmittedUtc.
+    /// Used for ranking-based scoring.
+    /// </summary>
+    public Dictionary<Guid, DateTime> AnswerTimes { get; set; } = new();
+
+    /// <summary>
+    /// Round-specific points earned this round (for BackToZero tracking).
+    /// Reset at start of each round.
+    /// </summary>
+    public Dictionary<Guid, int> RoundPoints { get; set; } = new();
 
     #endregion
 }

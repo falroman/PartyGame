@@ -461,6 +461,21 @@
             font-size: 0.85rem;
             opacity: 0.9;
         }
+        
+        .back-to-lobby-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        
+        .back-to-lobby-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
     </style>
 </head>
 <body>
@@ -479,6 +494,9 @@
             <div>
                 Room: <strong id="roomCode">----</strong>
             </div>
+            <button class="back-to-lobby-btn" id="backToLobbyBtn" title="Return to lobby (keeps players)">
+                🏠 Back to Lobby
+            </button>
         </div>
         <div class="dev-panel hidden" id="devPanel">
             <span class="dev-badge">DEV</span>
@@ -547,7 +565,7 @@
                 <div class="winner-crown">👑</div>
                 <div class="winner-name" id="winnerName">Winner!</div>
                 <div class="winner-score" id="winnerScore">0 points</div>
-                <button class="btn btn-primary btn-large" style="margin-top: 32px;" onclick="window.location.href='/tv.html'">
+                <button class="btn btn-primary btn-large" style="margin-top: 32px;" id="backToLobbyFinishedBtn">
                     Back to Lobby
                 </button>
             </div>
@@ -606,9 +624,15 @@
         const startAutoplayBtn = document.getElementById('startAutoplayBtn');
         const stopAutoplayBtn = document.getElementById('stopAutoplayBtn');
         const autoplayStatusEl = document.getElementById('autoplayStatus');
+        const backToLobbyBtn = document.getElementById('backToLobbyBtn');
+        const backToLobbyFinishedBtn = document.getElementById('backToLobbyFinishedBtn');
 
         let previousPhase = null;
         let selectedCategory = null;
+        
+        // Smooth timer state
+        let phaseEndsUtc = null;
+        let timerIntervalId = null;
 
         const categoryIcons = {
             'Wetenschap': '🔬', 'Science': '🔬',
@@ -656,6 +680,43 @@
             await client.registerHost(roomCode);
 
             await configureDevPanel();
+            
+            // Start smooth timer loop
+            startTimerLoop();
+            
+            // Setup back to lobby buttons
+            backToLobbyBtn.addEventListener('click', handleBackToLobby);
+            backToLobbyFinishedBtn.addEventListener('click', handleBackToLobby);
+        }
+        
+        // Smooth timer functions
+        function startTimerLoop() {
+            if (timerIntervalId) clearInterval(timerIntervalId);
+            timerIntervalId = setInterval(updateTimerDisplay, 200);
+        }
+        
+        function updateTimerDisplay() {
+            if (!phaseEndsUtc) {
+                timerValueEl.textContent = '--';
+                timerEl.classList.remove('warning');
+                return;
+            }
+            
+            const now = Date.now();
+            const remaining = Math.max(0, Math.ceil((phaseEndsUtc - now) / 1000));
+            timerValueEl.textContent = remaining;
+            timerEl.classList.toggle('warning', remaining <= 5);
+        }
+        
+        async function handleBackToLobby() {
+            try {
+                await client.resetToLobby();
+                window.location.href = `/tv.html?room=${roomCode}`;
+            } catch (error) {
+                console.error('Failed to reset to lobby:', error);
+                // Navigate anyway, the tv.html will handle reconnection
+                window.location.href = `/tv.html?room=${roomCode}`;
+            }
         }
 
         function onQuizStateUpdated(state) {
@@ -666,11 +727,23 @@
             questionNumberEl.textContent = state.questionNumber || '-';
             totalQuestionsEl.textContent = state.totalQuestions;
             phaseBadgeEl.textContent = phaseNames[state.phase] || state.phase;
-            updateTimer(state.remainingSeconds);
+            
+            // Update phaseEndsUtc for smooth timer
+            if (state.phaseEndsUtc) {
+                phaseEndsUtc = new Date(state.phaseEndsUtc).getTime();
+            } else if (state.remainingSeconds !== undefined) {
+                phaseEndsUtc = Date.now() + (state.remainingSeconds * 1000);
+            }
+            updateTimerDisplay();
 
             // Determine phase (handle both string and number)
             const phaseMap = { 'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5 };
             const phase = typeof state.phase === 'number' ? state.phase : (phaseMap[state.phase] ?? state.phase);
+
+            // Reset selectedCategory when entering new CategorySelection phase
+            if (phase === 0 && previousPhase !== 0) {
+                selectedCategory = null;
+            }
 
             const isEnteringScoreboard = phase === 4 && previousPhase !== 4;
 
@@ -685,11 +758,6 @@
             }
 
             previousPhase = phase;
-        }
-
-        function updateTimer(seconds) {
-            timerValueEl.textContent = seconds;
-            timerEl.classList.toggle('warning', seconds <= 5);
         }
 
         function getCategoryIcon(category) {
@@ -711,10 +779,10 @@
                 leaderNameEl.textContent = leader.displayName;
             }
 
-            // Render categories
+            // Render categories - use raw category in data attribute
             const categories = state.availableCategories || [];
             categoriesGridEl.innerHTML = categories.map(cat => `
-                <div class="category-option ${selectedCategory === cat ? 'selected' : ''}" data-category="${escapeHtml(cat)}">
+                <div class="category-option ${selectedCategory === cat ? 'selected' : ''}" data-category="${cat}">
                     <div class="category-icon">${getCategoryIcon(cat)}</div>
                     <div class="category-name">${escapeHtml(cat)}</div>
                 </div>
@@ -832,6 +900,8 @@
             autoplayStatusEl.textContent = `Autoplay: ${running} · Bots: ${status.botCount ?? 0}`;
         }
 
+        let devPanelListenersAdded = false;
+
         async function configureDevPanel() {
             try {
                 const response = await fetch(`${SERVER_URL}/health`);
@@ -843,17 +913,22 @@
                 console.warn('Dev panel disabled:', error);
             }
 
-            addBotsBtn?.addEventListener('click', async () => {
-                await client.addBots();
-            });
+            // Only add event listeners once to prevent duplicate handlers on reconnect
+            if (!devPanelListenersAdded) {
+                addBotsBtn?.addEventListener('click', async () => {
+                    await client.addBots();
+                });
 
-            startAutoplayBtn?.addEventListener('click', async () => {
-                await client.startAutoplay();
-            });
+                startAutoplayBtn?.addEventListener('click', async () => {
+                    await client.startAutoplay();
+                });
 
-            stopAutoplayBtn?.addEventListener('click', async () => {
-                await client.stopAutoplay();
-            });
+                stopAutoplayBtn?.addEventListener('click', async () => {
+                    await client.stopAutoplay();
+                });
+
+                devPanelListenersAdded = true;
+            }
         }
 
         function escapeHtml(text) {

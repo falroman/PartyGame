@@ -26,8 +26,13 @@ public record QuizGameStateDto(
     IReadOnlyList<Guid>? RankingWinnerIds,  // For RankingStars reveal
     Dictionary<Guid, int>? RankingVoteCounts,  // For RankingStars reveal
     int RemainingSeconds,
+    DateTime PhaseEndsUtc,  // UTC timestamp for client-side smooth timer
     IReadOnlyList<PlayerAnswerStatusDto> AnswerStatuses,
-    IReadOnlyList<PlayerScoreDto> Scoreboard
+    IReadOnlyList<PlayerScoreDto> Scoreboard,
+    // Booster information
+    IReadOnlyList<PlayerBoosterStateDto>? PlayerBoosters,
+    IReadOnlyList<ActiveBoosterEffectDto>? ActiveEffects,
+    PlayerAnsweringEffectsDto? MyAnsweringEffects  // Player-specific effects (only for the requesting player)
 );
 
 /// <summary>
@@ -69,5 +74,59 @@ public record PlayerScoreDto(
     int PointsEarned = 0,
     bool GotSpeedBonus = false,
     bool IsRankingStar = false,
-    int RankingVotesReceived = 0
+    int RankingVotesReceived = 0,
+    int Rank = 0  // Rank for current question (1 = fastest correct)
+);
+
+/// <summary>
+/// DTO for a player's booster state.
+/// </summary>
+public record PlayerBoosterStateDto(
+    Guid PlayerId,
+    BoosterType BoosterType,
+    string BoosterName,
+    string BoosterDescription,
+    bool IsUsed,
+    bool RequiresTarget,
+    string[] ValidPhases
+);
+
+/// <summary>
+/// DTO for an active booster effect.
+/// </summary>
+public record ActiveBoosterEffectDto(
+    BoosterType BoosterType,
+    Guid ActivatorPlayerId,
+    string ActivatorName,
+    Guid? TargetPlayerId,
+    string? TargetName,
+    int QuestionNumber
+);
+
+/// <summary>
+/// DTO for player-specific answering effects.
+/// Only sent to the specific player it affects.
+/// </summary>
+public record PlayerAnsweringEffectsDto(
+    bool IsNoped,
+    IReadOnlyList<string>? RemovedOptions,
+    IReadOnlyList<string>? ShuffledOptionOrder,
+    DateTime? ExtendedDeadline,
+    Guid? MirrorTargetId,
+    bool CanChangeAnswer
+);
+
+/// <summary>
+/// Event DTO for booster activation broadcasts.
+/// </summary>
+public record BoosterActivatedEventDto(
+    BoosterType BoosterType,
+    string BoosterName,
+    Guid ActivatorPlayerId,
+    string ActivatorName,
+    Guid? TargetPlayerId,
+    string? TargetName,
+    bool WasBlockedByShield,
+    Guid? ShieldBlockerPlayerId,
+    string? ShieldBlockerName
 );
