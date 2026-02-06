@@ -6,6 +6,8 @@
  * - Splash screens (quiz start)
  * - Booster activation effects
  * - Particle systems
+ * 
+ * Note: Uses Pixi.js v7 API
  */
 
 class EffectsManager {
@@ -19,8 +21,9 @@ class EffectsManager {
 
     /**
      * Initialize the Pixi.js application and canvas overlay
+     * For Pixi.js v7, this needs to be called and awaited
      */
-    init() {
+    async init() {
         // Check if Pixi is available
         if (typeof PIXI === 'undefined') {
             console.warn('EffectsManager: Pixi.js not loaded, effects disabled');
@@ -28,28 +31,32 @@ class EffectsManager {
         }
 
         try {
-            // Create Pixi application
-            this.app = new PIXI.Application({
+            // Create Pixi application with v7 API
+            this.app = new PIXI.Application();
+            
+            // Initialize with v7 async method
+            await this.app.init({
                 width: window.innerWidth,
                 height: window.innerHeight,
-                transparent: true,
+                backgroundAlpha: 0,  // v7: use backgroundAlpha instead of transparent
                 resolution: window.devicePixelRatio || 1,
                 autoDensity: true,
                 antialias: true
             });
 
-            // Style the canvas as overlay
-            this.app.view.style.position = 'fixed';
-            this.app.view.style.top = '0';
-            this.app.view.style.left = '0';
-            this.app.view.style.width = '100%';
-            this.app.view.style.height = '100%';
-            this.app.view.style.pointerEvents = 'none';
-            this.app.view.style.zIndex = '9999';
-            this.app.view.id = 'effects-canvas';
+            // Style the canvas as overlay (v7: use canvas instead of view)
+            const canvas = this.app.canvas;
+            canvas.style.position = 'fixed';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.pointerEvents = 'none';
+            canvas.style.zIndex = '9999';
+            canvas.id = 'effects-canvas';
 
             // Append to body
-            document.body.appendChild(this.app.view);
+            document.body.appendChild(canvas);
 
             // Create main container
             this.container = new PIXI.Container();
@@ -63,6 +70,8 @@ class EffectsManager {
             return true;
         } catch (error) {
             console.error('EffectsManager: Failed to initialize', error);
+            // Make sure we don't leave a broken canvas
+            this.isInitialized = false;
             return false;
         }
     }
@@ -71,8 +80,12 @@ class EffectsManager {
      * Handle window resize
      */
     handleResize() {
-        if (!this.app) return;
-        this.app.renderer.resize(window.innerWidth, window.innerHeight);
+        if (!this.app || !this.app.renderer) return;
+        try {
+            this.app.renderer.resize(window.innerWidth, window.innerHeight);
+        } catch (e) {
+            console.warn('EffectsManager: Resize failed', e);
+        }
     }
 
     /**
@@ -104,6 +117,8 @@ class EffectsManager {
      * Play quiz start splash animation
      */
     _playQuizStartSplash() {
+        if (!this.app || !this.container) return;
+        
         const centerX = this.app.screen.width / 2;
         const centerY = this.app.screen.height / 2;
 
@@ -168,10 +183,12 @@ class EffectsManager {
               .add(() => this._animateParticles(particles), 0.2)
               .to([overlay, titleText, subtitleText], { alpha: 0, duration: 0.4 }, '+=0.8')
               .add(() => {
-                  this.container.removeChild(overlay);
-                  this.container.removeChild(titleText);
-                  this.container.removeChild(subtitleText);
-                  particles.forEach(p => this.container.removeChild(p));
+                  try {
+                      this.container.removeChild(overlay);
+                      this.container.removeChild(titleText);
+                      this.container.removeChild(subtitleText);
+                      particles.forEach(p => this.container.removeChild(p));
+                  } catch (e) {}
               });
         } else {
             // Simple fallback without GSAP
@@ -181,10 +198,12 @@ class EffectsManager {
             subtitleText.alpha = 1;
 
             setTimeout(() => {
-                this.container.removeChild(overlay);
-                this.container.removeChild(titleText);
-                this.container.removeChild(subtitleText);
-                particles.forEach(p => this.container.removeChild(p));
+                try {
+                    this.container.removeChild(overlay);
+                    this.container.removeChild(titleText);
+                    this.container.removeChild(subtitleText);
+                    particles.forEach(p => this.container.removeChild(p));
+                } catch (e) {}
             }, 1500);
         }
     }
@@ -195,7 +214,7 @@ class EffectsManager {
      * @param {object} options - Options like playerName, targetName
      */
     playBooster(boosterType, options = {}) {
-        if (!this.isInitialized) return;
+        if (!this.isInitialized || !this.app || !this.container) return;
 
         const centerX = this.app.screen.width / 2;
         const centerY = this.app.screen.height / 3;
@@ -270,16 +289,20 @@ class EffectsManager {
               .to(text.scale, { x: 1, y: 1, duration: 0.2 }, 0.3)
               .to([text, glow], { alpha: 0, duration: 0.3 }, '+=0.5')
               .add(() => {
-                  this.container.removeChild(text);
-                  this.container.removeChild(glow);
+                  try {
+                      this.container.removeChild(text);
+                      this.container.removeChild(glow);
+                  } catch (e) {}
               });
         } else {
             text.alpha = 1;
             text.scale.set(1);
             glow.alpha = 0.6;
             setTimeout(() => {
-                this.container.removeChild(text);
-                this.container.removeChild(glow);
+                try {
+                    this.container.removeChild(text);
+                    this.container.removeChild(glow);
+                } catch (e) {}
             }, 1200);
         }
     }
@@ -338,14 +361,18 @@ class EffectsManager {
 
             tl.to(text, { alpha: 0, duration: 0.3 }, '+=0.2')
               .add(() => {
-                  this.container.removeChild(text);
-                  particles.forEach(p => this.container.removeChild(p));
+                  try {
+                      this.container.removeChild(text);
+                      particles.forEach(p => this.container.removeChild(p));
+                  } catch (e) {}
               });
         } else {
             text.alpha = 1;
             setTimeout(() => {
-                this.container.removeChild(text);
-                particles.forEach(p => this.container.removeChild(p));
+                try {
+                    this.container.removeChild(text);
+                    particles.forEach(p => this.container.removeChild(p));
+                } catch (e) {}
             }, 1200);
         }
     }
@@ -392,15 +419,19 @@ class EffectsManager {
               .to(text.scale, { x: 1, y: 1, duration: 0.2, ease: 'back.out(2)' }, 0)
               .to(text, { alpha: 0, duration: 0.3 }, '+=0.6')
               .add(() => {
-                  this.container.removeChild(text);
-                  this.container.removeChild(smoke);
+                  try {
+                      this.container.removeChild(text);
+                      this.container.removeChild(smoke);
+                  } catch (e) {}
               });
         } else {
             text.alpha = 1;
             text.scale.set(1);
             setTimeout(() => {
-                this.container.removeChild(text);
-                this.container.removeChild(smoke);
+                try {
+                    this.container.removeChild(text);
+                    this.container.removeChild(smoke);
+                } catch (e) {}
             }, 1200);
         }
     }
@@ -451,10 +482,10 @@ class EffectsManager {
             tl.to(text, { alpha: 1, duration: 0.2 })
               .to(text, { rotation: 0.1, duration: 0.1, yoyo: true, repeat: 5 }, 0)
               .to(text, { alpha: 0, duration: 0.3 }, '+=0.3')
-              .add(() => this.container.removeChild(text));
+              .add(() => { try { this.container.removeChild(text); } catch (e) {} });
         } else {
             text.alpha = 1;
-            setTimeout(() => this.container.removeChild(text), 1200);
+            setTimeout(() => { try { this.container.removeChild(text); } catch (e) {} }, 1200);
         }
     }
 
@@ -513,10 +544,10 @@ class EffectsManager {
               .to(text.scale, { x: 1.2, y: 1.2, duration: 0.2, ease: 'back.out(2)' }, 0)
               .to(text.scale, { x: 1, y: 1, duration: 0.15 }, 0.2)
               .to(text, { alpha: 0, duration: 0.3 }, `+=${duration / 1000 - 0.5}`)
-              .add(() => this.container.removeChild(text));
+              .add(() => { try { this.container.removeChild(text); } catch (e) {} });
         } else {
             text.alpha = 1;
-            setTimeout(() => this.container.removeChild(text), duration);
+            setTimeout(() => { try { this.container.removeChild(text); } catch (e) {} }, duration);
         }
     }
 
@@ -525,6 +556,8 @@ class EffectsManager {
      */
     _createParticleBurst(x, y, count) {
         const particles = [];
+        if (!this.container) return particles;
+        
         const colors = [0xffd700, 0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf9ca24];
 
         for (let i = 0; i < count; i++) {
@@ -533,11 +566,7 @@ class EffectsManager {
             const size = 5 + Math.random() * 10;
             
             particle.beginFill(color);
-            if (Math.random() > 0.5) {
-                particle.drawCircle(0, 0, size);
-            } else {
-                particle.drawStar(0, 0, 5, size, size / 2);
-            }
+            particle.drawCircle(0, 0, size);
             particle.endFill();
             
             particle.position.set(x, y);
@@ -594,7 +623,9 @@ class EffectsManager {
      */
     clear() {
         if (!this.container) return;
-        this.container.removeChildren();
+        try {
+            this.container.removeChildren();
+        } catch (e) {}
     }
 
     /**
@@ -602,7 +633,9 @@ class EffectsManager {
      */
     destroy() {
         if (this.app) {
-            this.app.destroy(true, { children: true, texture: true, baseTexture: true });
+            try {
+                this.app.destroy(true, { children: true, texture: true, baseTexture: true });
+            } catch (e) {}
             this.app = null;
         }
         this.isInitialized = false;

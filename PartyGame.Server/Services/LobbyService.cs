@@ -232,17 +232,29 @@ public class LobbyService : ILobbyService
             return (false, new ErrorDto(ErrorCodes.RoomNotFound, $"Room with code '{normalizedCode}' does not exist."));
         }
 
-        if (room.Players.Count + count > room.MaxPlayers)
+        // Calculate available slots and limit bot count accordingly
+        var availableSlots = room.MaxPlayers - room.Players.Count;
+        
+        if (availableSlots <= 0)
         {
             _logger.LogWarning("AddBotPlayers failed: Room {RoomCode} full ({Count}/{Max})", 
                 normalizedCode, room.Players.Count, room.MaxPlayers);
             return (false, new ErrorDto(ErrorCodes.RoomFull, $"This room is full ({room.MaxPlayers} players maximum)."));
         }
 
+        // Limit bots to available slots (don't fail, just add what we can)
+        var actualCount = Math.Min(count, availableSlots);
+        
+        if (actualCount < count)
+        {
+            _logger.LogInformation("AddBotPlayers: Requested {Requested} bots but only {Available} slots available in room {RoomCode}",
+                count, availableSlots, normalizedCode);
+        }
+
         var now = _clock.UtcNow;
         var existingNames = new HashSet<string>(room.Players.Values.Select(p => p.DisplayName), StringComparer.OrdinalIgnoreCase);
 
-        for (var i = 0; i < count; i++)
+        for (var i = 0; i < actualCount; i++)
         {
             var playerId = Guid.NewGuid();
             var displayName = GenerateBotName(existingNames);
@@ -265,7 +277,7 @@ public class LobbyService : ILobbyService
 
         _roomStore.Update(room);
 
-        _logger.LogInformation("Added {Count} bot player(s) to room {RoomCode}", count, normalizedCode);
+        _logger.LogInformation("Added {Count} bot player(s) to room {RoomCode}", actualCount, normalizedCode);
 
         var roomState = GetRoomState(normalizedCode);
         if (roomState != null)

@@ -365,11 +365,13 @@
             font-size: 1.5rem;
         }
 
-        /* Explanation */
+        /* Explanation - inside question card */
         .explanation-card {
-            background: rgba(255,255,255,0.95);
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border: 2px solid var(--success-color);
             border-radius: 16px;
             padding: 20px 24px;
+            margin-top: 24px;
             display: none;
         }
 
@@ -381,6 +383,13 @@
             font-weight: 600;
             color: var(--success-color);
             margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .explanation-text {
+            color: var(--text-color);
+            line-height: 1.5;
+            font-size: 1rem;
         }
 
         /* Answer Status */
@@ -691,11 +700,11 @@
                     <div class="options-grid" id="optionsGrid">
                         <!-- Options will be inserted here -->
                     </div>
-                </div>
 
-                <div class="explanation-card" id="explanationCard">
-                    <div class="explanation-title">💡 Explanation</div>
-                    <div id="explanationText"></div>
+                    <div class="explanation-card" id="explanationCard">
+                        <div class="explanation-title">💡 Explanation</div>
+                        <div class="explanation-text" id="explanationText"></div>
+                    </div>
                 </div>
 
                 <div class="answer-status" id="answerStatus">
@@ -801,6 +810,7 @@
         let previousPhase = null;
         let selectedCategory = null;
         let isFirstQuestionOfGame = true;
+        let categoryAnimationPlayed = false; // Track if category animation has played for this round
         
         // Smooth timer state
         let phaseEndsUtc = null;
@@ -844,8 +854,12 @@
                 gsap.registerPlugin(Flip);
             }
 
-            // Initialize effects manager (Pixi overlay)
-            effects.init();
+            // Initialize effects manager (Pixi overlay) - async for Pixi.js v7
+            try {
+                await effects.init();
+            } catch (e) {
+                console.warn('Effects initialization failed:', e);
+            }
             
             // Initialize audio manager
             audio.init();
@@ -1035,13 +1049,33 @@
             }
             updateTimerDisplay();
 
-            // Determine phase (handle both string and number)
-            const phaseMap = { 'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5 };
-            const phase = typeof state.phase === 'number' ? state.phase : (phaseMap[state.phase] ?? state.phase);
+            // Keep original phase for special handling
+            const phaseRaw = state.phase;
+            const phaseStr = String(state.phase);
+            
+            // Map phase to numeric
+            // QuizPhase enum: CategorySelection=0, Question=1, Answering=2, Reveal=3, Scoreboard=4, Finished=5
+            // DictionaryWord=6, DictionaryAnswering=7, RankingPrompt=8, RankingVoting=9, RankingReveal=10
+            let phase;
+            if (typeof phaseRaw === 'number') {
+                phase = phaseRaw;
+            } else {
+                const phaseMap = { 
+                    'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5,
+                    'DictionaryWord': 6, 'DictionaryAnswering': 7,
+                    'RankingPrompt': 8, 'RankingVoting': 9, 'RankingReveal': 10
+                };
+                phase = phaseMap[phaseStr] ?? phaseRaw;
+            }
+            
+            // Check if this is a Ranking Stars or Dictionary phase
+            const isRankingPhase = phase === 8 || phase === 9 || phase === 10;
+            const isDictionaryPhase = phase === 6 || phase === 7;
 
             // Reset selectedCategory when entering new CategorySelection phase
             if (phase === 0 && previousPhase !== 0) {
                 selectedCategory = null;
+                categoryAnimationPlayed = false; // Reset animation flag for new round
             }
 
             // Handle phase transitions for audio and effects
@@ -1049,13 +1083,15 @@
 
             const isEnteringScoreboard = phase === 4 && previousPhase !== 4;
 
+            // Handle different phases based on numeric phase values
             if (phase === 5) { // Finished
                 showFinished(state);
             } else if (phase === 4) { // Scoreboard
                 showScoreboard(state, isEnteringScoreboard);
             } else if (phase === 0) { // CategorySelection
                 showCategorySelection(state);
-            } else { // Question, Answering, Reveal
+            } else if (isRankingPhase || isDictionaryPhase || phase === 1 || phase === 2 || phase === 3) {
+                // Question, Answering, Reveal, RankingPrompt/Voting/Reveal, DictionaryWord/Answering
                 showQuestion(state);
             }
 
@@ -1088,6 +1124,21 @@
                 }
                 isFirstQuestionOfGame = false;
             }
+
+            // Play category selection animation only on first entry to CategorySelection phase
+            if (newPhase === 0 && !categoryAnimationPlayed) {
+                // Animate categories in
+                if (typeof gsap !== 'undefined') {
+                    gsap.from('.category-option', {
+                        opacity: 0,
+                        y: 30,
+                        stagger: 0.1,
+                        duration: 0.5,
+                        ease: 'back.out(1.4)'
+                    });
+                }
+                categoryAnimationPlayed = true;
+            }
         }
 
         function getCategoryIcon(category) {
@@ -1109,17 +1160,18 @@
                 leaderNameEl.textContent = leader.displayName;
             }
 
-            // Render categories
+            // Render categories - all categories should be fully visible (no selected/faded state on TV)
             const categories = state.availableCategories || [];
             categoriesGridEl.innerHTML = categories.map(cat => `
-                <div class="category-option ${selectedCategory === cat ? 'selected' : ''}" data-category="${cat}">
+                <div class="category-option" data-category="${cat}">
                     <div class="category-icon">${getCategoryIcon(cat)}</div>
                     <div class="category-name">${escapeHtml(cat)}</div>
                 </div>
             `).join('');
 
-            // Animate categories in
-            if (typeof gsap !== 'undefined') {
+            // Only animate categories on first entry to this phase (not on every state update)
+            if (typeof gsap !== 'undefined' && !categoryAnimationPlayed) {
+                categoryAnimationPlayed = true;
                 gsap.from('.category-option', {
                     opacity: 0,
                     y: 30,
@@ -1134,8 +1186,24 @@
             hideAllViews();
             questionViewEl.classList.remove('hidden');
 
-            // Show current category
-            if (state.currentCategory) {
+            // Determine round type (numeric values: CategoryQuiz=0, RankingStars=1, DictionaryGame=2)
+            const roundType = state.roundType;
+            const isRankingStars = roundType === 'RankingStars' || roundType === 1;
+            const isDictionary = roundType === 'DictionaryGame' || roundType === 2;
+            
+            // Also check phase for special round types
+            const phaseRaw = state.phase;
+            const isRankingPhase = phaseRaw === 8 || phaseRaw === 9 || phaseRaw === 10;
+            const isDictionaryPhase = phaseRaw === 6 || phaseRaw === 7;
+
+            // Show current category or round type banner
+            if (isRankingStars || isRankingPhase) {
+                currentCategoryBannerEl.textContent = '⭐ Ranking Stars';
+                currentCategoryBannerEl.style.display = 'inline-block';
+            } else if (isDictionary || isDictionaryPhase) {
+                currentCategoryBannerEl.textContent = '📖 Dictionary Game';
+                currentCategoryBannerEl.style.display = 'inline-block';
+            } else if (state.currentCategory) {
                 currentCategoryBannerEl.textContent = `${getCategoryIcon(state.currentCategory)} ${state.currentCategory}`;
                 currentCategoryBannerEl.style.display = 'inline-block';
             } else {
@@ -1144,32 +1212,95 @@
 
             questionTextEl.textContent = state.questionText;
 
-            const optionColors = { A: 'a', B: 'b', C: 'c', D: 'd' };
-            optionsGridEl.innerHTML = (state.options || []).map(opt => {
-                let classes = 'option-card';
-                let indicator = '';
+            // Standard option colors mapping
+            const optionKeys = ['A', 'B', 'C', 'D'];
+            const optionColors = { A: 'a', B: 'b', C: 'c', D: 'd', '0': 'a', '1': 'b', '2': 'c', '3': 'd' };
 
-                if (state.correctOptionKey) {
-                    if (opt.key === state.correctOptionKey) {
+            // Render options based on round type
+            if ((isRankingStars || isRankingPhase) && state.playerOptions && state.playerOptions.length > 0) {
+                // Ranking Stars: Show player names as options
+                optionsGridEl.innerHTML = state.playerOptions.map((player, index) => {
+                    const key = optionKeys[index] || String.fromCharCode(65 + index);
+                    const colorClass = optionColors[key] || 'a';
+                    let classes = 'option-card';
+                    let indicator = '';
+
+                    // Check if this player is a winner (during reveal phase=10)
+                    if (state.rankingWinnerIds && state.rankingWinnerIds.includes(player.playerId)) {
                         classes += ' correct';
-                        indicator = '✓';
-                    } else {
-                        classes += ' incorrect';
+                        indicator = '⭐';
                     }
-                }
 
-                return `
-                    <div class="${classes}">
-                        <div class="option-key ${optionColors[opt.key]}">${opt.key}</div>
-                        <div class="option-text">${escapeHtml(opt.text)}</div>
-                        <div class="option-indicator">${indicator}</div>
-                    </div>
-                `;
-            }).join('');
+                    // Show vote count during reveal
+                    const voteCount = state.rankingVoteCounts?.[player.playerId] || 0;
+                    const voteText = state.rankingWinnerIds ? ` (${voteCount} votes)` : '';
 
+                    return `
+                        <div class="${classes}">
+                            <div class="option-key ${colorClass}">${key}</div>
+                            <div class="option-text">${escapeHtml(player.displayName)}${voteText}</div>
+                            <div class="option-indicator">${indicator}</div>
+                        </div>
+                    `;
+                }).join('');
+            } else if ((isDictionary || isDictionaryPhase) && state.options && state.options.length > 0) {
+                // Dictionary Game: Show options with A, B, C, D colors
+                optionsGridEl.innerHTML = state.options.map((opt, index) => {
+                    const key = optionKeys[index] || opt.key;
+                    const colorClass = optionColors[key] || optionColors[opt.key] || 'a';
+                    let classes = 'option-card';
+                    let indicator = '';
+
+                    if (state.correctOptionKey) {
+                        if (opt.key === state.correctOptionKey || String(index) === state.correctOptionKey) {
+                            classes += ' correct';
+                            indicator = '✓';
+                        } else {
+                            classes += ' incorrect';
+                        }
+                    }
+
+                    return `
+                        <div class="${classes}">
+                            <div class="option-key ${colorClass}">${key}</div>
+                            <div class="option-text">${escapeHtml(opt.text)}</div>
+                            <div class="option-indicator">${indicator}</div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                // Standard Category Quiz
+                optionsGridEl.innerHTML = (state.options || []).map(opt => {
+                    let classes = 'option-card';
+                    let indicator = '';
+
+                    if (state.correctOptionKey) {
+                        if (opt.key === state.correctOptionKey) {
+                            classes += ' correct';
+                            indicator = '✓';
+                        } else {
+                            classes += ' incorrect';
+                        }
+                    }
+
+                    return `
+                        <div class="${classes}">
+                            <div class="option-key ${optionColors[opt.key]}">${opt.key}</div>
+                            <div class="option-text">${escapeHtml(opt.text)}</div>
+                            <div class="option-indicator">${indicator}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Show explanation for Dictionary (definition) or regular quiz
             if (state.explanation && state.correctOptionKey) {
                 explanationCardEl.classList.add('visible');
-                explanationTextEl.textContent = state.explanation;
+                if (isDictionary || isDictionaryPhase) {
+                    explanationTextEl.textContent = `Definition: ${state.explanation}`;
+                } else {
+                    explanationTextEl.textContent = state.explanation;
+                }
             } else {
                 explanationCardEl.classList.remove('visible');
             }

@@ -499,6 +499,66 @@
         .noped-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 8px; color: #e74c3c; }
         .noped-subtitle { color: var(--text-light); }
 
+        /* Ranking Stars Voting Container */
+        .ranking-voting-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            flex: 1;
+        }
+
+        .ranking-vote-btn {
+            border: none;
+            border-radius: 16px;
+            padding: 16px 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            min-height: 80px;
+        }
+
+        .ranking-vote-btn:active { transform: scale(0.95); }
+        .ranking-vote-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .ranking-vote-btn.selected { box-shadow: 0 0 0 4px white, 0 0 0 8px rgba(102, 126, 234, 0.5); }
+        .ranking-vote-btn.correct { background: #27ae60 !important; }
+        .ranking-vote-btn.winner { background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%) !important; }
+
+        /* Different colors for voting buttons */
+        .ranking-vote-btn:nth-child(8n+1) { background: #e74c3c; }
+        .ranking-vote-btn:nth-child(8n+2) { background: #3498db; }
+        .ranking-vote-btn:nth-child(8n+3) { background: #2ecc71; }
+        .ranking-vote-btn:nth-child(8n+4) { background: #9b59b6; }
+        .ranking-vote-btn:nth-child(8n+5) { background: #e67e22; }
+        .ranking-vote-btn:nth-child(8n+6) { background: #1abc9c; }
+        .ranking-vote-btn:nth-child(8n+7) { background: #34495e; }
+        .ranking-vote-btn:nth-child(8n+8) { background: #e91e63; }
+
+        .ranking-vote-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+
+        .ranking-vote-name {
+            font-size: 0.875rem;
+            text-align: center;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -576,6 +636,11 @@
                 <span class="answer-key">D</span>
                 <span class="answer-text" id="optionD">...</span>
             </button>
+        </div>
+
+        <!-- Ranking Stars Voting (dynamic buttons for all players) -->
+        <div class="ranking-voting-container hidden" id="rankingVotingContainer">
+            <!-- Voting buttons will be dynamically generated here -->
         </div>
 
         <!-- Waiting State (shown during Question phase) -->
@@ -683,6 +748,7 @@
         const questionTextEl = document.getElementById('questionText');
         const nopedStateEl = document.getElementById('nopedState');
         const answerButtonsEl = document.getElementById('answerButtons');
+        const rankingVotingContainerEl = document.getElementById('rankingVotingContainer');
         const waitingStateEl = document.getElementById('waitingState');
         const submittedStateEl = document.getElementById('submittedState');
         const resultStateEl = document.getElementById('resultState');
@@ -765,8 +831,28 @@
             console.log('Quiz state:', state);
             currentState = state;
 
-            // Update header
-            roundInfoEl.textContent = `Round ${state.roundNumber || 1}${state.currentCategory ? ` - ${state.currentCategory}` : ''}`;
+            // Keep original phase for special handling
+            const phaseRaw = state.phase;
+            const phaseStr = String(state.phase);
+            
+            // Determine round type
+            const roundType = state.roundType;
+            const isRankingStars = roundType === 'RankingStars' || roundType === 1;
+            const isDictionary = roundType === 'DictionaryGame' || roundType === 2;
+
+            // Check if this is a Ranking Stars or Dictionary phase
+            // Numeric values: RankingPrompt=8, RankingVoting=9, RankingReveal=10
+            // Numeric values: DictionaryWord=6, DictionaryAnswering=7
+            const isRankingPhase = phaseStr === 'RankingPrompt' || phaseStr === 'RankingVoting' || phaseStr === 'RankingReveal' ||
+                                   phaseRaw === 8 || phaseRaw === 9 || phaseRaw === 10;
+            const isDictionaryPhase = phaseStr === 'DictionaryWord' || phaseStr === 'DictionaryAnswering' || phaseStr === 'DictionaryReveal' ||
+                                      phaseRaw === 6 || phaseRaw === 7;
+
+            // Update header with round type info
+            let roundTypeLabel = state.currentCategory ? ` - ${state.currentCategory}` : '';
+            if (isRankingStars || isRankingPhase) roundTypeLabel = ' - ⭐ Ranking Stars';
+            if (isDictionary || isDictionaryPhase) roundTypeLabel = ' - 📖 Dictionary';
+            roundInfoEl.textContent = `Round ${state.roundNumber || 1}${roundTypeLabel}`;
             
             // Update phaseEndsUtc for smooth timer
             if (state.phaseEndsUtc) {
@@ -776,9 +862,20 @@
             }
             updateTimerDisplay();
 
-            // Get phase
-            const phaseMap = { 'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5 };
-            const phase = typeof state.phase === 'number' ? state.phase : (phaseMap[state.phase] ?? state.phase);
+            // Map phase to numeric for standard logic
+            // QuizPhase enum: CategorySelection=0, Question=1, Answering=2, Reveal=3, Scoreboard=4, Finished=5
+            // DictionaryWord=6, DictionaryAnswering=7, RankingPrompt=8, RankingVoting=9, RankingReveal=10
+            let phase;
+            if (typeof phaseRaw === 'number') {
+                phase = phaseRaw;
+            } else {
+                const phaseMap = { 
+                    'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5,
+                    'DictionaryWord': 6, 'DictionaryAnswering': 7,
+                    'RankingPrompt': 8, 'RankingVoting': 9, 'RankingReveal': 10
+                };
+                phase = phaseMap[phaseStr] ?? phaseRaw;
+            }
             
             // Detect phase transition - reset category selection state when entering CategorySelection
             if (phase === 0 && currentPhase !== 0) {
@@ -790,25 +887,59 @@
             currentPhase = phase;
 
             // Update phase indicator
-            const phaseNames = ['Choose category', 'Reading question...', 'Answer now!', 'Revealing...', 'Scoreboard', 'Game Over'];
-            phaseIndicatorEl.textContent = phaseNames[phase] || state.phase;
+            let phaseName = '';
+            if (isRankingStars || isRankingPhase) {
+                if (phase === 8) phaseName = 'Reading prompt...';
+                else if (phase === 9) phaseName = 'Vote for a player!';
+                else if (phase === 10) phaseName = 'Results!';
+                else if (phase === 4) phaseName = 'Scoreboard';
+                else phaseName = 'Ranking Stars';
+            } else if (isDictionary || isDictionaryPhase) {
+                if (phase === 6) phaseName = 'Reading word...';
+                else if (phase === 7) phaseName = 'Choose the definition!';
+                else if (phase === 3) phaseName = 'Revealing...';
+                else if (phase === 4) phaseName = 'Scoreboard';
+                else phaseName = 'Dictionary';
+            } else {
+                const standardPhaseNames = ['Choose category', 'Reading question...', 'Answer now!', 'Revealing...', 'Scoreboard', 'Game Over'];
+                phaseName = standardPhaseNames[phase] || phaseStr;
+            }
+            phaseIndicatorEl.textContent = phaseName;
 
             // Update question info
             questionNumberEl.textContent = `Question ${state.questionNumber || '-'} of ${state.totalQuestions}`;
             questionTextEl.textContent = state.questionText || '';
 
-            if (state.currentCategory) {
+            // Update category badge based on round type
+            if (isRankingStars || isRankingPhase) {
+                currentCategoryBadgeEl.textContent = '⭐ Ranking Stars';
+                currentCategoryBadgeEl.style.display = 'inline-block';
+            } else if (isDictionary || isDictionaryPhase) {
+                currentCategoryBadgeEl.textContent = '📖 Dictionary';
+                currentCategoryBadgeEl.style.display = 'inline-block';
+            } else if (state.currentCategory) {
                 currentCategoryBadgeEl.textContent = `${getCategoryIcon(state.currentCategory)} ${state.currentCategory}`;
                 currentCategoryBadgeEl.style.display = 'inline-block';
             } else {
                 currentCategoryBadgeEl.style.display = 'none';
             }
 
-            // Update options
-            (state.options || []).forEach(opt => {
-                const el = document.getElementById('option' + opt.key);
-                if (el) el.textContent = opt.text;
-            });
+            // Update options for standard quiz and dictionary
+            const optionKeys = ['A', 'B', 'C', 'D'];
+            if ((isDictionary || isDictionaryPhase) && state.options) {
+                // Dictionary: Map numeric keys to A, B, C, D
+                state.options.forEach((opt, index) => {
+                    const key = optionKeys[index];
+                    const el = document.getElementById('option' + key);
+                    if (el) el.textContent = opt.text;
+                });
+            } else if (!isRankingStars && !isRankingPhase) {
+                // Standard quiz
+                (state.options || []).forEach(opt => {
+                    const el = document.getElementById('option' + opt.key);
+                    if (el) el.textContent = opt.text;
+                });
+            }
 
             // Find my status
             const myStatus = (state.answerStatuses || []).find(s => s.playerId === playerId);
@@ -818,24 +949,26 @@
             // Update booster UI
             updateBoosterUI(state);
 
-            // Handle different phases
+            // Handle different phases based on numeric phase values
             if (phase === 5) { // Finished
                 showFinished(state);
             } else if (phase === 4) { // Scoreboard
                 showScoreboard(state);
-            } else if (phase === 3) { // Reveal
+            } else if (phase === 10 || phase === 3) { // RankingReveal or Reveal
                 showReveal(state, myScoreData);
-            } else if (phase === 2) { // Answering
+            } else if (phase === 9 || phase === 7 || phase === 2) { // RankingVoting or DictionaryAnswering or Answering
                 // Check if noped
                 const myEffects = state.myAnsweringEffects;
                 if (myEffects?.isNoped) {
                     showNoped();
                 } else if (myStatus?.hasAnswered) {
                     showSubmitted();
+                } else if (phase === 9 || isRankingStars || isRankingPhase) {
+                    showRankingVoting(state);
                 } else {
                     showAnswering(state);
                 }
-            } else if (phase === 1) { // Question
+            } else if (phase === 8 || phase === 6 || phase === 1) { // RankingPrompt or DictionaryWord or Question
                 showWaiting();
             } else if (phase === 0) { // CategorySelection
                 showCategorySelection(state);
@@ -1056,6 +1189,69 @@
             questionCardEl.classList.remove('hidden');
             waitingStateEl.classList.remove('hidden');
             selectedAnswer = null;
+            
+            // Reset button visibility for next question
+            answerBtns.forEach(btn => {
+                btn.style.display = 'flex';
+            });
+        }
+
+        function showRankingVoting(state) {
+            hideAll();
+            questionCardEl.classList.remove('hidden');
+            
+            // Get all players except self (can't vote for yourself)
+            const otherPlayers = (state.playerOptions || []).filter(p => p.playerId !== playerId);
+            
+            console.log('Ranking voting - playerOptions:', state.playerOptions);
+            console.log('Ranking voting - otherPlayers:', otherPlayers);
+            
+            // Generate dynamic voting buttons for ALL other players
+            rankingVotingContainerEl.innerHTML = otherPlayers.map((player, index) => `
+                <button class="ranking-vote-btn" data-player-id="${player.playerId}" data-index="${index}">
+                    <div class="ranking-vote-avatar">${GameUtils.getInitials(player.displayName)}</div>
+                    <div class="ranking-vote-name">${escapeHtml(player.displayName)}</div>
+                </button>
+            `).join('');
+            
+            // Add click handlers to all voting buttons
+            rankingVotingContainerEl.querySelectorAll('.ranking-vote-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetPlayerId = btn.dataset.playerId;
+                    submitRankingVote(targetPlayerId, btn);
+                });
+            });
+            
+            rankingVotingContainerEl.classList.remove('hidden');
+            selectedAnswer = null;
+        }
+
+        async function submitRankingVote(targetPlayerId, clickedBtn) {
+            // Check if we're in RankingVoting phase (9)
+            if (currentPhase !== 9) return;
+            if (selectedAnswer) return; // Already submitted
+            
+            selectedAnswer = targetPlayerId;
+            
+            // Disable all voting buttons and highlight selected
+            rankingVotingContainerEl.querySelectorAll('.ranking-vote-btn').forEach(btn => {
+                btn.disabled = true;
+                if (btn === clickedBtn) {
+                    btn.classList.add('selected');
+                }
+            });
+            
+            try {
+                await client.submitRankingVote(targetPlayerId);
+                showSubmitted();
+            } catch (error) {
+                console.error('Failed to submit ranking vote:', error);
+                selectedAnswer = null;
+                rankingVotingContainerEl.querySelectorAll('.ranking-vote-btn').forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('selected');
+                });
+            }
         }
 
         function showNoped() {
@@ -1072,7 +1268,9 @@
             // Check for 50/50 effect
             const removedOptions = state.myAnsweringEffects?.removedOptions || [];
 
+            // Reset and show all buttons
             answerBtns.forEach(btn => {
+                btn.style.display = 'flex';
                 btn.disabled = false;
                 btn.classList.remove('selected', 'correct', 'incorrect', 'removed');
                 
@@ -1096,26 +1294,62 @@
             questionCardEl.classList.remove('hidden');
             resultStateEl.classList.remove('hidden');
 
+            // Check if this is a Ranking Stars round (roundType=1 or phase=10)
+            const roundType = state.roundType;
+            const isRankingStars = roundType === 'RankingStars' || roundType === 1 || currentPhase === 10;
+
             const wasCorrect = myScoreData?.answeredCorrectly === true;
             const pointsEarned = myScoreData?.pointsEarned || 0;
             
-            resultIconEl.textContent = wasCorrect ? '✓' : '✗';
-            resultTextEl.textContent = wasCorrect ? 'Correct!' : 'Wrong!';
+            if (isRankingStars) {
+                // For Ranking Stars, show if voted for the winner
+                const isRankingStar = myScoreData?.isRankingStar === true;
+                resultIconEl.textContent = isRankingStar ? '⭐' : (wasCorrect ? '✓' : '✗');
+                resultTextEl.textContent = isRankingStar ? 'You\'re the Star!' : (wasCorrect ? 'Good pick!' : 'Not this time');
+            } else {
+                resultIconEl.textContent = wasCorrect ? '✓' : '✗';
+                resultTextEl.textContent = wasCorrect ? 'Correct!' : 'Wrong!';
+            }
+            
             resultPointsEl.textContent = pointsEarned > 0 ? `+${pointsEarned} points` : '+0 points';
             resultPointsEl.classList.toggle('positive', pointsEarned > 0);
 
-            answerButtonsEl.classList.remove('hidden');
-            answerBtns.forEach(btn => {
-                btn.disabled = true;
-                const key = btn.dataset.key;
-                btn.classList.remove('selected', 'removed');
+            // Show appropriate answer display
+            if (isRankingStars && state.playerOptions) {
+                // Use the ranking voting container to show results
+                const winnerIds = state.rankingWinnerIds || [];
                 
-                if (key === state.correctOptionKey) {
-                    btn.classList.add('correct');
-                } else if (key === myScoreData?.selectedOption) {
-                    btn.classList.add('incorrect');
-                }
-            });
+                rankingVotingContainerEl.innerHTML = state.playerOptions
+                    .filter(p => p.playerId !== playerId) // Filter out self
+                    .map((player, index) => {
+                        const isWinner = winnerIds.includes(player.playerId);
+                        const voteCount = state.rankingVoteCounts?.[player.playerId] || 0;
+                        return `
+                            <button class="ranking-vote-btn ${isWinner ? 'winner' : ''}" disabled>
+                                <div class="ranking-vote-avatar">${isWinner ? '⭐' : GameUtils.getInitials(player.displayName)}</div>
+                                <div class="ranking-vote-name">${escapeHtml(player.displayName)}</div>
+                                <div style="font-size: 0.75rem; opacity: 0.9;">${voteCount} vote${voteCount !== 1 ? 's' : ''}</div>
+                            </button>
+                        `;
+                    }).join('');
+                
+                rankingVotingContainerEl.classList.remove('hidden');
+            } else {
+                // Standard reveal - show correct answer with A/B/C/D buttons
+                answerButtonsEl.classList.remove('hidden');
+                answerBtns.forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.display = 'flex';
+                    const key = btn.dataset.key;
+                    btn.classList.remove('selected', 'removed');
+                    
+                    if (key === state.correctOptionKey) {
+                        btn.classList.add('correct');
+                    } else if (key === myScoreData?.selectedOption) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+            }
         }
 
         function showScoreboard(state) {
@@ -1165,13 +1399,21 @@
             nopedStateEl.classList.add('hidden');
             submittedStateEl.classList.add('hidden');
             answerButtonsEl.classList.add('hidden');
+            rankingVotingContainerEl.classList.add('hidden');
             resultStateEl.classList.add('hidden');
             scoreboardStateEl.classList.add('hidden');
             finishedStateEl.classList.add('hidden');
         }
 
         async function submitAnswer(key) {
-            if (selectedAnswer || currentPhase !== 2) return;
+            // Check if we're in an answering phase
+            // Answering=2, DictionaryAnswering=7
+            // Note: RankingVoting=9 uses submitRankingVote instead
+            const isAnsweringPhase = currentPhase === 2 || currentPhase === 7;
+            
+            if (selectedAnswer || !isAnsweringPhase) return;
+
+            const isDictionaryAnswering = currentPhase === 7;
 
             selectedAnswer = key;
             
@@ -1183,7 +1425,13 @@
             });
 
             try {
-                await client.submitAnswer(key);
+                if (isDictionaryAnswering) {
+                    // Dictionary uses numeric index (0-3), convert from A/B/C/D
+                    const optionIndex = key.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+                    await client.submitDictionaryAnswer(optionIndex);
+                } else {
+                    await client.submitAnswer(key);
+                }
                 showSubmitted();
             } catch (error) {
                 console.error('Failed to submit answer:', error);

@@ -191,6 +191,34 @@ class GameClient {
     }
 
     /**
+     * Submit dictionary answer (player only)
+     * @param {number} optionIndex - The selected option index (0-3)
+     */
+    async submitDictionaryAnswer(optionIndex) {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.playerId) {
+            throw new Error('No player ID set');
+        }
+        await this.connection.invoke('SubmitDictionaryAnswer', this.roomCode, this.playerId, optionIndex);
+    }
+
+    /**
+     * Submit ranking vote (player only)
+     * @param {string} votedForPlayerId - The GUID of the player to vote for
+     */
+    async submitRankingVote(votedForPlayerId) {
+        if (!this.connection || !this.roomCode) {
+            throw new Error('Not connected or no room');
+        }
+        if (!this.playerId) {
+            throw new Error('No player ID set');
+        }
+        await this.connection.invoke('SubmitRankingVote', this.roomCode, this.playerId, votedForPlayerId);
+    }
+
+    /**
      * Select category for current round (round leader only)
      * @param {string} category - The selected category name
      */

@@ -45,7 +45,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _roomLocks = new();
 
     // Category Quiz timing
-    private const int CategorySelectionSeconds = 30;
+    private const int CategorySelectionSeconds = 15;  // Reduced from 30
     private const int QuestionDisplaySeconds = 3;
     private const int AnsweringSeconds = 15;
     private const int RevealSeconds = 5;
