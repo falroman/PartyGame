@@ -105,6 +105,138 @@ This is implemented by iterating through `room.Players.Values` and sending a cus
 3. Activate during Answering phase
 4. Verify: player 1 sees 2 options removed, player 2 sees all 4
 
+---
+
+## Iteration 15 – VFX & Audio (TV Presentation Layer)
+
+### Overview
+
+Iteration 15 adds a presentation layer to the TV view with:
+- **Pixi.js** visual effects overlay (splash screens, booster animations)
+- **Howler.js** audio system (background music, sound effects)
+- **Countdown sounds** (tick in last 10 seconds, buzzer at 0)
+
+### Architecture
+
+```
+???????????????????????????????????????????????????????????????
+?                      quiz-tv.html                           ?
+???????????????????????????????????????????????????????????????
+?  ???????????????????  ???????????????????                  ?
+?  ?   DOM UI Layer  ?  ?  Pixi.js Canvas ?  (z-index: 9999) ?
+?  ?  (game content) ?  ?   (effects)     ?  pointer-events:  ?
+?  ?                 ?  ?                 ?  none             ?
+?  ???????????????????  ???????????????????                  ?
+?                                                             ?
+?  ???????????????????????????????????????????????????????   ?
+?  ?              AudioManager (Howler.js)               ?   ?
+?  ?  - Background music per phase                       ?   ?
+?  ?  - Sound effects (boosters, countdown, buzzer)      ?   ?
+?  ???????????????????????????????????????????????????????   ?
+???????????????????????????????????????????????????????????????
+```
+
+### Effects Manager API (`effects-manager.js`)
+
+```javascript
+const effects = new EffectsManager();
+effects.init();                              // Initialize Pixi canvas
+effects.playSplash('QuizStart');            // Show splash screen
+effects.playBooster('DoublePoints', opts);  // Play booster animation
+effects.playBooster('Nope', { targetName }); // With target info
+effects.clear();                            // Clear all effects
+effects.resetSplash();                      // Reset splash shown state
+effects.destroy();                          // Cleanup
+```
+
+### Audio Manager API (`audio-manager.js`)
+
+```javascript
+const audio = new AudioManager();
+audio.init();                    // Initialize (waits for user interaction)
+audio.unlock();                  // Unlock audio context after click
+audio.setPhase('Answering');     // Change background music
+audio.playSfx('Booster');        // Play sound effect
+audio.playSfx('Tick');           // Countdown tick
+audio.playSfx('Buzzer');         // Time's up
+audio.handleCountdown(seconds);  // Auto-play tick/buzzer based on time
+audio.mute(true/false);          // Mute/unmute all audio
+audio.toggleMute();              // Toggle mute state
+audio.stopAll();                 // Stop all sounds
+```
+
+### Audio Assets
+
+Located in `/assets/audio/`:
+
+| File | Purpose |
+|------|---------|
+| `intro_loop.mp3` | Upbeat intro music |
+| `category_loop.mp3` | Calm music during category selection |
+| `question_loop.mp3` | Building tension during question display |
+| `tension_loop.mp3` | High tension during answering |
+| `reveal_sting.mp3` | One-shot for answer reveal |
+| `scoreboard_loop.mp3` | Celebratory scoreboard music |
+| `victory_sting.mp3` | Game end fanfare |
+| `tick.mp3` | Countdown tick (last 10 seconds) |
+| `buzzer.mp3` | Time's up buzzer |
+| `booster.mp3` | Booster activation sound |
+| `correct.mp3` | Correct answer sound |
+| `wrong.mp3` | Wrong answer sound |
+| `splash.mp3` | Quiz start splash sound |
+
+### Replacing Audio Assets
+
+1. Replace files in `/assets/audio/` with new MP3s of same name
+2. Keep files under 500KB for optimal loading
+3. Normalize volume: music to -12dB, SFX to -6dB
+4. Ensure loops seamlessly repeat
+
+### Visual Effects
+
+**Quiz Start Splash**
+- Triggers on first question of Round 1
+- Shows "QUIZ TIME!" with particle burst
+- Duration: ~1.5 seconds
+- Only shows once per game session
+
+**Booster Effects**
+- DoublePoints: Golden "×2" burst with glow
+- BackToZero: Red "RESET!" with shatter particles
+- Nope: Big "?? NOPE!" stamp with smoke
+- FiftyFifty: "?? 50/50" text pop
+- ChaosMode: Rainbow "?? CHAOS!" with shake
+- Shield: Blue "??? BLOCKED!" when activated
+
+### Autoplay Policy Handling
+
+Due to browser autoplay restrictions:
+1. User sees "Click to enable sound" overlay on load
+2. Clicking anywhere unlocks audio context
+3. Audio mute button in header for manual control
+
+### Degrade-Safe Design
+
+All effects are optional - if libraries fail to load:
+- `EffectsManager` methods become no-ops
+- `AudioManager` methods become no-ops
+- Game continues to function normally
+- No console errors or crashes
+
+### Manual Testing Checklist
+
+- [ ] Splash screen appears at quiz start (first question, round 1)
+- [ ] Splash doesn't reappear on reconnect
+- [ ] Booster activation shows visual effect on TV
+- [ ] Booster toast notification appears alongside effect
+- [ ] Music changes when phase changes
+- [ ] Tick sound plays in last 10 seconds of Answering phase
+- [ ] Buzzer plays when timer hits 0
+- [ ] Mute button toggles all audio
+- [ ] Game works normally if Pixi/Howler fail to load
+
+---
+
 ## Technical Details
 
 ### Server-side
@@ -116,18 +248,7 @@ This is implemented by iterating through `room.Players.Values` and sending a cus
 
 ### Client-side
 - Phone UI: `quiz-phone.html` - Shows booster card, handles activation, respects `MyAnsweringEffects`
-- TV UI: `quiz-tv.html` - Shows toast notifications via `BoosterActivated` event
+- TV UI: `quiz-tv.html` - Shows toast notifications, VFX overlay, audio
 - GameClient: `game-client.js` - `activateBooster(type, targetId)` method
-
-### DTOs
-- `PlayerBoosterStateDto` - Booster info for each player (public)
-- `ActiveBoosterEffectDto` - Active effects for current question (public)
-- `PlayerAnsweringEffectsDto` - Private effects for one player (per-player)
-- `BoosterActivatedEventDto` - Event broadcast when booster is used
-
-### Timer Handling
-Players with LateLock active receive a personalized `PhaseEndsUtc` in their DTO, allowing their phone timer to show the extended time.
-
----
-
-*Last Updated: Iteration 14 - Boosters fully playable with private effects*
+- Effects: `effects-manager.js` - Pixi.js visual effects (TV only)
+- Audio: `audio-manager.js` - Howler.js audio system (TV

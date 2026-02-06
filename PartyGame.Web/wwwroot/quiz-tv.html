@@ -549,9 +549,80 @@
         .back-to-lobby-btn:hover {
             background: rgba(255,255,255,0.3);
         }
+
+        /* Audio Control Button */
+        .audio-control {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.25rem;
+            transition: all 0.2s;
+        }
+        
+        .audio-control:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .audio-control.muted {
+            opacity: 0.6;
+        }
+
+        /* Audio Unlock Overlay */
+        .audio-unlock-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            color: white;
+            cursor: pointer;
+        }
+
+        .audio-unlock-overlay.hidden {
+            display: none;
+        }
+
+        .audio-unlock-icon {
+            font-size: 6rem;
+            margin-bottom: 24px;
+            animation: bounce 1s infinite;
+        }
+
+        .audio-unlock-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .audio-unlock-subtext {
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
     </style>
 </head>
 <body>
+    <!-- Audio Unlock Overlay -->
+    <div class="audio-unlock-overlay" id="audioUnlockOverlay">
+        <div class="audio-unlock-icon">🔊</div>
+        <div class="audio-unlock-text">Click anywhere to enable sound</div>
+        <div class="audio-unlock-subtext">Audio enhances the quiz experience!</div>
+    </div>
+
     <div class="quiz-container">
         <!-- Header -->
         <div class="quiz-header">
@@ -567,6 +638,9 @@
             <div>
                 Room: <strong id="roomCode">----</strong>
             </div>
+            <button class="audio-control" id="audioControlBtn" title="Toggle sound">
+                🔊
+            </button>
             <button class="back-to-lobby-btn" id="backToLobbyBtn" title="Return to lobby (keeps players)">
                 🏠 Back to Lobby
             </button>
@@ -652,11 +726,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
     
+    <!-- Pixi.js for visual effects (TV only) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    
+    <!-- Howler.js for audio (TV only) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+    
     <!-- SignalR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="/js/config.js"></script>
     <script src="/js/game-client.js"></script>
     <script src="/js/scoreboard-animations.js"></script>
+    <script src="/js/effects-manager.js"></script>
+    <script src="/js/audio-manager.js"></script>
     <script>
         // Get room code from URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -669,6 +751,12 @@
         const SERVER_URL = GameConfig.getServerUrl();
         const client = new GameClient(SERVER_URL);
         const scoreboardAnimator = new ScoreboardAnimations('#scoreboardList');
+        
+        // Effects & Audio managers (Iteration 15)
+        const effects = new EffectsManager();
+        const audio = new AudioManager();
+        let audioEnabled = false;
+        let splashShownThisSession = false;
 
         // DOM Elements
         const roundBadgeEl = document.getElementById('roundBadge');
@@ -703,13 +791,17 @@
         const backToLobbyBtn = document.getElementById('backToLobbyBtn');
         const backToLobbyFinishedBtn = document.getElementById('backToLobbyFinishedBtn');
         const boosterToastOverlayEl = document.getElementById('boosterToastOverlay');
+        const audioUnlockOverlayEl = document.getElementById('audioUnlockOverlay');
+        const audioControlBtnEl = document.getElementById('audioControlBtn');
 
         let previousPhase = null;
         let selectedCategory = null;
+        let isFirstQuestionOfGame = true;
         
         // Smooth timer state
         let phaseEndsUtc = null;
         let timerIntervalId = null;
+        let lastCountdownSecond = -1;
 
         const categoryIcons = {
             'Wetenschap': '🔬', 'Science': '🔬',
@@ -748,6 +840,15 @@
                 gsap.registerPlugin(Flip);
             }
 
+            // Initialize effects manager (Pixi overlay)
+            effects.init();
+            
+            // Initialize audio manager
+            audio.init();
+
+            // Setup audio unlock overlay
+            setupAudioUnlock();
+
             client.on('onConnected', () => console.log('Connected'));
             client.on('onQuizStateUpdated', onQuizStateUpdated);
             client.on('onAutoplayStatusUpdated', updateAutoplayStatus);
@@ -759,15 +860,47 @@
 
             await configureDevPanel();
             
-            // Start smooth timer loop
+            // Start smooth timer loop (includes countdown sounds)
             startTimerLoop();
             
             // Setup back to lobby buttons
             backToLobbyBtn.addEventListener('click', handleBackToLobby);
             backToLobbyFinishedBtn.addEventListener('click', handleBackToLobby);
+            
+            // Setup audio control button
+            audioControlBtnEl.addEventListener('click', toggleAudio);
+        }
+
+        // Audio unlock overlay handling
+        function setupAudioUnlock() {
+            audioUnlockOverlayEl.addEventListener('click', () => {
+                audio.unlock();
+                audioEnabled = true;
+                audioUnlockOverlayEl.classList.add('hidden');
+                updateAudioButton();
+            });
+        }
+
+        function toggleAudio() {
+            if (!audioEnabled) {
+                audio.unlock();
+                audioEnabled = true;
+            }
+            const isMuted = audio.toggleMute();
+            updateAudioButton();
+        }
+
+        function updateAudioButton() {
+            if (!audioEnabled || audio.isMuted) {
+                audioControlBtnEl.textContent = '🔇';
+                audioControlBtnEl.classList.add('muted');
+            } else {
+                audioControlBtnEl.textContent = '🔊';
+                audioControlBtnEl.classList.remove('muted');
+            }
         }
         
-        // Smooth timer functions
+        // Smooth timer functions with countdown sounds
         function startTimerLoop() {
             if (timerIntervalId) clearInterval(timerIntervalId);
             timerIntervalId = setInterval(updateTimerDisplay, 200);
@@ -784,9 +917,20 @@
             const remaining = Math.max(0, Math.ceil((phaseEndsUtc - now) / 1000));
             timerValueEl.textContent = remaining;
             timerEl.classList.toggle('warning', remaining <= 5);
+            
+            // Handle countdown sounds (only during Answering phase)
+            if (audioEnabled) {
+                audio.handleCountdown(remaining);
+            }
         }
         
         async function handleBackToLobby() {
+            // Reset states for new game
+            splashShownThisSession = false;
+            isFirstQuestionOfGame = true;
+            effects.resetSplash();
+            audio.stopAll();
+            
             try {
                 await client.resetToLobby();
                 window.location.href = `/tv.html?room=${roomCode}`;
@@ -812,13 +956,30 @@
                           `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span> was blocked by ` +
                           `<span class="booster-toast-target">${escapeHtml(event.shieldBlockerName)}</span>'s Shield! 🛡️`;
                 isBlocked = true;
+                
+                // Play shield effect
+                effects.playBooster('Shield', { playerName: event.shieldBlockerName });
             } else if (event.targetName) {
                 message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span> used ` +
                           `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span> on ` +
                           `<span class="booster-toast-target">${escapeHtml(event.targetName)}</span>!`;
+                
+                // Play booster effect
+                effects.playBooster(boosterTypeNum, { 
+                    playerName: event.activatorName, 
+                    targetName: event.targetName 
+                });
             } else {
                 message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span> activated ` +
                           `<span class="booster-toast-name">${escapeHtml(event.boosterName)}</span>!`;
+                
+                // Play booster effect
+                effects.playBooster(boosterTypeNum, { playerName: event.activatorName });
+            }
+            
+            // Play booster sound
+            if (audioEnabled) {
+                audio.playBooster();
             }
             
             showBoosterToast(emoji, message, isBlocked);
@@ -867,6 +1028,9 @@
                 selectedCategory = null;
             }
 
+            // Handle phase transitions for audio and effects
+            handlePhaseTransition(previousPhase, phase, state);
+
             const isEnteringScoreboard = phase === 4 && previousPhase !== 4;
 
             if (phase === 5) { // Finished
@@ -880,6 +1044,34 @@
             }
 
             previousPhase = phase;
+        }
+
+        /**
+         * Handle phase transitions for audio and visual effects
+         */
+        function handlePhaseTransition(oldPhase, newPhase, state) {
+            if (oldPhase === newPhase) return;
+            
+            // Reset countdown state on phase change
+            lastCountdownSecond = -1;
+            
+            // Update audio for new phase
+            if (audioEnabled) {
+                audio.setPhase(newPhase);
+            }
+            
+            // Check for quiz start splash (first question of the game)
+            if (newPhase === 1 && isFirstQuestionOfGame && state.roundNumber === 1 && state.questionNumber === 1) {
+                // Show splash screen
+                if (!splashShownThisSession) {
+                    effects.playSplash('QuizStart');
+                    if (audioEnabled) {
+                        audio.playSplash();
+                    }
+                    splashShownThisSession = true;
+                }
+                isFirstQuestionOfGame = false;
+            }
         }
 
         function getCategoryIcon(category) {

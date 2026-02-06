@@ -1,0 +1,19 @@
+{
+  "note": "This is a placeholder for audio assets",
+  "files": [
+    "intro_loop.mp3",
+    "category_loop.mp3",
+    "question_loop.mp3",
+    "tension_loop.mp3",
+    "reveal_sting.mp3",
+    "scoreboard_loop.mp3",
+    "victory_sting.mp3",
+    "tick.mp3",
+    "buzzer.mp3",
+    "booster.mp3",
+    "correct.mp3",
+    "wrong.mp3",
+    "splash.mp3"
+  ],
+  "instructions": "Replace these placeholder JSON files with actual MP3 audio files. See README.md for details on volume levels and format requirements."
+}
