@@ -28,7 +28,7 @@
             flex-shrink: 0;
         }
         
-        .tv-mode .lock-toggle-switch {
+        html.tv-mode .lock-toggle-switch {
             width: clamp(52px, min(4vw, 7vh), 72px);
             height: clamp(28px, min(2.2vw, 4vh), 40px);
             border-radius: clamp(14px, min(1.1vw, 2vh), 20px);
@@ -51,7 +51,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
-        .tv-mode .lock-toggle-switch::after {
+        html.tv-mode .lock-toggle-switch::after {
             width: clamp(24px, min(1.9vw, 3.4vh), 36px);
             height: clamp(24px, min(1.9vw, 3.4vh), 36px);
         }
@@ -60,7 +60,7 @@
             transform: translateX(24px);
         }
         
-        .tv-mode .lock-toggle-switch.locked::after {
+        html.tv-mode .lock-toggle-switch.locked::after {
             transform: translateX(clamp(24px, min(1.9vw, 3.4vh), 32px));
         }
         
@@ -114,7 +114,7 @@
             margin-bottom: 24px;
         }
         
-        .tv-mode .game-overlay-icon {
+        html.tv-mode .game-overlay-icon {
             font-size: var(--font-4xl);
             margin-bottom: var(--gap-xl);
         }
@@ -125,7 +125,7 @@
             margin-bottom: 16px;
         }
         
-        .tv-mode .game-overlay-title {
+        html.tv-mode .game-overlay-title {
             font-size: var(--font-3xl);
             margin-bottom: var(--gap);
         }
@@ -135,7 +135,7 @@
             opacity: 0.8;
         }
         
-        .tv-mode .game-overlay-subtitle {
+        html.tv-mode .game-overlay-subtitle {
             font-size: var(--font-xl);
         }
 
@@ -239,15 +239,15 @@
         }
         
         /* TV Mode specific enhancements */
-        .tv-mode .lock-toggle {
+        html.tv-mode .lock-toggle {
             padding: var(--gap-lg);
         }
         
-        .tv-mode .game-status-card {
+        html.tv-mode .game-status-card {
             padding: var(--gap-lg) var(--gap-xl);
         }
         
-        .tv-mode .player-count-badge {
+        html.tv-mode .player-count-badge {
             font-size: var(--font-base);
             padding: var(--gap-sm) var(--gap);
         }

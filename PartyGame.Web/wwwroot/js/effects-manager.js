@@ -1,11 +1,12 @@
 /**
  * Effects Manager - Pixi.js overlay for visual effects on TV
- * Part of PartyGame Iteration 15
+ * Part of PartyGame Iteration 15 & 16
  * 
  * Provides fullscreen canvas overlay for:
  * - Splash screens (quiz start)
  * - Booster activation effects
  * - Particle systems
+ * - Finale ceremony (confetti, winner spotlight)
  * 
  * Note: Uses Pixi.js v7 API
  */
@@ -18,6 +19,9 @@ class EffectsManager {
         this.splashShown = false;
         this.activeEffects = [];
         this.initError = null;
+        this.finaleActive = false;
+        this.confettiParticles = [];
+        this.confettiInterval = null;
     }
 
     /**
@@ -88,6 +92,7 @@ class EffectsManager {
             initialized: this.isInitialized,
             error: this.initError,
             splashShown: this.splashShown,
+            finaleActive: this.finaleActive,
             hasCanvas: !!document.getElementById('effects-canvas')
         };
     }
@@ -222,6 +227,296 @@ class EffectsManager {
                 } catch (e) {}
             }, 1500);
         }
+    }
+
+    // ============================================
+    // FINALE CEREMONY EFFECTS (Iteration 16)
+    // ============================================
+
+    /**
+     * Play the finale ceremony with confetti and spotlight
+     * @param {object} options - { winnerName, duration }
+     */
+    playFinale(options = {}) {
+        if (!this.isInitialized || !this.app || !this.container) return;
+        if (this.finaleActive) return; // Already playing
+
+        this.finaleActive = true;
+        console.log('EffectsManager: Playing finale ceremony');
+
+        const duration = options.duration || 8000;
+
+        // Start continuous confetti
+        this._startConfetti();
+
+        // Play winner spotlight
+        this._playWinnerSpotlight(options.winnerName);
+
+        // Initial confetti burst
+        this._playConfettiBurst(3);
+
+        // Schedule additional bursts
+        setTimeout(() => this._playConfettiBurst(2), 2000);
+        setTimeout(() => this._playConfettiBurst(2), 4000);
+    }
+
+    /**
+     * Stop finale effects
+     */
+    stopFinale() {
+        this.finaleActive = false;
+        this._stopConfetti();
+        this.clear();
+        console.log('EffectsManager: Finale stopped');
+    }
+
+    /**
+     * Play confetti burst effect
+     * @param {number} intensity - 1-5, affects particle count
+     */
+    playConfettiBurst(intensity = 3) {
+        this._playConfettiBurst(intensity);
+    }
+
+    /**
+     * Internal confetti burst
+     */
+    _playConfettiBurst(intensity = 3) {
+        if (!this.isInitialized || !this.app || !this.container) return;
+
+        const particleCount = intensity * 40;
+        const screenWidth = this.app.screen.width;
+        const screenHeight = this.app.screen.height;
+
+        const colors = [
+            0xffd700, // Gold
+            0xff6b6b, // Red
+            0x4ecdc4, // Teal
+            0x45b7d1, // Blue
+            0xf9ca24, // Yellow
+            0x6c5ce7, // Purple
+            0x00b894, // Green
+            0xfd79a8, // Pink
+            0xe17055, // Orange
+        ];
+
+        const particles = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            const particle = new PIXI.Graphics();
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Random confetti shapes
+            const shapeType = Math.floor(Math.random() * 3);
+            if (shapeType === 0) {
+                // Rectangle (ribbon)
+                particle.beginFill(color);
+                particle.drawRect(-8, -3, 16, 6);
+                particle.endFill();
+            } else if (shapeType === 1) {
+                // Circle
+                particle.beginFill(color);
+                particle.drawCircle(0, 0, 5 + Math.random() * 3);
+                particle.endFill();
+            } else {
+                // Star-ish shape
+                particle.beginFill(color);
+                particle.drawPolygon([0, -8, 3, 0, 0, 8, -3, 0]);
+                particle.endFill();
+            }
+
+            // Start position - spread across top
+            const startX = Math.random() * screenWidth;
+            const startY = -20 - Math.random() * 100;
+            particle.position.set(startX, startY);
+            particle.rotation = Math.random() * Math.PI * 2;
+            
+            this.container.addChild(particle);
+            particles.push(particle);
+
+            // Animate falling
+            if (typeof gsap !== 'undefined') {
+                const duration = 2 + Math.random() * 2;
+                const endX = startX + (Math.random() - 0.5) * 300;
+                const endY = screenHeight + 50;
+                const swayAmount = (Math.random() - 0.5) * 200;
+
+                gsap.to(particle, {
+                    y: endY,
+                    x: endX,
+                    rotation: particle.rotation + (Math.random() - 0.5) * 10,
+                    duration: duration,
+                    ease: 'none',
+                    onComplete: () => {
+                        try { this.container.removeChild(particle); } catch (e) {}
+                    }
+                });
+
+                // Sway motion
+                gsap.to(particle, {
+                    x: `+=${swayAmount}`,
+                    duration: duration / 3,
+                    yoyo: true,
+                    repeat: 2,
+                    ease: 'sine.inOut'
+                });
+            } else {
+                // Simple fallback
+                setTimeout(() => {
+                    try { this.container.removeChild(particle); } catch (e) {}
+                }, 3000);
+            }
+        }
+    }
+
+    /**
+     * Start continuous confetti stream
+     */
+    _startConfetti() {
+        if (this.confettiInterval) return;
+
+        this.confettiInterval = setInterval(() => {
+            if (!this.finaleActive) {
+                this._stopConfetti();
+                return;
+            }
+            this._spawnConfettiParticle();
+        }, 50); // Spawn particle every 50ms
+    }
+
+    /**
+     * Stop continuous confetti
+     */
+    _stopConfetti() {
+        if (this.confettiInterval) {
+            clearInterval(this.confettiInterval);
+            this.confettiInterval = null;
+        }
+    }
+
+    /**
+     * Spawn a single confetti particle
+     */
+    _spawnConfettiParticle() {
+        if (!this.app || !this.container) return;
+
+        const colors = [0xffd700, 0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf9ca24, 0x6c5ce7];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        const particle = new PIXI.Graphics();
+        particle.beginFill(color);
+        particle.drawRect(-6, -2, 12, 4);
+        particle.endFill();
+
+        const startX = Math.random() * this.app.screen.width;
+        particle.position.set(startX, -10);
+        particle.rotation = Math.random() * Math.PI * 2;
+        particle.alpha = 0.8 + Math.random() * 0.2;
+
+        this.container.addChild(particle);
+
+        if (typeof gsap !== 'undefined') {
+            const duration = 3 + Math.random() * 2;
+            gsap.to(particle, {
+                y: this.app.screen.height + 20,
+                x: startX + (Math.random() - 0.5) * 150,
+                rotation: particle.rotation + (Math.random() - 0.5) * 8,
+                duration: duration,
+                ease: 'none',
+                onComplete: () => {
+                    try { this.container.removeChild(particle); } catch (e) {}
+                }
+            });
+        } else {
+            setTimeout(() => {
+                try { this.container.removeChild(particle); } catch (e) {}
+            }, 4000);
+        }
+    }
+
+    /**
+     * Play winner spotlight effect
+     * @param {string} winnerName - Name to display (optional)
+     */
+    _playWinnerSpotlight(winnerName) {
+        if (!this.app || !this.container) return;
+
+        const centerX = this.app.screen.width / 2;
+        const topY = this.app.screen.height * 0.15;
+
+        // Create spotlight glow (radial gradient effect)
+        const spotlight = new PIXI.Graphics();
+        spotlight.beginFill(0xffd700, 0.15);
+        spotlight.drawCircle(centerX, this.app.screen.height * 0.4, 400);
+        spotlight.endFill();
+        spotlight.beginFill(0xffd700, 0.1);
+        spotlight.drawCircle(centerX, this.app.screen.height * 0.4, 600);
+        spotlight.endFill();
+        spotlight.alpha = 0;
+        this.container.addChild(spotlight);
+
+        // Create "WE HAVE A WINNER!" text
+        const titleStyle = new PIXI.TextStyle({
+            fontFamily: 'Arial, sans-serif',
+            fontSize: Math.min(80, this.app.screen.width / 15),
+            fontWeight: 'bold',
+            fill: ['#ffd700', '#ffaa00'],
+            stroke: '#000000',
+            strokeThickness: 6,
+            dropShadow: true,
+            dropShadowColor: '#000000',
+            dropShadowBlur: 15,
+            dropShadowDistance: 5,
+        });
+
+        const titleText = new PIXI.Text('?? WE HAVE A WINNER! ??', titleStyle);
+        titleText.anchor.set(0.5);
+        titleText.position.set(centerX, topY);
+        titleText.alpha = 0;
+        titleText.scale.set(0.5);
+        this.container.addChild(titleText);
+
+        // Animate
+        if (typeof gsap !== 'undefined') {
+            const tl = gsap.timeline();
+
+            tl.to(spotlight, { alpha: 1, duration: 0.5 })
+              .to(titleText, { alpha: 1, duration: 0.4 }, 0.2)
+              .to(titleText.scale, { x: 1, y: 1, duration: 0.5, ease: 'back.out(1.5)' }, 0.2)
+              .to(titleText, {
+                  y: topY - 10,
+                  duration: 1.5,
+                  yoyo: true,
+                  repeat: -1,
+                  ease: 'sine.inOut'
+              }, 0.7);
+
+            // Pulse the spotlight
+            gsap.to(spotlight, {
+                alpha: 0.7,
+                duration: 1,
+                yoyo: true,
+                repeat: -1,
+                ease: 'sine.inOut'
+            });
+
+            // Store references for cleanup
+            this.activeEffects.push({ spotlight, titleText, tl });
+        } else {
+            spotlight.alpha = 1;
+            titleText.alpha = 1;
+            titleText.scale.set(1);
+        }
+    }
+
+    /**
+     * Play podium reveal animation
+     * Called by the DOM to sync with UI animations
+     */
+    playPodiumReveal() {
+        if (!this.isInitialized) return;
+        // Trigger an extra confetti burst when podium reveals
+        setTimeout(() => this._playConfettiBurst(2), 500);
     }
 
     /**
@@ -631,7 +926,7 @@ class EffectsManager {
             'Mirror': '??', 'JuryDuty': '??', 'ChaosMode': '??',
             'Shield': '???', 'Wildcard': '??', 'Spotlight': '??'
         };
-        return emojis[type] || '??';
+        return emojis[type] || '?';
     }
 
     /**
@@ -640,6 +935,13 @@ class EffectsManager {
     clear() {
         if (!this.container) return;
         try {
+            // Kill any active GSAP animations
+            if (typeof gsap !== 'undefined') {
+                this.activeEffects.forEach(effect => {
+                    if (effect.tl) effect.tl.kill();
+                });
+            }
+            this.activeEffects = [];
             this.container.removeChildren();
         } catch (e) {}
     }
@@ -648,6 +950,7 @@ class EffectsManager {
      * Destroy the effects manager
      */
     destroy() {
+        this.stopFinale();
         if (this.app) {
             try {
                 this.app.destroy(true, { children: true, texture: true, baseTexture: true });
