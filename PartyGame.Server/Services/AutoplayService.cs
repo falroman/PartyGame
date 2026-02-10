@@ -71,8 +71,6 @@ public class AutoplayService : IAutoplayService
 
         _logger.LogInformation("Autoplay started for room {RoomCode} with {BotCount} bot(s)",
             normalized, state.BotIds.Count);
-
-        await Task.CompletedTask;
     }
 
     public async Task StopAsync(string roomCode)
@@ -93,8 +91,16 @@ public class AutoplayService : IAutoplayService
                 await state.LoopTask;
             }
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException ex)
         {
+            _logger.LogDebug(ex,
+                "Autoplay loop task was canceled for room {RoomCode} during stop.",
+                normalized);
+        }
+        finally
+        {
+            // Ensure CancellationTokenSource is disposed even if the loop hasn't completed yet
+            state.CancellationTokenSource.Dispose();
         }
 
         _logger.LogInformation("Autoplay stopped for room {RoomCode} with {BotCount} bot(s)",
@@ -114,6 +120,8 @@ public class AutoplayService : IAutoplayService
                 }
                 catch (TaskCanceledException)
                 {
+                    // Expected when the cancellation token is triggered; exit the loop.
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -126,6 +134,8 @@ public class AutoplayService : IAutoplayService
                 }
                 catch (TaskCanceledException)
                 {
+                    // Expected when the cancellation token is triggered; exit the loop.
+                    break;
                 }
             }
         }
@@ -347,18 +357,28 @@ public class AutoplayService : IAutoplayService
         }
     }
 
-    private static async Task ScheduleActionAsync(RoomAutoplayState state, int delayMs, CancellationToken token, Func<Task> action)
+    private async Task ScheduleActionAsync(RoomAutoplayState state, int delayMs, CancellationToken token, Func<Task> action)
     {
         try
         {
             await Task.Delay(delayMs, token);
             if (!token.IsCancellationRequested)
             {
-                await action();
+                try
+                {
+                    await action();
+                }
+                catch (Exception ex) when (ex is not TaskCanceledException)
+                {
+                    _logger.LogError(ex,
+                        "Unhandled exception in scheduled autoplay action for room {RoomCode}",
+                        state.RoomCode);
+                }
             }
         }
         catch (TaskCanceledException)
         {
+            // Expected when cancellation is requested
         }
     }
 
@@ -434,12 +454,10 @@ public class AutoplayService : IAutoplayService
             return 50;
         }
 
-        if (room.Players.TryGetValue(botId, out var player))
+        if (room.Players.TryGetValue(botId, out var player) &&
+            player.BotSkill >= 0 && player.BotSkill <= 100)
         {
-            if (player.BotSkill >= 0 && player.BotSkill <= 100)
-            {
-                return player.BotSkill;
-            }
+            return player.BotSkill;
         }
 
         return 50;
@@ -456,7 +474,7 @@ public class AutoplayService : IAutoplayService
         public string RoomCode { get; }
         public AutoplayOptions Options { get; }
         public CancellationTokenSource CancellationTokenSource { get; } = new();
-        public Random Random { get; } = new();
+        public Random Random => Random.Shared;
         public HashSet<Guid> BotIds { get; set; } = new();
         public BotActionTracker ActionTracker { get; } = new();
         public bool IsRunning { get; set; }

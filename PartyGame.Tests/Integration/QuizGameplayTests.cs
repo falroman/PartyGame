@@ -420,15 +420,16 @@ public class QuizGameplayTests : IClassFixture<WebApplicationFactory<Program>>, 
         await players[0].InvokeAsync("SubmitAnswer", roomCode, player1Id, "A");
         await players[1].InvokeAsync("SubmitAnswer", roomCode, player2Id, "B");
         
-        // Wait for Reveal and Scoreboard
-        await Task.Delay(12000); // Reveal(5s) + Scoreboard(5s) + buffer
+        // Wait for Reveal phase (Scoreboard only shows after all 3 questions in a round)
+        await Task.Delay(2000);
 
-        // Assert - We should have gone through multiple phases
+        // Assert - We should have gone through core game phases
+        // Note: Scoreboard only appears after all 3 questions in a round, not after each question
         phaseHistory.Should().Contain(QuizPhase.CategorySelection);
         phaseHistory.Should().Contain(QuizPhase.Question);
         phaseHistory.Should().Contain(QuizPhase.Answering);
         phaseHistory.Should().Contain(QuizPhase.Reveal);
-        phaseHistory.Should().Contain(QuizPhase.Scoreboard);
+        // Scoreboard is NOT expected after just 1 question - it appears after round completes (3 questions)
     }
 
     [Fact]

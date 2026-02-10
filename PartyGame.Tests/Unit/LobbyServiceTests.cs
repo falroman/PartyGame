@@ -219,7 +219,7 @@ public class LobbyServiceTests
         room.Players.Values.Should().OnlyContain(p => p.IsBot);
         room.Players.Values.Select(p => p.PlayerId).Distinct().Count().Should().Be(3);
         room.Players.Values.Select(p => p.DisplayName).Distinct().Count().Should().Be(3);
-        room.Players.Values.Should().OnlyContain(p => p.BotSkill is >= 0 and <= 100);
+        room.Players.Values.Should().OnlyContain(p => p.BotSkill >= 0 && p.BotSkill <= 100);
         _hubContext.Clients.Received(1).Group($"room:{roomCode}");
     }
 

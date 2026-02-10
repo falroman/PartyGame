@@ -3,6 +3,7 @@ using PartyGame.Core.Enums;
 using PartyGame.Core.Interfaces;
 using PartyGame.Core.Models;
 using PartyGame.Core.Models.Quiz;
+using PartyGame.Core.Models.Scoring;
 using PartyGame.Server.DTOs;
 using PartyGame.Server.Hubs;
 using System.Collections.Concurrent;
@@ -36,6 +37,8 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
     private readonly ILogger<QuizGameOrchestrator> _logger;
     private readonly IDictionaryQuestionProvider _dictionaryProvider;
     private readonly IRankingStarsPromptProvider _rankingProvider;
+    private readonly IBoosterService _boosterService;
+    private readonly IScoringService _scoringService;
 
     private readonly ConcurrentDictionary<string, QuizGameState> _gameStates = new();
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _roomTimers = new();
@@ -65,7 +68,9 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         IHubContext<GameHub> hubContext,
         ILogger<QuizGameOrchestrator> logger,
         IDictionaryQuestionProvider dictionaryProvider,
-        IRankingStarsPromptProvider rankingProvider)
+        IRankingStarsPromptProvider rankingProvider,
+        IBoosterService boosterService,
+        IScoringService scoringService)
     {
         _engine = engine;
         _roomStore = roomStore;
@@ -74,6 +79,8 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         _logger = logger;
         _dictionaryProvider = dictionaryProvider;
         _rankingProvider = rankingProvider;
+        _boosterService = boosterService;
+        _scoringService = scoringService;
     }
 
     public async Task<(bool Success, ErrorDto? Error)> StartGameAsync(Room room)
@@ -96,12 +103,15 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
             var state = _engine.InitializeGame(room, "nl-BE", plannedRounds);
             _gameStates[roomCode] = state;
 
-            _logger.LogInformation("Quiz game initialized for room {RoomCode} with {RoundCount} planned rounds", 
+            // Assign boosters to all players at game start
+            _boosterService.AssignBoostersAtGameStart(state);
+
+            _logger.LogInformation("Quiz game initialized for room {RoomCode} with {RoundCount} planned rounds and boosters assigned", 
                 roomCode, plannedRounds.Count);
 
             await StartNextPlannedRoundAsync(roomCode);
 
-            return (true, null);
+            return (true, (ErrorDto?)null);
         });
     }
 
@@ -281,6 +291,13 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         var normalizedCode = roomCode.ToUpperInvariant();
         CancelTimer(normalizedCode);
         _gameStates.TryRemove(normalizedCode, out _);
+        
+        // Clean up the semaphore to prevent memory leak
+        if (_roomLocks.TryRemove(normalizedCode, out var semaphore))
+        {
+            semaphore.Dispose();
+        }
+        
         _logger.LogInformation("Quiz game stopped for room {RoomCode}", normalizedCode);
     }
 
@@ -414,8 +431,32 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         SchedulePhaseTransition(roomCode, RevealSeconds, async () =>
         {
-            await TransitionToScoreboardAsync(roomCode);
+            await HandleRevealCompleteAsync(roomCode);
         });
+    }
+
+    /// <summary>
+    /// After reveal: go directly to next question unless it's the last question in round.
+    /// Scoreboard only shows at end of round (after question 3).
+    /// </summary>
+    private async Task HandleRevealCompleteAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        // Check if this is the last question in the current round
+        var isEndOfRound = !_engine.HasMoreQuestionsInRound(state);
+
+        if (isEndOfRound)
+        {
+            // Show scoreboard at end of round
+            await TransitionToScoreboardAsync(roomCode);
+        }
+        else
+        {
+            // Go directly to next question (skip scoreboard mid-round)
+            await StartNextQuestionAsync(roomCode);
+        }
     }
 
     private async Task TransitionToScoreboardAsync(string roomCode)
@@ -437,34 +478,8 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
         if (!_gameStates.TryGetValue(roomCode, out var state))
             return;
 
-        // Check current round type and handle accordingly
-        switch (state.CurrentRound?.Type)
-        {
-            case RoundType.CategoryQuiz:
-                if (_engine.HasMoreQuestionsInRound(state))
-                    await StartNextQuestionAsync(roomCode);
-                else
-                    await HandleRoundCompleteAsync(roomCode);
-                break;
-
-            case RoundType.RankingStars:
-                if (_engine.HasMoreRankingPrompts(state))
-                    await StartNextRankingPromptAsync(roomCode);
-                else
-                    await HandleRoundCompleteAsync(roomCode);
-                break;
-
-            case RoundType.DictionaryGame:
-                if (_engine.HasMoreDictionaryWords(state))
-                    await StartNextDictionaryWordAsync(roomCode);
-                else
-                    await HandleRoundCompleteAsync(roomCode);
-                break;
-
-            default:
-                await HandleRoundCompleteAsync(roomCode);
-                break;
-        }
+        // After scoreboard, move to next round
+        await HandleRoundCompleteAsync(roomCode);
     }
 
     private async Task HandleRoundCompleteAsync(string roomCode)
@@ -558,8 +573,32 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         SchedulePhaseTransition(roomCode, RankingRevealSeconds, async () =>
         {
-            await TransitionToScoreboardAsync(roomCode);
+            await HandleRankingRevealCompleteAsync(roomCode);
         });
+    }
+
+    /// <summary>
+    /// After ranking reveal: go directly to next prompt unless it's the last prompt.
+    /// Scoreboard only shows at end of RankingStars round (after prompt 3).
+    /// </summary>
+    private async Task HandleRankingRevealCompleteAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        // Check if this is the last prompt in the ranking round
+        var isEndOfRound = !_engine.HasMoreRankingPrompts(state);
+
+        if (isEndOfRound)
+        {
+            // Show scoreboard at end of ranking round
+            await TransitionToScoreboardAsync(roomCode);
+        }
+        else
+        {
+            // Go directly to next prompt (skip scoreboard mid-round)
+            await StartNextRankingPromptAsync(roomCode);
+        }
     }
 
     #endregion
@@ -631,8 +670,32 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
         SchedulePhaseTransition(roomCode, DictionaryRevealSeconds, async () =>
         {
-            await TransitionToScoreboardAsync(roomCode);
+            await HandleDictionaryRevealCompleteAsync(roomCode);
         });
+    }
+
+    /// <summary>
+    /// After dictionary reveal: go directly to next word unless it's the last word.
+    /// Scoreboard only shows at end of Dictionary round (after word 3).
+    /// </summary>
+    private async Task HandleDictionaryRevealCompleteAsync(string roomCode)
+    {
+        if (!_gameStates.TryGetValue(roomCode, out var state))
+            return;
+
+        // Check if this is the last word in the dictionary round
+        var isEndOfRound = !_engine.HasMoreDictionaryWords(state);
+
+        if (isEndOfRound)
+        {
+            // Show scoreboard at end of dictionary round
+            await TransitionToScoreboardAsync(roomCode);
+        }
+        else
+        {
+            // Go directly to next word (skip scoreboard mid-round)
+            await StartNextDictionaryWordAsync(roomCode);
+        }
     }
 
     #endregion
@@ -753,6 +816,10 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
             ? state.Scoreboard.Select(p => new PlayerOptionDto(p.PlayerId, p.DisplayName)).ToList()
             : null;
 
+        // Build booster DTOs
+        var playerBoosters = BuildPlayerBoosterDtos(state);
+        var activeEffects = BuildActiveEffectDtos(state);
+
         return new QuizGameStateDto(
             Phase: state.Phase,
             QuestionNumber: state.QuestionNumber,
@@ -773,6 +840,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
             RankingWinnerIds: showCorrectAnswer ? state.RankingResult?.WinnerPlayerIds : null,
             RankingVoteCounts: showCorrectAnswer ? state.RankingResult?.VoteCounts : null,
             RemainingSeconds: remainingSeconds,
+            PhaseEndsUtc: state.PhaseEndsUtc,
             AnswerStatuses: answerStatuses,
             Scoreboard: state.Scoreboard
                 .Select(p => new PlayerScoreDto(
@@ -788,8 +856,55 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
                     showCorrectAnswer ? p.RankingVotesReceived : 0
                 ))
                 .OrderBy(p => p.Position)
-                .ToList()
+                .ToList(),
+            PlayerBoosters: playerBoosters,
+            ActiveEffects: activeEffects,
+            MyAnsweringEffects: null // Set per-player in hub when sending to specific players
         );
+    }
+
+    private List<PlayerBoosterStateDto> BuildPlayerBoosterDtos(QuizGameState state)
+    {
+        var result = new List<PlayerBoosterStateDto>();
+        
+        foreach (var (playerId, boosterState) in state.PlayerBoosters)
+        {
+            var handler = _boosterService.GetHandler(boosterState.Type);
+            if (handler == null) continue;
+            
+            result.Add(new PlayerBoosterStateDto(
+                PlayerId: playerId,
+                BoosterType: boosterState.Type,
+                BoosterName: handler.Name,
+                BoosterDescription: handler.Description,
+                IsUsed: boosterState.IsUsed,
+                RequiresTarget: handler.RequiresTarget,
+                ValidPhases: handler.ValidPhases.Select(p => p.ToString()).ToArray()
+            ));
+        }
+        
+        return result;
+    }
+
+    private List<ActiveBoosterEffectDto> BuildActiveEffectDtos(QuizGameState state)
+    {
+        var effects = _boosterService.GetActiveEffects(state);
+        return effects.Select(e =>
+        {
+            var activator = state.Scoreboard.FirstOrDefault(p => p.PlayerId == e.ActivatorPlayerId);
+            var target = e.TargetPlayerId.HasValue 
+                ? state.Scoreboard.FirstOrDefault(p => p.PlayerId == e.TargetPlayerId.Value) 
+                : null;
+
+            return new ActiveBoosterEffectDto(
+                BoosterType: e.BoosterType,
+                ActivatorPlayerId: e.ActivatorPlayerId,
+                ActivatorName: activator?.DisplayName ?? "Unknown",
+                TargetPlayerId: e.TargetPlayerId,
+                TargetName: target?.DisplayName,
+                QuestionNumber: e.QuestionNumber
+            );
+        }).ToList();
     }
 
     private bool GetHasAnswered(QuizGameState state, Guid playerId)

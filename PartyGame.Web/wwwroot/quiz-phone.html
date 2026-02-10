@@ -392,8 +392,13 @@
 
         let selectedAnswer = null;
         let currentPhase = null;
+        let previousPhase = null;
         let myScore = 0;
         let selectedCategory = null;
+        
+        // Smooth timer state
+        let phaseEndsUtc = null;
+        let timerIntervalId = null;
 
         // DOM Elements
         const roundInfoEl = document.getElementById('roundInfo');
@@ -457,6 +462,28 @@
 
             await client.connect();
             await client.joinRoom(roomCode, playerId, displayName);
+            
+            // Start smooth timer loop
+            startTimerLoop();
+        }
+        
+        // Smooth timer functions
+        function startTimerLoop() {
+            if (timerIntervalId) clearInterval(timerIntervalId);
+            timerIntervalId = setInterval(updateTimerDisplay, 200);
+        }
+        
+        function updateTimerDisplay() {
+            if (!phaseEndsUtc) {
+                timerEl.textContent = '--';
+                timerEl.classList.remove('warning');
+                return;
+            }
+            
+            const now = Date.now();
+            const remaining = Math.max(0, Math.ceil((phaseEndsUtc - now) / 1000));
+            timerEl.textContent = remaining;
+            timerEl.classList.toggle('warning', remaining <= 5);
         }
 
         function onQuizStateUpdated(state) {
@@ -464,12 +491,26 @@
 
             // Update header
             roundInfoEl.textContent = `Round ${state.roundNumber || 1}${state.currentCategory ? ` - ${state.currentCategory}` : ''}`;
-            timerEl.textContent = state.remainingSeconds;
-            timerEl.classList.toggle('warning', state.remainingSeconds <= 5);
+            
+            // Update phaseEndsUtc for smooth timer
+            // Calculate from remainingSeconds if phaseEndsUtc not provided
+            if (state.phaseEndsUtc) {
+                phaseEndsUtc = new Date(state.phaseEndsUtc).getTime();
+            } else if (state.remainingSeconds !== undefined) {
+                phaseEndsUtc = Date.now() + (state.remainingSeconds * 1000);
+            }
+            updateTimerDisplay();
 
             // Get phase
             const phaseMap = { 'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5 };
             const phase = typeof state.phase === 'number' ? state.phase : (phaseMap[state.phase] ?? state.phase);
+            
+            // Detect phase transition - reset selectedCategory when entering CategorySelection
+            if (phase === 0 && previousPhase !== 0) {
+                selectedCategory = null;
+            }
+            
+            previousPhase = currentPhase;
             currentPhase = phase;
 
             // Update phase indicator
@@ -528,16 +569,16 @@
                 categorySelectionStateEl.classList.remove('hidden');
                 categorySubtitleEl.textContent = "You're the round leader!";
                 
-                // Render category buttons
+                // Render category buttons - use raw category value in data attribute
                 const categories = state.availableCategories || [];
                 categoryButtonsEl.innerHTML = categories.map(cat => `
-                    <button class="category-btn ${selectedCategory === cat ? 'selected' : ''}" data-category="${escapeHtml(cat)}">
+                    <button class="category-btn ${selectedCategory === cat ? 'selected' : ''}" data-category="${cat}">
                         <span class="category-btn-icon">${getCategoryIcon(cat)}</span>
                         <span class="category-btn-name">${escapeHtml(cat)}</span>
                     </button>
                 `).join('');
 
-                // Add click handlers
+                // Add click handlers - buttons are NOT disabled initially
                 document.querySelectorAll('.category-btn').forEach(btn => {
                     btn.addEventListener('click', () => selectCategory(btn.dataset.category));
                 });
@@ -552,7 +593,7 @@
             
             selectedCategory = category;
             
-            // Visual feedback
+            // Visual feedback - disable all buttons after selection
             document.querySelectorAll('.category-btn').forEach(btn => {
                 btn.disabled = true;
                 if (btn.dataset.category === category) {
@@ -577,7 +618,6 @@
             questionCardEl.classList.remove('hidden');
             waitingStateEl.classList.remove('hidden');
             selectedAnswer = null;
-            selectedCategory = null;
         }
 
         function showAnswering(state) {

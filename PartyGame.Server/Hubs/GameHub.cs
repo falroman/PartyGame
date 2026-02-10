@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using PartyGame.Core.Enums;
+using PartyGame.Core.Interfaces;
 using PartyGame.Core.Models.Quiz;
 using PartyGame.Server.DTOs;
 using PartyGame.Server.Options;
@@ -17,6 +18,7 @@ public class GameHub : Hub
     private readonly ILobbyService _lobbyService;
     private readonly IQuizGameOrchestrator _quizOrchestrator;
     private readonly IAutoplayService _autoplayService;
+    private readonly IBoosterService _boosterService;
     private readonly AutoplayOptions _autoplayOptions;
     private readonly IHostEnvironment _environment;
     private readonly ILogger<GameHub> _logger;
@@ -25,6 +27,7 @@ public class GameHub : Hub
         ILobbyService lobbyService, 
         IQuizGameOrchestrator quizOrchestrator,
         IAutoplayService autoplayService,
+        IBoosterService boosterService,
         IOptions<AutoplayOptions> autoplayOptions,
         IHostEnvironment environment,
         ILogger<GameHub> logger)
@@ -32,6 +35,7 @@ public class GameHub : Hub
         _lobbyService = lobbyService;
         _quizOrchestrator = quizOrchestrator;
         _autoplayService = autoplayService;
+        _boosterService = boosterService;
         _autoplayOptions = autoplayOptions.Value;
         _environment = environment;
         _logger = logger;
@@ -379,7 +383,93 @@ public class GameHub : Hub
         await SendAutoplayStatusAsync(roomCode);
     }
 
-    private QuizGameStateDto CreateSafeQuizDto(QuizGameState state)
+    /// <summary>
+    /// Host resets the room back to lobby state. Keeps all players but clears game state.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    public async Task ResetToLobby(string roomCode)
+    {
+        _logger.LogInformation("ResetToLobby called for room {RoomCode} by {ConnectionId}",
+            roomCode, Context.ConnectionId);
+
+        // Stop autoplay if running
+        await _autoplayService.StopAsync(roomCode);
+
+        var (success, error) = await _lobbyService.ResetToLobbyAsync(roomCode, Context.ConnectionId);
+
+        if (!success && error != null)
+        {
+            await Clients.Caller.SendAsync("Error", error);
+        }
+    }
+
+    /// <summary>
+    /// Player activates their booster.
+    /// </summary>
+    /// <param name="roomCode">The room code.</param>
+    /// <param name="playerId">The player's ID.</param>
+    /// <param name="boosterType">The booster type to activate.</param>
+    /// <param name="targetPlayerId">Optional target player for boosters that require one.</param>
+    public async Task ActivateBooster(string roomCode, Guid playerId, int boosterType, Guid? targetPlayerId)
+    {
+        _logger.LogInformation("ActivateBooster called for room {RoomCode} by player {PlayerId} with booster {BoosterType} targeting {TargetId}",
+            roomCode, playerId, boosterType, targetPlayerId);
+
+        var state = _quizOrchestrator.GetState(roomCode);
+        if (state == null)
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto(ErrorCodes.RoomNotFound, "Game not found."));
+            return;
+        }
+
+        // Validate booster type
+        if (!Enum.IsDefined(typeof(BoosterType), boosterType))
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto("BOOSTER_INVALID", "Invalid booster type."));
+            return;
+        }
+
+        var boosterTypeEnum = (BoosterType)boosterType;
+        var result = _boosterService.ActivateBooster(state, playerId, boosterTypeEnum, targetPlayerId);
+
+        if (!result.Success)
+        {
+            await Clients.Caller.SendAsync("Error", new ErrorDto(result.ErrorCode!, result.ErrorMessage!));
+            return;
+        }
+
+        // Build event for broadcast
+        var activator = state.Scoreboard.FirstOrDefault(p => p.PlayerId == playerId);
+        var target = targetPlayerId.HasValue 
+            ? state.Scoreboard.FirstOrDefault(p => p.PlayerId == targetPlayerId.Value) 
+            : null;
+        var handler = _boosterService.GetHandler(boosterTypeEnum);
+
+        var eventDto = new BoosterActivatedEventDto(
+            BoosterType: boosterTypeEnum,
+            BoosterName: handler?.Name ?? boosterTypeEnum.ToString(),
+            ActivatorPlayerId: playerId,
+            ActivatorName: activator?.DisplayName ?? "Unknown",
+            TargetPlayerId: targetPlayerId,
+            TargetName: target?.DisplayName,
+            WasBlockedByShield: result.WasBlockedByShield,
+            ShieldBlockerPlayerId: result.ShieldBlockerPlayerId,
+            ShieldBlockerName: result.ShieldBlockerPlayerId.HasValue 
+                ? state.Scoreboard.FirstOrDefault(p => p.PlayerId == result.ShieldBlockerPlayerId.Value)?.DisplayName 
+                : null
+        );
+
+        // Broadcast booster activation to all clients in room
+        await Clients.Group($"room:{roomCode.ToUpperInvariant()}").SendAsync("BoosterActivated", eventDto);
+
+        // Broadcast updated game state
+        await Clients.Group($"room:{roomCode.ToUpperInvariant()}").SendAsync("QuizStateUpdated", CreateSafeQuizDto(state));
+
+        _logger.LogInformation("Booster {BoosterType} activated successfully by {PlayerId} in room {RoomCode}",
+            boosterTypeEnum, playerId, roomCode);
+    }
+
+    private QuizGameStateDto CreateSafeQuizDto(QuizGameState state, Guid? requestingPlayerId = null)
     {
         var showCorrectAnswer = state.Phase is QuizPhase.Reveal or QuizPhase.RankingReveal or QuizPhase.Scoreboard or QuizPhase.Finished;
         var remainingSeconds = Math.Max(0, (int)(state.PhaseEndsUtc - DateTime.UtcNow).TotalSeconds);
@@ -398,6 +488,13 @@ public class GameHub : Hub
         var playerOptions = state.CurrentRound?.Type == RoundType.RankingStars && 
                            state.Phase is QuizPhase.RankingPrompt or QuizPhase.RankingVoting or QuizPhase.RankingReveal
             ? state.Scoreboard.Select(p => new PlayerOptionDto(p.PlayerId, p.DisplayName)).ToList()
+            : null;
+
+        // Build booster DTOs
+        var playerBoosters = BuildPlayerBoosterDtos(state);
+        var activeEffects = BuildActiveEffectDtos(state);
+        var myAnsweringEffects = requestingPlayerId.HasValue 
+            ? BuildAnsweringEffectsDto(state, requestingPlayerId.Value) 
             : null;
 
         return new QuizGameStateDto(
@@ -420,6 +517,7 @@ public class GameHub : Hub
             RankingWinnerIds: showCorrectAnswer ? state.RankingResult?.WinnerPlayerIds : null,
             RankingVoteCounts: showCorrectAnswer ? state.RankingResult?.VoteCounts : null,
             RemainingSeconds: remainingSeconds,
+            PhaseEndsUtc: state.PhaseEndsUtc,
             AnswerStatuses: answerStatuses,
             Scoreboard: state.Scoreboard
                 .Select(p => new PlayerScoreDto(
@@ -435,7 +533,72 @@ public class GameHub : Hub
                     showCorrectAnswer ? p.RankingVotesReceived : 0
                 ))
                 .OrderBy(p => p.Position)
-                .ToList()
+                .ToList(),
+            PlayerBoosters: playerBoosters,
+            ActiveEffects: activeEffects,
+            MyAnsweringEffects: myAnsweringEffects
+        );
+    }
+
+    private List<PlayerBoosterStateDto> BuildPlayerBoosterDtos(QuizGameState state)
+    {
+        var result = new List<PlayerBoosterStateDto>();
+        
+        foreach (var (playerId, boosterState) in state.PlayerBoosters)
+        {
+            var handler = _boosterService.GetHandler(boosterState.Type);
+            if (handler == null) continue;
+
+            var player = state.Scoreboard.FirstOrDefault(p => p.PlayerId == playerId);
+            
+            result.Add(new PlayerBoosterStateDto(
+                PlayerId: playerId,
+                BoosterType: boosterState.Type,
+                BoosterName: handler.Name,
+                BoosterDescription: handler.Description,
+                IsUsed: boosterState.IsUsed,
+                RequiresTarget: handler.RequiresTarget,
+                ValidPhases: handler.ValidPhases.Select(p => p.ToString()).ToArray()
+            ));
+        }
+        
+        return result;
+    }
+
+    private List<ActiveBoosterEffectDto> BuildActiveEffectDtos(QuizGameState state)
+    {
+        var effects = _boosterService.GetActiveEffects(state);
+        return effects.Select(e =>
+        {
+            var activator = state.Scoreboard.FirstOrDefault(p => p.PlayerId == e.ActivatorPlayerId);
+            var target = e.TargetPlayerId.HasValue 
+                ? state.Scoreboard.FirstOrDefault(p => p.PlayerId == e.TargetPlayerId.Value) 
+                : null;
+
+            return new ActiveBoosterEffectDto(
+                BoosterType: e.BoosterType,
+                ActivatorPlayerId: e.ActivatorPlayerId,
+                ActivatorName: activator?.DisplayName ?? "Unknown",
+                TargetPlayerId: e.TargetPlayerId,
+                TargetName: target?.DisplayName,
+                QuestionNumber: e.QuestionNumber
+            );
+        }).ToList();
+    }
+
+    private PlayerAnsweringEffectsDto? BuildAnsweringEffectsDto(QuizGameState state, Guid playerId)
+    {
+        var allEffects = _boosterService.GetAnsweringEffects(state);
+        if (!allEffects.TryGetValue(playerId, out var effects))
+            return null;
+
+        return new PlayerAnsweringEffectsDto(
+            IsNoped: effects.IsNoped,
+            RemovedOptions: effects.RemovedOptions.Count > 0 ? effects.RemovedOptions : null,
+            ShuffledOptionOrder: effects.ShuffledOptionOrder,
+            ExtendedDeadline: effects.ExtendedDeadline,
+            MirrorTargetId: effects.MirrorTargetId,
+            CanChangeAnswer: effects.CanChangeAnswer
         );
     }
 

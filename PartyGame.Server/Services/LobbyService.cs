@@ -246,7 +246,7 @@ public class LobbyService : ILobbyService
         {
             var playerId = Guid.NewGuid();
             var displayName = GenerateBotName(existingNames);
-            var botSkill = Random.Shared.Next(30, 91);
+            var botSkill = Random.Shared.Next(0, 101);
 
             var player = new Player
             {
@@ -579,24 +579,89 @@ public class LobbyService : ILobbyService
         return (true, null);
     }
 
+    /// <inheritdoc />
+    public async Task<(bool Success, ErrorDto? Error)> ResetToLobbyAsync(string roomCode, string connectionId)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+
+        // Check if room exists
+        if (!_roomStore.TryGetRoom(normalizedCode, out var room) || room == null)
+        {
+            _logger.LogWarning("ResetToLobby failed: Room {RoomCode} not found", normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.RoomNotFound, $"Room with code '{normalizedCode}' does not exist."));
+        }
+
+        // Check if caller is the host
+        if (!IsHostOfRoom(normalizedCode, connectionId))
+        {
+            _logger.LogWarning("ResetToLobby failed: Connection {ConnectionId} is not host of room {RoomCode}", 
+                connectionId, normalizedCode);
+            return (false, new ErrorDto(ErrorCodes.NotHost, "Only the host can reset the room to lobby."));
+        }
+
+        // Stop any running game
+        _quizOrchestrator?.StopGame(normalizedCode);
+
+        // Reset room state but keep players
+        room.Status = RoomStatus.Lobby;
+        room.IsLocked = false;
+        room.CurrentGame = null;
+
+        // Reset player scores but keep them in the room
+        foreach (var player in room.Players.Values)
+        {
+            player.Score = 0;
+        }
+
+        _roomStore.Update(room);
+
+        _logger.LogInformation("Room {RoomCode} reset to lobby by host. Players retained: {PlayerCount}", 
+            normalizedCode, room.Players.Count);
+
+        // Broadcast lobby update
+        var roomState = GetRoomState(normalizedCode);
+        if (roomState != null)
+        {
+            await _hubContext.Clients.Group($"room:{normalizedCode}").SendAsync("LobbyUpdated", roomState);
+        }
+
+        return (true, null);
+    }
+
     private static string GenerateBotName(HashSet<string> existingNames)
     {
-        string candidate;
+        const int MaxAttempts = 1000;
         var attempts = 0;
 
-        do
+        // Try to generate a unique bot name using the seed list (and optional numeric suffix)
+        while (attempts < MaxAttempts)
         {
             var seed = BotNameSeeds[Random.Shared.Next(BotNameSeeds.Length)];
-            candidate = $"Bot {seed}";
-            attempts++;
+            var candidate = $"Bot {seed}";
 
-            if (attempts > BotNameSeeds.Length)
+            // After we've tried each seed at least once, start appending a numeric suffix
+            if (attempts >= BotNameSeeds.Length)
             {
                 candidate = $"{candidate} {Random.Shared.Next(1, 999)}";
             }
-        } while (existingNames.Contains(candidate));
 
-        existingNames.Add(candidate);
-        return candidate;
+            if (!existingNames.Contains(candidate))
+            {
+                existingNames.Add(candidate);
+                return candidate;
+            }
+
+            attempts++;
+        }
+
+        // Fallback: if we somehow exhaust our attempts, generate a GUID-based name
+        string fallback;
+        do
+        {
+            fallback = $"Bot {Guid.NewGuid().ToString("N")[..8]}";
+        } while (existingNames.Contains(fallback));
+
+        existingNames.Add(fallback);
+        return fallback;
     }
 }

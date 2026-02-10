@@ -121,6 +121,77 @@
         .game-status-card.visible {
             display: block;
         }
+
+        /* DEV Panel styles */
+        .dev-panel {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #f97316;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .dev-panel.visible {
+            display: block;
+        }
+
+        .dev-panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .dev-badge {
+            background: #f97316;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .dev-panel-title {
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .dev-panel-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .dev-panel button {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .dev-panel button:hover {
+            background: rgba(255,255,255,0.25);
+            border-color: rgba(255,255,255,0.4);
+        }
+
+        .dev-panel button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .dev-panel .status-text {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -136,6 +207,20 @@
             <div id="connectionStatus" class="status status-connecting" style="align-self: flex-start; margin-bottom: 16px;">
                 <span class="status-dot"></span>
                 <span id="statusText">Connecting...</span>
+            </div>
+
+            <!-- DEV Panel for Bots -->
+            <div id="devPanel" class="dev-panel">
+                <div class="dev-panel-header">
+                    <span class="dev-badge">DEV</span>
+                    <span class="dev-panel-title">Server-side Bots (Autoplay)</span>
+                </div>
+                <div class="dev-panel-controls">
+                    <button id="addBotsBtn">🤖 Add Bots</button>
+                    <button id="startAutoplayBtn">▶️ Start Autoplay</button>
+                    <button id="stopAutoplayBtn">⏹️ Stop Autoplay</button>
+                </div>
+                <div class="status-text" id="autoplayStatus">Autoplay: stopped · Bots: 0</div>
             </div>
 
             <!-- Error Message -->
@@ -240,6 +325,10 @@
         const SERVER_URL = GameConfig.getServerUrl();
         console.log('Using Server URL:', SERVER_URL || '(same origin)');
         
+        // Check for room code in URL (for returning from game)
+        const urlParams = new URLSearchParams(window.location.search);
+        const existingRoomCode = urlParams.get('room');
+        
         // DOM Elements
         const connectionStatus = document.getElementById('connectionStatus');
         const statusText = document.getElementById('statusText');
@@ -266,6 +355,13 @@
         const overlayPlayerCount = document.getElementById('overlayPlayerCount');
         const startGameContainer = document.getElementById('startGameContainer');
         const startGameHint = document.getElementById('startGameHint');
+        
+        // DEV Panel elements
+        const devPanel = document.getElementById('devPanel');
+        const addBotsBtn = document.getElementById('addBotsBtn');
+        const startAutoplayBtn = document.getElementById('startAutoplayBtn');
+        const stopAutoplayBtn = document.getElementById('stopAutoplayBtn');
+        const autoplayStatusEl = document.getElementById('autoplayStatus');
 
         // Game client
         const client = new GameClient(SERVER_URL);
@@ -282,17 +378,58 @@
                 client.on('onReconnecting', onReconnecting);
                 client.on('onLobbyUpdated', onLobbyUpdated);
                 client.on('onGameStarted', onGameStarted);
+                client.on('onAutoplayStatusUpdated', onAutoplayStatusUpdated);
                 client.on('onError', onError);
 
                 // Connect to SignalR
                 await client.connect();
 
-                // Create room
-                await createAndJoinRoom();
+                // Either rejoin existing room or create new
+                if (existingRoomCode) {
+                    await rejoinExistingRoom(existingRoomCode);
+                } else {
+                    await createAndJoinRoom();
+                }
+                
+                // Configure DEV panel
+                await configureDevPanel();
 
             } catch (error) {
                 console.error('Initialization failed:', error);
                 showError('Failed to initialize. Please refresh the page.');
+            }
+        }
+
+        async function rejoinExistingRoom(roomCode) {
+            try {
+                // Update loading message
+                loadingState.querySelector('p').textContent = 'Reconnecting to room...';
+                
+                // Check if room still exists
+                const roomState = await GameUtils.getRoomState(SERVER_URL, roomCode);
+                
+                if (!roomState) {
+                    // Room doesn't exist anymore, create a new one
+                    console.log('Room not found, creating new room');
+                    loadingState.querySelector('p').textContent = 'Creating new room...';
+                    await createAndJoinRoom();
+                    return;
+                }
+                
+                currentRoomCode = roomCode;
+                
+                // Register as host via SignalR
+                await client.registerHost(currentRoomCode);
+                
+                // Update UI
+                showRoomInfo(currentRoomCode);
+                
+                console.log('Rejoined existing room:', roomCode);
+
+            } catch (error) {
+                console.error('Failed to rejoin room:', error);
+                // Fallback to creating a new room
+                await createAndJoinRoom();
             }
         }
 
@@ -464,6 +601,64 @@
                 headerSubtitle.textContent = 'Scan the QR code or enter the room code to join!';
                 startGameContainer.style.display = 'block';
             }
+        }
+        
+        // DEV Panel functions
+        async function configureDevPanel() {
+            try {
+                const response = await fetch(`${SERVER_URL}/health`);
+                const data = await response.json();
+                if (data?.environment === 'Development') {
+                    devPanel.classList.add('visible');
+                    setupDevPanelListeners();
+                }
+            } catch (error) {
+                console.warn('DEV panel check failed:', error);
+            }
+        }
+        
+        function setupDevPanelListeners() {
+            addBotsBtn.addEventListener('click', async () => {
+                try {
+                    addBotsBtn.disabled = true;
+                    await client.addBots();
+                } catch (error) {
+                    console.error('Failed to add bots:', error);
+                    showError('Failed to add bots: ' + (error.message || 'Unknown error'));
+                } finally {
+                    addBotsBtn.disabled = false;
+                }
+            });
+
+            startAutoplayBtn.addEventListener('click', async () => {
+                try {
+                    startAutoplayBtn.disabled = true;
+                    await client.startAutoplay();
+                } catch (error) {
+                    console.error('Failed to start autoplay:', error);
+                    showError('Failed to start autoplay: ' + (error.message || 'Unknown error'));
+                } finally {
+                    startAutoplayBtn.disabled = false;
+                }
+            });
+
+            stopAutoplayBtn.addEventListener('click', async () => {
+                try {
+                    stopAutoplayBtn.disabled = true;
+                    await client.stopAutoplay();
+                } catch (error) {
+                    console.error('Failed to stop autoplay:', error);
+                    showError('Failed to stop autoplay: ' + (error.message || 'Unknown error'));
+                } finally {
+                    stopAutoplayBtn.disabled = false;
+                }
+            });
+        }
+        
+        function onAutoplayStatusUpdated(status) {
+            if (!status || !autoplayStatusEl) return;
+            const running = status.running ? 'running' : 'stopped';
+            autoplayStatusEl.textContent = `Autoplay: ${running} · Bots: ${status.botCount ?? 0}`;
         }
 
         // Start game button click handler
