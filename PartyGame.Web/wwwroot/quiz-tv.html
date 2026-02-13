@@ -1402,7 +1402,23 @@
                 message = `<span class="booster-toast-activator">${escapeHtml(event.activatorName)}</span> activated <span class="booster-toast-name">${escapeHtml(event.boosterName)}</span>!`;
             }
 
+            // Play audio SFX (degrade-safe)
             if (audioEnabled) audio.playBooster();
+
+            // Trigger visual effect on TV (degrade-safe)
+            try {
+                if (typeof effects !== 'undefined' && typeof effects.playBooster === 'function') {
+                    // Pass booster name and optional details
+                    effects.playBooster(event.boosterName, {
+                        activatorName: event.activatorName,
+                        targetName: event.targetName,
+                        blocked: !!event.wasBlockedByShield
+                    });
+                }
+            } catch (e) {
+                console.warn('Failed to play booster effect:', e);
+            }
+
             showBoosterToast(emoji, message, isBlocked);
         }
 
@@ -1574,7 +1590,7 @@
                 const escapedText = escapeHtml(opt.text || opt);
 
                 const avatarsHtml = (grouped[index] || []).map(p => {
-                    const avatarSrc = getPlayerAvatarSrc(p);
+                    const avatarSrc = getAvatarSrc(p);
                     return `<img src="${avatarSrc}" title="${escapeHtml(p.displayName)}" alt="${escapeHtml(p.displayName)}" class="${isCorrect ? 'correct' : 'incorrect'}" onerror="this.style.display='none'">`;
                 }).join('');
 

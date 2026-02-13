@@ -10,6 +10,8 @@ class GameClient {
         this.roomCode = null;
         this.playerId = null;
         this.isHost = false;
+        this._autoplayActive = false; // track autoplay status
+        this._autoplayBotCount = 0;
         this.callbacks = {
             onConnected: () => {},
             onDisconnected: () => {},
@@ -332,6 +334,34 @@ class GameClient {
             throw new Error('No player ID set');
         }
         await this.connection.invoke('ActivateBooster', this.roomCode, this.playerId, boosterType, targetPlayerId);
+    }
+
+    /**
+     * Return player id for this client (fallback to GameUtils if not set)
+     */
+    getPlayerId() {
+        if (this.playerId) return this.playerId;
+        if (typeof GameUtils !== 'undefined' && typeof GameUtils.getPlayerId === 'function') {
+            return GameUtils.getPlayerId();
+        }
+        return null;
+    }
+
+    /**
+     * Autoplay helpers used by TV UI
+     */
+    isAutoplayActive() {
+        return !!this._autoplayActive;
+    }
+
+    setAutoplayStatus(status) {
+        if (!status) {
+            this._autoplayActive = false;
+            this._autoplayBotCount = 0;
+        } else {
+            this._autoplayActive = !!status.running;
+            this._autoplayBotCount = status.botCount || 0;
+        }
     }
 }
 
