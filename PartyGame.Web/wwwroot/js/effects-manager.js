@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Effects Manager - Pixi.js overlay for visual effects on TV
  * Part of PartyGame Iteration 15 & 16
  * 
@@ -26,7 +26,7 @@ class EffectsManager {
 
     /**
      * Initialize the Pixi.js application and canvas overlay
-     * For Pixi.js v7, this needs to be called and awaited
+     * For Pixi.js v7.3.2, constructor takes options directly (no async init method)
      */
     async init() {
         // Check if Pixi is available
@@ -37,11 +37,8 @@ class EffectsManager {
         }
 
         try {
-            // Create Pixi application with v7 API
-            this.app = new PIXI.Application();
-            
-            // Initialize with v7 async method
-            await this.app.init({
+            // Create Pixi application with v7 API (synchronous constructor)
+            this.app = new PIXI.Application({
                 width: window.innerWidth,
                 height: window.innerHeight,
                 backgroundAlpha: 0,  // v7: use backgroundAlpha instead of transparent
@@ -50,8 +47,8 @@ class EffectsManager {
                 antialias: true
             });
 
-            // Style the canvas as overlay (v7: use canvas instead of view)
-            const canvas = this.app.canvas;
+            // In v7, app.view contains the canvas (not app.canvas)
+            const canvas = this.app.view;
             canvas.style.position = 'fixed';
             canvas.style.top = '0';
             canvas.style.left = '0';
@@ -184,7 +181,7 @@ class EffectsManager {
             dropShadowBlur: 5,
         });
 
-        const subtitleText = new PIXI.Text("LET'S GO! ??", subtitleStyle);
+        const subtitleText = new PIXI.Text("LET'S GO! 🎉", subtitleStyle);
         subtitleText.anchor.set(0.5);
         subtitleText.position.set(centerX, centerY + 100);
         subtitleText.alpha = 0;
@@ -455,30 +452,55 @@ class EffectsManager {
         spotlight.alpha = 0;
         this.container.addChild(spotlight);
 
+        // Dynamically calculate font size based on screen width
+        const baseFontSize = Math.min(80, this.app.screen.width / 15);
+
         // Create "WE HAVE A WINNER!" text
         const titleStyle = new PIXI.TextStyle({
             fontFamily: 'Arial, sans-serif',
-            fontSize: Math.min(80, this.app.screen.width / 15),
+            fontSize: baseFontSize,
             fontWeight: 'bold',
             fill: ['#ffd700', '#ffaa00'],
             stroke: '#000000',
-            strokeThickness: 6,
+            strokeThickness: Math.max(4, baseFontSize / 15),
             dropShadow: true,
             dropShadowColor: '#000000',
             dropShadowBlur: 15,
             dropShadowDistance: 5,
         });
 
-        const titleText = new PIXI.Text('?? WE HAVE A WINNER! ??', titleStyle);
-        titleText.anchor.set(0.5);
+        const titleText = new PIXI.Text('🎉 WE HAVE A WINNER! 🎉', titleStyle);
+        titleText.anchor.set(0.5); // Center anchor point
         titleText.position.set(centerX, topY);
         titleText.alpha = 0;
         titleText.scale.set(0.5);
         this.container.addChild(titleText);
 
+        // Update position on window resize
+        const handleResize = () => {
+            if (!this.app || !titleText.parent) return;
+            const newCenterX = this.app.screen.width / 2;
+            const newTopY = this.app.screen.height * 0.15;
+            titleText.position.set(newCenterX, newTopY);
+            spotlight.clear();
+            spotlight.beginFill(0xffd700, 0.15);
+            spotlight.drawCircle(newCenterX, this.app.screen.height * 0.4, 400);
+            spotlight.endFill();
+            spotlight.beginFill(0xffd700, 0.1);
+            spotlight.drawCircle(newCenterX, this.app.screen.height * 0.4, 600);
+            spotlight.endFill();
+        };
+
+        // Add resize listener
+        window.addEventListener('resize', handleResize);
+
         // Animate
         if (typeof gsap !== 'undefined') {
-            const tl = gsap.timeline();
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    window.removeEventListener('resize', handleResize);
+                }
+            });
 
             tl.to(spotlight, { alpha: 1, duration: 0.5 })
               .to(titleText, { alpha: 1, duration: 0.4 }, 0.2)
@@ -501,11 +523,12 @@ class EffectsManager {
             });
 
             // Store references for cleanup
-            this.activeEffects.push({ spotlight, titleText, tl });
+            this.activeEffects.push({ spotlight, titleText, tl, handleResize });
         } else {
             spotlight.alpha = 1;
             titleText.alpha = 1;
             titleText.scale.set(1);
+            this.activeEffects.push({ spotlight, titleText, handleResize });
         }
     }
 
@@ -561,7 +584,7 @@ class EffectsManager {
     }
 
     /**
-     * Double Points effect - glowing "�2" burst
+     * Double Points effect - glowing "×2" burst
      */
     _playDoublePointsEffect(x, y, options) {
         const style = new PIXI.TextStyle({
@@ -577,7 +600,7 @@ class EffectsManager {
             dropShadowDistance: 0,
         });
 
-        const text = new PIXI.Text('�2', style);
+        const text = new PIXI.Text('×2', style);
         text.anchor.set(0.5);
         text.position.set(x, y);
         text.alpha = 0;
@@ -631,7 +654,7 @@ class EffectsManager {
             strokeThickness: 6,
         });
 
-        const text = new PIXI.Text('?? RESET!', style);
+        const text = new PIXI.Text('💥 RESET!', style);
         text.anchor.set(0.5);
         text.position.set(x, y);
         text.alpha = 0;
@@ -704,7 +727,7 @@ class EffectsManager {
             dropShadowBlur: 10,
         });
 
-        const text = new PIXI.Text('?? NOPE!', style);
+        const text = new PIXI.Text('🚫 NOPE!', style);
         text.anchor.set(0.5);
         text.position.set(x, y);
         text.alpha = 0;
@@ -760,7 +783,7 @@ class EffectsManager {
             strokeThickness: 8,
         });
 
-        const text = new PIXI.Text('?? 50/50', style);
+        const text = new PIXI.Text('🔀 50/50', style);
         text.anchor.set(0.5);
         text.position.set(x, y);
         text.alpha = 0;
@@ -782,7 +805,7 @@ class EffectsManager {
             strokeThickness: 6,
         });
 
-        const text = new PIXI.Text('?? CHAOS!', style);
+        const text = new PIXI.Text('🌀 CHAOS!', style);
         text.anchor.set(0.5);
         text.position.set(x, y);
         text.alpha = 0;
@@ -813,7 +836,7 @@ class EffectsManager {
             strokeThickness: 8,
         });
 
-        const text = new PIXI.Text('??? BLOCKED!', style);
+        const text = new PIXI.Text('🛡️ BLOCKED!', style);
         text.anchor.set(0.5);
         text.position.set(x, y);
         text.alpha = 0;
@@ -909,7 +932,7 @@ class EffectsManager {
                 duration: duration,
                 ease: 'power2.out',
                 delay: Math.random() * 0.2
-            });
+            }); 
         });
     }
 
@@ -918,15 +941,15 @@ class EffectsManager {
      */
     _getBoosterEmoji(type) {
         const emojis = {
-            0: '?', 1: '??', 2: '??', 3: '??', 4: '??',
-            5: '?', 6: '??', 7: '??', 8: '??', 9: '???',
-            10: '??', 11: '??',
-            'DoublePoints': '?', 'FiftyFifty': '??', 'BackToZero': '??',
-            'Nope': '??', 'PositionSwitch': '??', 'LateLock': '?',
-            'Mirror': '??', 'JuryDuty': '??', 'ChaosMode': '??',
-            'Shield': '???', 'Wildcard': '??', 'Spotlight': '??'
+            0: '⚡', 1: '🔀', 2: '💥', 3: '🚫', 4: '🔄',
+            5: '⏱️', 6: '🪞', 7: '⚖️', 8: '🌀', 9: '🛡️',
+            10: '🃏', 11: '🎯',
+            'DoublePoints': '⚡', 'FiftyFifty': '🔀', 'BackToZero': '💥',
+            'Nope': '🚫', 'PositionSwitch': '🔄', 'LateLock': '⏱️',
+            'Mirror': '🪞', 'JuryDuty': '⚖️', 'ChaosMode': '🌀',
+            'Shield': '🛡️', 'Wildcard': '🃏', 'Spotlight': '🎯'
         };
-        return emojis[type] || '?';
+        return emojis[type] || '🎁';
     }
 
     /**
@@ -939,6 +962,9 @@ class EffectsManager {
             if (typeof gsap !== 'undefined') {
                 this.activeEffects.forEach(effect => {
                     if (effect.tl) effect.tl.kill();
+                    if (effect.handleResize) {
+                        window.removeEventListener('resize', effect.handleResize);
+                    }
                 });
             }
             this.activeEffects = [];

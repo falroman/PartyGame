@@ -181,6 +181,10 @@
             display: block;
         }
 
+        .dev-panel.hidden-by-user {
+            display: none !important;
+        }
+
         .dev-panel-header {
             display: flex;
             align-items: center;
@@ -237,20 +241,17 @@
             color: rgba(255,255,255,0.8);
             font-size: var(--font-xs);
         }
-        
-        /* TV Mode specific enhancements */
-        html.tv-mode .lock-toggle {
-            padding: var(--gap-lg);
+
+        .hide-devtools-btn {
+            background: rgba(255,100,100,0.2) !important;
+            border-color: rgba(255,100,100,0.3) !important;
+            margin-left: auto;
         }
-        
-        html.tv-mode .game-status-card {
-            padding: var(--gap-lg) var(--gap-xl);
+
+        .hide-devtools-btn:hover {
+            background: rgba(255,100,100,0.3) !important;
         }
-        
-        html.tv-mode .player-count-badge {
-            font-size: var(--font-base);
-            padding: var(--gap-sm) var(--gap);
-        }
+
     </style>
 </head>
 <body>
@@ -273,6 +274,7 @@
                 <div class="dev-panel-header">
                     <span class="dev-badge">DEV</span>
                     <span class="dev-panel-title">Server-side Bots (Autoplay)</span>
+                    <button id="hideDevtoolsBtn" class="hide-devtools-btn" title="Hide devtools for this session">👁️ Hide devtools</button>
                 </div>
                 <div class="dev-panel-controls">
                     <button id="addBotsBtn">🤖 Add Bots</button>
@@ -439,6 +441,7 @@
         const startAutoplayBtn = document.getElementById('startAutoplayBtn');
         const stopAutoplayBtn = document.getElementById('stopAutoplayBtn');
         const autoplayStatusEl = document.getElementById('autoplayStatus');
+        const hideDevtoolsBtn = document.getElementById('hideDevtoolsBtn');
 
         // Game client
         const client = new GameClient(SERVER_URL);
@@ -651,8 +654,15 @@
                 const response = await fetch(`${SERVER_URL}/health`);
                 const data = await response.json();
                 if (data?.environment === 'Development') {
-                    devPanel.classList.add('visible');
-                    setupDevPanelListeners();
+                    // Check if devtools should be hidden (user preference)
+                    const hideDevtools = localStorage.getItem('hideDevtools') === 'true';
+                    
+                    if (!hideDevtools) {
+                        devPanel.classList.add('visible');
+                        setupDevPanelListeners();
+                    } else {
+                        devPanel.classList.add('hidden-by-user');
+                    }
                 }
             } catch (error) {
                 console.warn('DEV panel check failed:', error);
@@ -660,6 +670,14 @@
         }
         
         function setupDevPanelListeners() {
+            // Hide devtools button
+            document.getElementById('hideDevtoolsBtn').addEventListener('click', () => {
+                localStorage.setItem('hideDevtools', 'true');
+                devPanel.classList.remove('visible');
+                devPanel.classList.add('hidden-by-user');
+                console.log('Devtools hidden - refresh or clear localStorage to show again');
+            });
+
             addBotsBtn.addEventListener('click', async () => {
                 try {
                     addBotsBtn.disabled = true;

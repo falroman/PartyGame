@@ -566,15 +566,29 @@
             margin-bottom: clamp(20px, 2.5vh, 40px);
         }
 
+        /* FIX #2: Scoreboard responsive grid - 2 kolommen bij veel spelers */
         .scoreboard-list {
             list-style: none;
             padding: 0;
             margin: 0;
             flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: 1fr; /* Default: 1 kolom */
             gap: 12px;
+            align-content: center;
+        }
+
+        /* Bij 7+ spelers: 2 kolommen */
+        html.tv-mode .scoreboard-list.many-players {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: clamp(12px, 1.5vw, 24px);
+        }
+
+        /* Bij 17+ spelers: 3 kolommen (edge case) */
+        html.tv-mode .scoreboard-list.very-many-players {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: clamp(10px, 1.2vw, 20px);
+            font-size: 0.95em; /* Slightly smaller text */
         }
 
         html.tv-mode .scoreboard-list {
@@ -598,434 +612,54 @@
             border-radius: clamp(12px, 1.5vw, 24px);
         }
 
-        .scoreboard-item:hover { transform: translateY(-2px); }
-
+        /* Top 3 colors */
         .scoreboard-item.first {
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.9) 0%, rgba(255, 179, 71, 0.9) 100%);
-            border: 2px solid rgba(255, 215, 0, 0.5);
-            color: #333;
+            background: linear-gradient(135deg, #fff9e6 0%, #ffe8a1 100%);
+            border-color: #ffd700;
         }
+
         .scoreboard-item.second {
-            background: linear-gradient(135deg, rgba(192, 192, 192, 0.9) 0%, rgba(169, 169, 169, 0.9) 100%);
-            border: 2px solid rgba(192, 192, 192, 0.5);
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            border-color: #c0c0c0;
         }
+
         .scoreboard-item.third {
-            background: linear-gradient(135deg, rgba(205, 127, 50, 0.9) 0%, rgba(184, 115, 51, 0.9) 100%);
-            border: 2px solid rgba(205, 127, 50, 0.5);
-            color: white;
+            background: linear-gradient(135deg, #fff5e6 0%, #ffd9a1 100%);
+            border-color: #cd7f32;
         }
 
-        .scoreboard-position {
-            font-size: 1.5rem;
-            font-weight: bold;
-            width: 60px;
-            text-align: center;
-        }
-
-        html.tv-mode .scoreboard-position {
-            font-size: clamp(28px, 3.5vw, 56px);
-            width: clamp(80px, 10vw, 160px);
-        }
-
-        .scoreboard-player {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        html.tv-mode .scoreboard-player {
-            gap: clamp(12px, 1.5vw, 24px);
-        }
-
-        .scoreboard-name {
-            font-weight: 600;
-            font-size: 1.25rem;
-        }
-
-        html.tv-mode .scoreboard-name {
-            font-size: clamp(24px, 3vw, 48px);
-        }
-
-        .score-value {
-            font-size: 1.75rem;
-            font-weight: bold;
-            font-variant-numeric: tabular-nums;
-            min-width: 100px;
-            text-align: right;
-        }
-
-        html.tv-mode .score-value {
-            font-size: clamp(32px, 4vw, 64px);
-            min-width: clamp(120px, 15vw, 240px);
-        }
-
-        .delta-badge {
-            position: absolute;
-            right: -10px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: bold;
-            white-space: nowrap;
-            z-index: 10;
-        }
-
-        html.tv-mode .delta-badge {
-            padding: clamp(6px, 0.8vh, 12px) clamp(12px, 1.5vw, 24px);
-            font-size: clamp(16px, 2vw, 28px);
-        }
-
-        .delta-badge.positive { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
-        .delta-badge.negative { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
-
-        /* ============================================
-           FINALE CEREMONY - ITERATION 16
-           ============================================ */
-        .finale-screen {
-            display: none;
-            flex: 1;
-            width: 100%;
-        }
-
-        .finale-screen.visible {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .finale-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 32px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        html.tv-mode .finale-container {
-            border-radius: clamp(16px, 2vw, 32px);
-            padding: clamp(24px, 3vw, 48px);
-        }
-
-        .finale-header {
-            text-align: center;
-            margin-bottom: 24px;
-            flex-shrink: 0;
-        }
-
-        html.tv-mode .finale-header {
-            margin-bottom: clamp(20px, 2.5vh, 40px);
-        }
-
-        .finale-title {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        html.tv-mode .finale-title {
-            font-size: clamp(40px, 5vw, 80px);
-            margin-bottom: clamp(8px, 1vh, 16px);
-        }
-
-        .finale-subtitle {
-            font-size: 1.25rem;
-            color: var(--text-light);
-        }
-
-        html.tv-mode .finale-subtitle {
-            font-size: clamp(20px, 2.5vw, 40px);
-        }
-
-        /* Podium Layout */
-        .finale-podium {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            grid-template-rows: auto auto;
-            gap: 16px;
-            align-items: end;
-            margin-bottom: 24px;
-        }
-
-        html.tv-mode .finale-podium {
-            gap: clamp(16px, 2vw, 32px);
-            margin-bottom: clamp(20px, 2.5vh, 40px);
-        }
-
-        /* 2nd place - left, lower */
-        .podium-2 {
-            grid-column: 1;
-            grid-row: 2;
-        }
-
-        /* 1st place - center, higher */
-        .podium-1 {
-            grid-column: 2;
-            grid-row: 1 / 3;
-        }
-
-        /* 3rd place - right, lowest */
-        .podium-3 {
-            grid-column: 3;
-            grid-row: 2;
-        }
-
-        .podium-card {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: transform 0.3s ease;
-            position: relative;
-        }
-
-        html.tv-mode .podium-card {
-            border-radius: clamp(16px, 2vw, 32px);
-            padding: clamp(20px, 2.5vh, 40px);
-        }
-
-        .podium-1 .podium-card {
-            background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
-            color: #333;
-            transform: scale(1.1);
-            box-shadow: 0 15px 50px rgba(255, 215, 0, 0.4);
-        }
-
-        .podium-2 .podium-card {
-            background: linear-gradient(135deg, #c0c0c0 0%, #a9a9a9 100%);
-        }
-
-        .podium-3 .podium-card {
-            background: linear-gradient(135deg, #cd7f32 0%, #b8733b 100%);
-            color: white;
-        }
-
-        .podium-position {
-            font-size: 4rem;
-            margin-bottom: 12px;
-            animation: podiumBounce 2s ease-in-out infinite;
-        }
-
-        html.tv-mode .podium-position {
-            font-size: clamp(60px, 8vw, 120px);
-            margin-bottom: clamp(12px, 1.5vh, 24px);
-        }
-
-        @keyframes podiumBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .podium-position.first {
-            animation-delay: 0s;
-        }
-
-        .podium-position.second {
-            animation-delay: 0.2s;
-        }
-
-        .podium-position.third {
-            animation-delay: 0.4s;
-        }
-
-        .podium-name {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        html.tv-mode .podium-name {
-            font-size: clamp(24px, 3vw, 48px);
-            margin-bottom: clamp(8px, 1vh, 16px);
-        }
-
-        .podium-score {
-            font-size: 1.75rem;
-            font-weight: bold;
-            opacity: 0.9;
-        }
-
-        html.tv-mode .podium-score {
-            font-size: clamp(28px, 3.5vw, 56px);
-        }
-
-        /* Awards Section */
-        .finale-awards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin-bottom: 24px;
-            flex-shrink: 0;
-        }
-
-        html.tv-mode .finale-awards {
-            gap: clamp(12px, 1.5vw, 24px);
-            margin-bottom: clamp(20px, 2.5vh, 40px);
-        }
-
-        .award-card {
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 12px;
-            padding: 12px 16px;
-            text-align: center;
-        }
-
-        html.tv-mode .award-card {
-            border-radius: clamp(12px, 1.5vw, 24px);
+        /* Compacter voor many-players mode */
+        html.tv-mode .scoreboard-list.many-players .scoreboard-item {
             padding: clamp(12px, 1.5vh, 24px) clamp(16px, 2vw, 32px);
         }
 
-        .award-icon {
-            font-size: 1.5rem;
-            margin-bottom: 4px;
+        html.tv-mode .scoreboard-list.very-many-players .scoreboard-item {
+            padding: clamp(10px, 1.2vh, 20px) clamp(12px, 1.5vw, 24px);
         }
 
-        html.tv-mode .award-icon {
-            font-size: clamp(24px, 3vw, 48px);
-            margin-bottom: clamp(4px, 0.5vh, 8px);
-        }
-
-        .award-name {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-light);
-            margin-bottom: 2px;
-        }
-
-        html.tv-mode .award-name {
-            font-size: clamp(12px, 1.5vw, 24px);
-            margin-bottom: clamp(2px, 0.25vh, 4px);
-        }
-
-        .award-player {
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        html.tv-mode .award-player {
-            font-size: clamp(14px, 1.8vw, 28px);
-        }
-
-        /* Finale Actions */
-        .finale-actions {
-            display: flex;
+        /* FIX #3: Ranking Stars responsive grid - geen scrollbar */
+        .ranking-players-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-            flex-shrink: 0;
+            margin-top: 20px;
         }
 
-        html.tv-mode .finale-actions {
+        html.tv-mode .ranking-players-grid {
             gap: clamp(16px, 2vw, 32px);
+            grid-template-columns: repeat(auto-fit, minmax(clamp(200px, 25vw, 400px), 1fr));
         }
 
-        .finale-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 16px 32px;
-            font-size: 1.125rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        /* Bij veel spelers: kleinere cards */
+        .ranking-players-grid.many-players {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
         }
 
-        html.tv-mode .finale-btn {
-            border-radius: clamp(12px, 1.5vw, 24px);
-            padding: clamp(16px, 2vh, 32px) clamp(32px, 4vw, 64px);
-            font-size: clamp(18px, 2.2vw, 36px);
+        html.tv-mode .ranking-players-grid.many-players {
+            gap: clamp(12px, 1.5vw, 24px);
         }
 
-        .finale-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .finale-btn.secondary {
-            background: rgba(0,0,0,0.1);
-            color: var(--text-color);
-            box-shadow: none;
-        }
-
-        .finale-btn.secondary:hover {
-            background: rgba(0,0,0,0.15);
-        }
-
-        /* OLD game finished styles - keep for fallback */
-        .game-finished {
-            text-align: center;
-            padding: 48px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        html.tv-mode .game-finished {
-            padding: clamp(32px, 4vw, 64px);
-            border-radius: clamp(16px, 2vw, 32px);
-        }
-
-        .winner-crown {
-            font-size: 8rem;
-            margin-bottom: 24px;
-            animation: crown-bounce 2s ease-in-out infinite;
-        }
-
-        html.tv-mode .winner-crown {
-            font-size: clamp(120px, 15vw, 240px);
-            margin-bottom: clamp(24px, 3vh, 48px);
-        }
-
-        @keyframes crown-bounce {
-            0%, 100% { transform: translateY(0) rotate(-5deg); }
-            50% { transform: translateY(-15px) rotate(5deg); }
-        }
-
-        .winner-name {
-            font-size: 3rem;
-            font-weight: bold;
-            color: var(--text-color);
-            margin-bottom: 12px;
-        }
-
-        html.tv-mode .winner-name {
-            font-size: clamp(48px, 6vw, 96px);
-            margin-bottom: clamp(12px, 1.5vh, 24px);
-        }
-
-        .winner-score {
-            font-size: 1.75rem;
-            color: var(--text-light);
-        }
-
-        html.tv-mode .winner-score {
-            font-size: clamp(28px, 3.5vw, 56px);
-        }
-
-        .hidden { display: none !important; }
-
-        /* ============================================
-           DEV PANEL & DIAGNOSTICS
-           ============================================ */
         .dev-panel {
             background: rgba(0,0,0,0.4);
             border: 1px solid rgba(255,255,255,0.2);
@@ -1041,12 +675,18 @@
             margin-bottom: 16px;
         }
 
+        .dev-panel.hidden-by-user {
+            display: none !important;
+        }
+
         .dev-panel .dev-badge { background: #f97316; padding: 4px 8px; border-radius: 6px; font-weight: 700; }
         .dev-panel button { background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 0.8rem; }
         .dev-panel button:hover { background: rgba(255,255,255,0.35); }
         .dev-panel .status { font-size: 0.75rem; opacity: 0.9; }
         .dev-panel-effects { display: flex; gap: 6px; margin-left: 12px; padding-left: 12px; border-left: 1px solid rgba(255,255,255,0.3); }
         .dev-panel-effects button { background: rgba(147,51,234,0.5); }
+        .hide-devtools-btn { background: rgba(255,100,100,0.3) !important; margin-left: auto; }
+        .hide-devtools-btn:hover { background: rgba(255,100,100,0.5) !important; }
 
         .diagnostics-overlay {
             position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.85); color: #0f0;
@@ -1146,6 +786,232 @@
             from { opacity: 0; transform: translateX(-50%) translateY(20px); }
             to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
+
+        /* ============================================
+           FINALE SCREEN - ITERATION 16
+           ============================================ */
+        .finale-screen {
+            display: none;
+            flex: 1;
+            width: 100%;
+        }
+        .finale-screen.visible {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .finale-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        html.tv-mode .finale-container {
+            border-radius: clamp(16px, 2vw, 32px);
+            padding: clamp(24px, 3vw, 48px);
+            gap: clamp(20px, 2.5vh, 40px);
+        }
+
+        .finale-header {
+            text-align: center;
+        }
+
+        .finale-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+
+        html.tv-mode .finale-title {
+            font-size: clamp(40px, 5vw, 80px);
+            margin-bottom: clamp(12px, 1.5vh, 24px);
+        }
+
+        .finale-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-light);
+        }
+
+        html.tv-mode .finale-subtitle {
+            font-size: clamp(20px, 2.5vw, 40px);
+        }
+
+        .finale-podium {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1fr;
+            gap: 16px;
+            align-items: end;
+            flex: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        html.tv-mode .finale-podium {
+            gap: clamp(16px, 2vw, 32px);
+            max-width: clamp(800px, 80vw, 1200px);
+        }
+
+        .podium-card {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            border: 3px solid;
+            position: relative;
+        }
+
+        html.tv-mode .podium-card {
+            border-radius: clamp(16px, 2vw, 32px);
+            padding: clamp(20px, 2.5vh, 40px);
+            border-width: clamp(3px, 0.4vw, 6px);
+        }
+
+        .podium-card.first {
+            border-color: #ffd700;
+            background: linear-gradient(135deg, #fff9e6 0%, #ffe8a1 100%);
+            min-height: 200px;
+        }
+
+        .podium-card.second {
+            border-color: #c0c0c0;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            min-height: 160px;
+        }
+
+        .podium-card.third {
+            border-color: #cd7f32;
+            background: linear-gradient(135deg, #fff5e6 0%, #ffd9a1 100%);
+            min-height: 140px;
+        }
+
+        html.tv-mode .podium-card.first {
+            min-height: clamp(200px, 25vh, 300px);
+        }
+
+        html.tv-mode .podium-card.second,
+        html.tv-mode .podium-card.third {
+            min-height: clamp(140px, 18vh, 240px);
+        }
+
+        .podium-position {
+            font-size: 4rem;
+            margin-bottom: 8px;
+            animation: bounce 2s infinite;
+        }
+
+        html.tv-mode .podium-position {
+            font-size: clamp(60px, 8vw, 120px);
+            margin-bottom: clamp(8px, 1vh, 16px);
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .podium-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 8px;
+        }
+
+        html.tv-mode .podium-name {
+            font-size: clamp(24px, 3vw, 48px);
+            margin-bottom: clamp(8px, 1vh, 16px);
+        }
+
+        .podium-score {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        html.tv-mode .podium-score {
+            font-size: clamp(28px, 3.5vw, 56px);
+        }
+
+        .finale-awards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        html.tv-mode .finale-awards {
+            gap: clamp(12px, 1.5vw, 24px);
+            max-width: clamp(800px, 80vw, 1200px);
+        }
+
+        .award-card {
+            background: rgba(255,255,255,0.5);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        html.tv-mode .award-card {
+            padding: clamp(12px, 1.5vh, 24px);
+            border-radius: clamp(10px, 1.2vw, 20px);
+            font-size: clamp(16px, 1.8vw, 28px);
+        }
+
+        .finale-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        html.tv-mode .finale-actions {
+            gap: clamp(16px, 2vw, 32px);
+        }
+
+        .finale-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px 32px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        html.tv-mode .finale-btn {
+            border-radius: clamp(10px, 1.2vw, 20px);
+            padding: clamp(14px, 1.8vh, 24px) clamp(28px, 3.5vw, 56px);
+            font-size: clamp(18px, 2vw, 32px);
+        }
+
+        .finale-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .finale-btn.secondary {
+            background: rgba(255,255,255,0.3);
+            color: var(--text-color);
+        }
+
+        /* Old finished view - hide by default */
+        .game-finished {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -1186,6 +1052,7 @@
                 <button id="testCountdownBtn">⏱️</button>
                 <button id="testFinaleBtn">🏆</button>
             </div>
+            <button id="hideDevtoolsBtn" class="hide-devtools-btn" title="Hide devtools for this session">👁️ Hide</button>
         </div>
 
         <!-- Main Content -->
@@ -1276,11 +1143,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-    <script src="/js/config.js"></script>
-    <script src="/js/game-client.js"></script>
-    <script src="/js/scoreboard-animations.js"></script>
-    <script src="/js/effects-manager.js"></script>
-    <script src="/js/audio-manager.js"></script>
+    <script src="/js/config.js?v=2"></script>
+    <script src="/js/game-client.js?v=2"></script>
+    <script src="/js/scoreboard-animations.js?v=2"></script>
+    <script src="/js/effects-manager.js?v=2"></script>
+    <script src="/js/audio-manager.js?v=2"></script>
     <script>
         // TV MODE DETECTION
         function updateTvMode() {
@@ -1354,6 +1221,10 @@
         let categoryAnimationPlayed = false;
         let phaseEndsUtc = null;
         let timerIntervalId = null;
+        
+        // FIX #1: Intro gate flags
+        let isIntroRunning = false;
+        let introDone = false;
 
         const categoryIcons = {
             'Wetenschap': '🔬', 'Science': '🔬', 'Geschiedenis': '📜', 'History': '📜',
@@ -1386,11 +1257,28 @@
             await client.connect();
             await client.registerHost(roomCode);
 
+            // REQUEST CURRENT QUIZ STATE - this is critical when coming from tv.html
+            // The quiz may have already started and we missed the initial state update
+            try {
+                const response = await fetch(`${SERVER_URL}/api/quiz/${roomCode}/state`);
+                if (response.ok) {
+                    const quizState = await response.json();
+                    console.log('Initial quiz state loaded:', quizState);
+                    onQuizStateUpdated(quizState);
+                } else {
+                    console.warn('Could not fetch initial quiz state:', response.status);
+                }
+            } catch (error) {
+                console.warn('Failed to fetch initial quiz state:', error);
+            }
+
             await configureDevPanel();
             startTimerLoop();
 
             document.getElementById('backToLobbyBtn').addEventListener('click', handleBackToLobby);
             document.getElementById('backToLobbyFinishedBtn').addEventListener('click', handleBackToLobby);
+            finalePlayAgainBtnEl.addEventListener('click', handleBackToLobby);
+            finaleBackToLobbyBtnEl.addEventListener('click', handleBackToLobby);
             audioControlBtnEl.addEventListener('click', toggleAudio);
 
             setInterval(updateDiagnostics, 500);
@@ -1442,6 +1330,8 @@
 
         async function handleBackToLobby() {
             splashShownThisSession = false;
+            introDone = false; // FIX #1: Reset intro flag
+            isIntroRunning = false;
             finaleStarted = false; // Reset finale flag
             effects.resetSplash();
             effects.stopFinale(); // Stop any finale effects
@@ -1480,51 +1370,152 @@
         }
 
         function onQuizStateUpdated(state) {
+            console.log('Quiz state updated:', state); // Enhanced logging
+            
             roundBadgeEl.textContent = `Round ${state.roundNumber || 1}`;
             questionNumberEl.textContent = state.questionNumber || '-';
             totalQuestionsEl.textContent = state.totalQuestions;
-            phaseBadgeEl.textContent = phaseNames[state.phase] || state.phase;
+
+            // Phase handling - map to numeric values
+            let phase = state.phase;
+            let phaseStr = String(state.phase);
+            
+            if (typeof phase === 'string') {
+                const phaseMap = { 
+                    'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5,
+                    'DictionaryWord': 6, 'DictionaryAnswering': 7,
+                    'RankingPrompt': 8, 'RankingVoting': 9, 'RankingReveal': 10
+                };
+                phase = phaseMap[phaseStr] ?? phase;
+            }
+            
+            // Detect special round types
+            const roundType = state.roundType;
+            const isRankingStars = roundType === 'RankingStars' || roundType === 1;
+            const isDictionary = roundType === 'DictionaryGame' || roundType === 2;
+            const isRankingPhase = phase === 8 || phase === 9 || phase === 10 || 
+                                   phaseStr === 'RankingPrompt' || phaseStr === 'RankingVoting' || phaseStr === 'RankingReveal';
+            const isDictionaryPhase = phase === 6 || phase === 7 || 
+                                      phaseStr === 'DictionaryWord' || phaseStr === 'DictionaryAnswering';
+            
+            // Update phase badge with appropriate names
+            let phaseName = '';
+            if (isRankingStars || isRankingPhase) {
+                if (phase === 8) phaseName = 'Reading Prompt';
+                else if (phase === 9) phaseName = 'Voting';
+                else if (phase === 10) phaseName = 'Revealing Votes';
+                else if (phase === 4) phaseName = 'Scoreboard';
+                else phaseName = 'Ranking Stars';
+            } else if (isDictionary || isDictionaryPhase) {
+                if (phase === 6) phaseName = 'Reading Word';
+                else if (phase === 7) phaseName = 'Answering';
+                else if (phase === 3) phaseName = 'Revealing';
+                else if (phase === 4) phaseName = 'Scoreboard';
+                else phaseName = 'Dictionary';
+            } else {
+                const standardNames = {
+                    0: 'Category Selection', 1: 'Question', 2: 'Answering', 
+                    3: 'Reveal', 4: 'Scoreboard', 5: 'Finished'
+                };
+                phaseName = standardNames[phase] || state.phase;
+            }
+            phaseBadgeEl.textContent = phaseName;
 
             if (state.phaseEndsUtc) phaseEndsUtc = new Date(state.phaseEndsUtc).getTime();
             else if (state.remainingSeconds !== undefined) phaseEndsUtc = Date.now() + (state.remainingSeconds * 1000);
             updateTimerDisplay();
-
-            let phase = state.phase;
-            if (typeof phase === 'string') {
-                const phaseMap = { 'CategorySelection': 0, 'Question': 1, 'Answering': 2, 'Reveal': 3, 'Scoreboard': 4, 'Finished': 5 };
-                phase = phaseMap[phase] ?? phase;
-            }
 
             if (phase === 0 && previousPhase !== 0) categoryAnimationPlayed = false;
 
             handlePhaseTransition(previousPhase, phase, state);
             const isEnteringScoreboard = phase === 4 && previousPhase !== 4;
 
-            if (phase === 5) showFinished(state);
-            else if (phase === 4) showScoreboard(state, isEnteringScoreboard);
-            else if (phase === 0) showCategorySelection(state);
-            else if (phase === 1 || phase === 2 || phase === 3) showQuestion(state);
+            // FIX #1: Intro gate - check if we need to show splash before Q1
+            const isFirstQuestion = state.questionNumber === 1 && state.roundNumber === 1;
+            const isEnteringQuestion = (phase === 1 || phase === 2) && (previousPhase === null || previousPhase === 0);
+            
+            if (isFirstQuestion && isEnteringQuestion && !introDone && !isIntroRunning) {
+                showIntroSplashThenQuestion(state, phase, isRankingPhase, isDictionaryPhase);
+            } else {
+                // Normal routing
+                routeToView(state, phase, isEnteringScoreboard, isRankingPhase, isDictionaryPhase);
+            }
 
             previousPhase = phase;
+        }
+
+        // FIX #1: Intro splash gate - show splash, wait, then show question
+        async function showIntroSplashThenQuestion(state, phase, isRankingPhase, isDictionaryPhase) {
+            isIntroRunning = true;
+            
+            // Hide all views first
+            hideAllViews();
+            
+            // Show splash effect
+            effects.playSplash('QuizStart');
+            if (audioEnabled) audio.playSplash();
+            
+            // Wait 2 seconds for splash to display
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Mark intro as done
+            introDone = true;
+            isIntroRunning = false;
+            
+            // Now show the question view
+            routeToView(state, phase, false, isRankingPhase, isDictionaryPhase);
+        }
+
+        // FIX #1: Extracted routing logic
+        function routeToView(state, phase, isEnteringScoreboard, isRankingPhase, isDictionaryPhase) {
+            if (phase === 5) {
+                showFinished(state);
+            } else if (phase === 4) {
+                showScoreboard(state, isEnteringScoreboard);
+            } else if (phase === 10) {
+                showRankingReveal(state);
+            } else if (phase === 9) {
+                showRankingVoting(state);
+            } else if (phase === 8) {
+                showRankingPrompt(state);
+            } else if (phase === 7) {
+                showDictionaryAnswering(state);
+            } else if (phase === 6) {
+                showDictionaryWord(state);
+            } else if (phase === 0) {
+                showCategorySelection(state);
+            } else if (phase === 1 || phase === 2 || phase === 3) {
+                showQuestion(state);
+            }
         }
 
         function handlePhaseTransition(oldPhase, newPhase, state) {
             if (oldPhase === newPhase) return;
             if (audioEnabled) audio.setPhase(newPhase);
 
+            // Reset flags when returning to lobby
+            if (newPhase === 0 && oldPhase === 5) {
+                introDone = false;
+                isIntroRunning = false;
+            }
+
             // Reset finale flag when leaving finished
             if (oldPhase === 5) {
                 finaleStarted = false;
             }
 
-            if ((newPhase === 1 || newPhase === 2) && (oldPhase === null || oldPhase === 0) && !splashShownThisSession) {
-                effects.playSplash('QuizStart');
-                if (audioEnabled) audio.playSplash();
-                splashShownThisSession = true;
-            }
+            // NOTE: Splash is now handled in showIntroSplashThenQuestion, not here
         }
 
         function getCategoryIcon(category) { return categoryIcons[category] || categoryIcons['default']; }
+
+        function hideAllViews() {
+            categoryViewEl.classList.remove('visible');
+            questionViewEl.classList.add('hidden');
+            scoreboardViewEl.classList.remove('visible');
+            finishedViewEl.classList.add('hidden');
+            finaleViewEl.classList.remove('visible');
+        }
 
         function showCategorySelection(state) {
             hideAllViews();
@@ -1561,7 +1552,7 @@
                 currentCategoryBannerEl.style.display = 'none';
             }
 
-            questionTextEl.textContent = state.questionText;
+            questionTextEl.textContent = state.questionText || '';
             const optionColors = { A: 'a', B: 'b', C: 'c', D: 'd' };
 
             optionsGridEl.innerHTML = (state.options || []).map(opt => {
@@ -1570,5 +1561,449 @@
                     if (opt.key === state.correctOptionKey) { classes += ' correct'; indicator = '✓'; }
                     else { classes += ' incorrect'; }
                 }
-                return `<div class="${classes}"><div class="option-key ${optionColors[opt.key]}">${opt.key}</div><div class="option-text">${escapeHtml(opt.text)}</div><div class="option-indicator">${indicator}</div></div>`;
-//# The code has been truncated to fit the response. The full code is available in the previous response.
+                const escapedText = escapeHtml(opt.text);
+                return `<div class="${classes}"><div class="option-key ${optionColors[opt.key]}">${opt.key}</div><div class="option-text">${escapedText}</div><div class="option-indicator">${indicator}</div></div>`;
+            }).join('');
+
+            // Update explanation card
+            const escapedExplanation = escapeHtml(state.explanation || '');
+            explanationTextEl.innerHTML = escapedExplanation;
+            explanationCardEl.classList.toggle('visible', !!state.explanation);
+        }
+
+        function showScoreboard(state, isEntering) {
+            hideAllViews();
+            scoreboardViewEl.classList.add('visible');
+            scoreboardTitleEl.textContent = `🏆 Scoreboard - Round ${state.roundNumber || 1}`;
+
+            const playerScores = state.scoreboard || [];
+
+            // FIX #2: Apply responsive grid classes based on player count
+            const scoreboardList = document.getElementById('scoreboardList');
+            scoreboardList.classList.remove('many-players', 'very-many-players');
+            
+            if (playerScores.length >= 17) {
+                scoreboardList.classList.add('very-many-players');
+            } else if (playerScores.length >= 7) {
+                scoreboardList.classList.add('many-players');
+            }
+
+            // Always use the animator for consistent rendering
+            scoreboardAnimator.applyUpdate(playerScores, {
+                animate: isEntering,
+                highlightWinnerId: null
+            });
+        }
+
+        function showFinished(state) {
+            hideAllViews();
+            finaleViewEl.classList.add('visible');
+
+            // Determine winner from scoreboard
+            const scoreboard = state.scoreboard || [];
+            const winner = scoreboard.length > 0 
+                ? scoreboard.reduce((top, player) => player.score > top.score ? player : top, scoreboard[0])
+                : null;
+
+            const winnerName = winner?.displayName || 'Unknown';
+            const winnerScore = winner?.score || 0;
+
+            // Update finale subtitle
+            finaleSubtitleEl.textContent = `${winnerName} wins with ${winnerScore} points!`;
+
+            // Build podium (top 3 players)
+            const top3 = scoreboard.slice(0, 3);
+            finalePodiumEl.innerHTML = '';
+
+            // Podium order: 2nd, 1st, 3rd (visual hierarchy)
+            const podiumOrder = [
+                top3[1] ? { ...top3[1], position: 2, emoji: '🥈', class: 'second' } : null,
+                top3[0] ? { ...top3[0], position: 1, emoji: '👑', class: 'first' } : null,
+                top3[2] ? { ...top3[2], position: 3, emoji: '🥉', class: 'third' } : null
+            ];
+
+            podiumOrder.forEach(player => {
+                if (!player) {
+                    finalePodiumEl.innerHTML += '<div></div>'; // Empty column
+                    return;
+                }
+
+                const card = document.createElement('div');
+                card.className = `podium-card ${player.class}`;
+                card.innerHTML = `
+                    <div class="podium-position">${player.emoji}</div>
+                    <div class="podium-name">${escapeHtml(player.displayName)}</div>
+                    <div class="podium-score">${player.score} pts</div>
+                `;
+                finalePodiumEl.appendChild(card);
+            });
+
+            // Build awards if we have 4+ players
+            if (scoreboard.length >= 4) {
+                finaleAwardsEl.classList.remove('hidden');
+                finaleAwardsEl.innerHTML = `
+                    <div class="award-card">🏆 Top Scorer<br><strong>${escapeHtml(scoreboard[0]?.displayName || '')}</strong></div>
+                    <div class="award-card">🎖️ Strong Finish<br><strong>${escapeHtml(scoreboard[1]?.displayName || '')}</strong></div>
+                    <div class="award-card">💪 Great Effort<br><strong>${escapeHtml(scoreboard[scoreboard.length - 1]?.displayName || '')}</strong></div>
+                `;
+            } else {
+                finaleAwardsEl.classList.add('hidden');
+            }
+
+            // Animate podium entrance
+            if (typeof gsap !== 'undefined') {
+                gsap.from('.podium-card', {
+                    opacity: 0,
+                    y: 50,
+                    scale: 0.8,
+                    stagger: 0.2,
+                    duration: 0.6,
+                    ease: 'back.out(1.7)'
+                });
+            }
+
+            // Trigger finale effects once per game
+            if (!finaleStarted) {
+                finaleStarted = true;
+                effects.playFinale({ winnerName, duration: 8000 });
+                if (audioEnabled) {
+                    audio.playFinale();
+                }
+            }
+        }
+
+        // Ranking Stars specific displays
+        function showRankingPrompt(state) {
+            hideAllViews();
+            questionViewEl.classList.remove('hidden');
+
+            currentCategoryBannerEl.textContent = '⭐ Ranking Stars';
+            currentCategoryBannerEl.style.display = 'inline-block';
+
+            questionTextEl.textContent = state.questionText || state.rankingPrompt || 'Loading prompt...';
+            
+            // Hide options during prompt reading
+            optionsGridEl.innerHTML = '<div style="text-align: center; padding: 40px; grid-column: 1 / -1; font-size: 1.5rem; color: var(--text-light);">Players are preparing to vote...</div>';
+            explanationCardEl.classList.remove('visible');
+        }
+
+        function showRankingVoting(state) {
+            hideAllViews();
+            questionViewEl.classList.remove('hidden');
+
+            currentCategoryBannerEl.textContent = '⭐ Ranking Stars - Vote Now!';
+            currentCategoryBannerEl.style.display = 'inline-block';
+
+            questionTextEl.textContent = state.questionText || state.rankingPrompt || 'Vote for a player!';
+            
+            // FIX #3: Show player options in responsive grid
+            const playerOptions = state.playerOptions || [];
+            optionsGridEl.className = 'options-grid ranking-players-grid';
+            
+            // Apply many-players class if needed
+            if (playerOptions.length > 8) {
+                optionsGridEl.classList.add('many-players');
+            }
+            
+            if (playerOptions.length > 0) {
+                const colors = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22', '#1abc9c', '#34495e'];
+                optionsGridEl.innerHTML = playerOptions.map((player, index) => {
+                    const bgColor = colors[index % colors.length];
+                    return `
+                        <div class="option-card" style="background: ${bgColor}; color: white; border-color: ${bgColor};">
+                            <div class="option-key" style="background: rgba(255,255,255,0.3);">
+                                ${GameUtils.getInitials(player.displayName)}
+                            </div>
+                            <div class="option-text" style="color: white;">
+                                ${escapeHtml(player.displayName)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                optionsGridEl.innerHTML = '<div style="text-align: center; padding: 40px; grid-column: 1 / -1;">Waiting for votes...</div>';
+            }
+            
+            explanationCardEl.classList.remove('visible');
+        }
+
+        function showRankingReveal(state) {
+            hideAllViews();
+            questionViewEl.classList.remove('hidden');
+
+            currentCategoryBannerEl.textContent = '⭐ Ranking Stars - Results!';
+            currentCategoryBannerEl.style.display = 'inline-block';
+
+            questionTextEl.textContent = state.questionText || state.rankingPrompt || 'The votes are in!';
+            
+            // FIX #3: Show player options with vote counts in responsive grid
+            const playerOptions = state.playerOptions || [];
+            const winnerIds = state.rankingWinnerIds || [];
+            const voteCounts = state.rankingVoteCounts || {};
+            
+            optionsGridEl.className = 'options-grid ranking-players-grid';
+            
+            if (playerOptions.length > 8) {
+                optionsGridEl.classList.add('many-players');
+            }
+            
+            if (playerOptions.length > 0) {
+                const colors = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22', '#1abc9c', '#34495e'];
+                optionsGridEl.innerHTML = playerOptions.map((player, index) => {
+                    const isWinner = winnerIds.includes(player.playerId);
+                    const voteCount = voteCounts[player.playerId] || 0;
+                    const bgColor = isWinner ? '#f1c40f' : colors[index % colors.length];
+                    
+                    return `
+                        <div class="option-card ${isWinner ? 'correct' : ''}" style="background: ${bgColor}; color: ${isWinner ? '#333' : 'white'}; border-color: ${bgColor};">
+                            <div class="option-key" style="background: rgba(255,255,255,0.3); color: ${isWinner ? '#333' : 'white'};">
+                                ${isWinner ? '⭐' : GameUtils.getInitials(player.displayName)}
+                            </div>
+                            <div class="option-text" style="color: ${isWinner ? '#333' : 'white'};">
+                                ${escapeHtml(player.displayName)}
+                                <div style="font-size: 0.75em; opacity: 0.9; margin-top: 4px;">${voteCount} vote${voteCount !== 1 ? 's' : ''}</div>
+                            </div>
+                            ${isWinner ? '<div class="option-indicator">✓</div>' : ''}
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                optionsGridEl.innerHTML = '<div style="text-align: center; padding: 40px; grid-column: 1 / -1;">No votes recorded</div>';
+            }
+            
+            explanationCardEl.classList.remove('visible');
+        }
+
+        // Dictionary specific displays
+        function showDictionaryWord(state) {
+            hideAllViews();
+            questionViewEl.classList.remove('hidden');
+
+            currentCategoryBannerEl.textContent = '📖 Dictionary Game';
+            currentCategoryBannerEl.style.display = 'inline-block';
+
+            questionTextEl.textContent = state.questionText || state.dictionaryWord || 'Loading word...';
+            
+            // Reset grid to standard
+            optionsGridEl.className = 'options-grid';
+            
+            // Hide options during word reading
+            optionsGridEl.innerHTML = '<div style="text-align: center; padding: 40px; grid-column: 1 / -1; font-size: 1.5rem; color: var(--text-light);">Read the word carefully...</div>';
+            explanationCardEl.classList.remove('visible');
+        }
+
+        function showDictionaryAnswering(state) {
+            hideAllViews();
+            questionViewEl.classList.remove('hidden');
+
+            currentCategoryBannerEl.textContent = '📖 Dictionary Game - Choose the Definition!';
+            currentCategoryBannerEl.style.display = 'inline-block';
+
+            questionTextEl.textContent = state.questionText || `What does "${state.dictionaryWord || 'the word'}" mean?`;
+            
+            // FIX #4: Dictionary options met kleur + letter (A/B/C/D)
+            optionsGridEl.className = 'options-grid'; // Reset to standard grid
+            const optionColors = { '0': 'a', '1': 'b', '2': 'c', '3': 'd' };
+            const optionKeys = ['A', 'B', 'C', 'D'];
+            
+            optionsGridEl.innerHTML = (state.options || []).map((opt, index) => {
+                let classes = 'option-card', indicator = '';
+                const optionKey = optionKeys[index];
+                const colorClass = optionColors[index.toString()];
+                
+                if (state.correctOptionKey) {
+                    // correctOptionKey for dictionary is numeric string "0", "1", "2", "3"
+                    if (opt.key === state.correctOptionKey || index.toString() === state.correctOptionKey) {
+                        classes += ' correct';
+                        indicator = '✓';
+                    } else {
+                        classes += ' incorrect';
+                    }
+                }
+                
+                return `<div class="${classes}">
+                    <div class="option-key ${colorClass}">${optionKey}</div>
+                    <div class="option-text">${escapeHtml(opt.text)}</div>
+                    <div class="option-indicator">${indicator}</div>
+                </div>`;
+            }).join('');
+
+            // Update explanation card if present
+            explanationTextEl.innerHTML = escapeHtml(state.explanation || '');
+            explanationCardEl.classList.toggle('visible', !!state.explanation);
+        }
+
+        async function configureDevPanel() {
+            // Check if running in Development mode via /health endpoint
+            try {
+                const response = await fetch(`${SERVER_URL}/health`);
+                const data = await response.json();
+                if (data?.environment === 'Development') {
+                    isDevelopment = true;
+                }
+            } catch (error) {
+                console.warn('DEV panel check failed:', error);
+            }
+
+            // Check if devtools should be hidden (user preference)
+            const hideDevtools = localStorage.getItem('hideDevtools') === 'true';
+
+            if (!isDevelopment) {
+                devPanelEl.classList.add('hidden');
+                diagnosticsOverlayEl.classList.add('hidden');
+                return;
+            }
+
+            if (hideDevtools) {
+                devPanelEl.classList.add('hidden-by-user');
+                diagnosticsOverlayEl.classList.add('hidden');
+                return;
+            }
+
+            // Show dev panel and diagnostics overlay
+            devPanelEl.classList.remove('hidden');
+            diagnosticsOverlayEl.classList.remove('hidden');
+
+            // Setup hide devtools button
+            document.getElementById('hideDevtoolsBtn').addEventListener('click', () => {
+                localStorage.setItem('hideDevtools', 'true');
+                devPanelEl.classList.add('hidden-by-user');
+                diagnosticsOverlayEl.classList.add('hidden');
+                console.log('Devtools hidden - clear localStorage.hideDevtools to show again');
+            });
+
+            // Setup test effect buttons
+            document.getElementById('testSplashBtn').addEventListener('click', () => {
+                effects.playSplash('QuizStart');
+                if (audioEnabled) audio.playSplash();
+            });
+
+            document.getElementById('testDoubleBtn').addEventListener('click', () => {
+                effects.playBooster('DoublePoints', {});
+            });
+
+            document.getElementById('testBackToZeroBtn').addEventListener('click', () => {
+                effects.playBooster('BackToZero', {});
+            });
+
+            document.getElementById('testNopeBtn').addEventListener('click', () => {
+                effects.playBooster('Nope', { targetName: 'Test Player' });
+            });
+
+            document.getElementById('testCountdownBtn').addEventListener('click', async () => {
+                // Simulate countdown from 10 to 0 at 2x speed
+                for (let i = 10; i >= 0; i--) {
+                    await new Promise(r => setTimeout(r, 500));
+                    if (audioEnabled) audio.handleCountdown(i);
+                }
+            });
+
+            document.getElementById('testFinaleBtn').addEventListener('click', () => {
+                finaleStarted = false; // Allow re-trigger
+                const mockState = {
+                    phase: 5,
+                    roundNumber: 3,
+                    questionNumber: 9,
+                    totalQuestions: 9,
+                    scoreboard: [
+                        { playerId: '1', displayName: 'Alice', score: 450, position: 1 },
+                        { playerId: '2', displayName: 'Bob', score: 380, position: 2 },
+                        { playerId: '3', displayName: 'Charlie', score: 290, position: 3 },
+                        { playerId: '4', displayName: 'Diana', score: 150, position: 4 }
+                    ]
+                };
+                showFinished(mockState);
+            });
+
+            // Setup bot control buttons
+            document.getElementById('addBotsBtn').addEventListener('click', async () => {
+                try {
+                    document.getElementById('addBotsBtn').disabled = true;
+                    await client.addBots();
+                } catch (error) {
+                    console.error('Failed to add bots:', error);
+                } finally {
+                    document.getElementById('addBotsBtn').disabled = false;
+                }
+            });
+
+            document.getElementById('startAutoplayBtn').addEventListener('click', async () => {
+                try {
+                    document.getElementById('startAutoplayBtn').disabled = true;
+                    await client.startAutoplay();
+                } catch (error) {
+                    console.error('Failed to start autoplay:', error);
+                } finally {
+                    document.getElementById('startAutoplayBtn').disabled = false;
+                }
+            });
+
+            document.getElementById('stopAutoplayBtn').addEventListener('click', async () => {
+                try {
+                    document.getElementById('stopAutoplayBtn').disabled = true;
+                    await client.stopAutoplay();
+                } catch (error) {
+                    console.error('Failed to stop autoplay:', error);
+                } finally {
+                    document.getElementById('stopAutoplayBtn').disabled = false;
+                }
+            });
+        }
+
+        function updateAutoplayStatus(status) {
+            const wasActive = client.isAutoplayActive();
+            client.setAutoplayStatus(status);
+            const isActive = client.isAutoplayActive();
+
+            if (isActive && !wasActive) {
+                autoplayStatusEl.textContent = 'Autoplay: active';
+                document.getElementById('stopAutoplayBtn').classList.remove('hidden');
+                document.getElementById('startAutoplayBtn').classList.add('hidden');
+            } else if (!isActive && wasActive) {
+                autoplayStatusEl.textContent = 'Autoplay: stopped';
+                document.getElementById('startAutoplayBtn').classList.remove('hidden');
+                document.getElementById('stopAutoplayBtn').classList.add('hidden');
+            }
+        }
+
+        function updateDiagnostics() {
+            if (diagnosticsOverlayEl.classList.contains('hidden')) return;
+            const effectsStatus = effects.getStatus();
+            const audioStatus = audio.getStatus();
+            diagEffectsEl.textContent = `${effectsStatus.activeEffects} active, ${effectsStatus.inactiveEffects} inactive`;
+            diagAudioEl.textContent = audioStatus.isMuted ? 'Muted' : 'Active';
+            diagPhaseEl.textContent = phaseBadgeEl.textContent;
+            diagTrackEl.textContent = ''; // TODO: update track info if available
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Simulate connection for development
+        if (isDevelopment) {
+            setTimeout(() => {
+                client.onConnected();
+                client.onQuizStateUpdated({
+                    roundNumber: 1,
+                    questionNumber: 1,
+                    totalQuestions: 9,
+                    phase: 0,
+                    availableCategories: ['Science', 'History', 'Geography'],
+                    roundLeaderPlayerId: 'test-player-1',
+                    scoreboard: [
+                        { playerId: 'test-player-1', displayName: 'Player 1', score: 350 },
+                        { playerId: 'test-player-2', displayName: 'Player 2', score: 270 },
+                        { playerId: 'test-player-3', displayName: 'Player 3', score: 190 },
+                    ]
+                });
+            }, 1000);
+        }
+
+        init();
+    </script>
+</body>
+</html>

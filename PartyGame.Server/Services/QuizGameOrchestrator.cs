@@ -22,6 +22,7 @@ public interface IQuizGameOrchestrator
     Task<(bool Success, ErrorDto? Error)> SubmitRankingVoteAsync(string roomCode, Guid voterPlayerId, Guid votedForPlayerId);
     Task<(bool Success, ErrorDto? Error)> NextQuestionAsync(string roomCode, string connectionId);
     QuizGameState? GetState(string roomCode);
+    QuizGameStateDto? GetStateDto(string roomCode, Guid? requestingPlayerId = null);
     void StopGame(string roomCode);
 }
 
@@ -348,6 +349,15 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
     {
         var normalizedCode = roomCode.ToUpperInvariant();
         return _gameStates.TryGetValue(normalizedCode, out var state) ? state : null;
+    }
+
+    public QuizGameStateDto? GetStateDto(string roomCode, Guid? requestingPlayerId = null)
+    {
+        var normalizedCode = roomCode.ToUpperInvariant();
+        if (!_gameStates.TryGetValue(normalizedCode, out var state))
+            return null;
+
+        return CreateSafeDto(state, requestingPlayerId);
     }
 
     public void StopGame(string roomCode)
