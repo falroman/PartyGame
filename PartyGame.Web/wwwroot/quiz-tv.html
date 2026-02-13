@@ -448,6 +448,54 @@
             font-size: clamp(28px, 3.5vw, 56px);
         }
 
+        /* Avatar Bubbles - Answer Reveal */
+        .answer-bubbles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            justify-content: center;
+        }
+
+        html.tv-mode .answer-bubbles {
+            gap: clamp(6px, 0.8vw, 12px);
+            margin-top: clamp(8px, 1vh, 16px);
+        }
+
+        .answer-bubbles img {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+            border: 2px solid white;
+            transition: all 0.3s ease;
+        }
+
+        html.tv-mode .answer-bubbles img {
+            width: clamp(48px, 6vw, 96px);
+            height: clamp(48px, 6vw, 96px);
+            border-width: clamp(2px, 0.3vw, 4px);
+        }
+
+        .answer-bubbles img.correct {
+            border: 4px solid var(--success-color);
+            box-shadow: 0 0 16px rgba(46, 204, 113, 0.8);
+        }
+
+        html.tv-mode .answer-bubbles img.correct {
+            border-width: clamp(4px, 0.5vw, 6px);
+        }
+
+        .answer-bubbles img.incorrect {
+            border: 4px solid #e74c3c;
+            box-shadow: 0 0 16px rgba(231, 76, 60, 0.6);
+        }
+
+        html.tv-mode .answer-bubbles img.incorrect {
+            border-width: clamp(4px, 0.5vw, 6px);
+        }
+
         /* Explanation Card */
         .explanation-card {
             background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
@@ -1097,7 +1145,7 @@
             <div class="finale-screen" id="finaleView">
                 <div class="finale-container">
                     <div class="finale-header">
-                        <div class="finale-title">🎉 We Have a Winner! 🎉</div>
+                        <div class="finale-title"></div>
                         <div class="finale-subtitle" id="finaleSubtitle">Congratulations to all players!</div>
                     </div>
 
@@ -1545,8 +1593,16 @@
             hideAllViews();
             questionViewEl.classList.remove('hidden');
 
+            // Detect if this is a dictionary question
+            const isDictionary = state.roundType === 'DictionaryGame' || state.roundType === 2;
+            const isDictionaryPhase = state.phase === 6 || state.phase === 7 || state.phase === 3;
+            const isDictionaryQuestion = isDictionary || isDictionaryPhase;
+
             if (state.currentCategory) {
                 currentCategoryBannerEl.textContent = `${getCategoryIcon(state.currentCategory)} ${state.currentCategory}`;
+                currentCategoryBannerEl.style.display = 'inline-block';
+            } else if (isDictionaryQuestion) {
+                currentCategoryBannerEl.textContent = '📖 Dictionary Game';
                 currentCategoryBannerEl.style.display = 'inline-block';
             } else {
                 currentCategoryBannerEl.style.display = 'none';
@@ -1554,21 +1610,148 @@
 
             questionTextEl.textContent = state.questionText || '';
             const optionColors = { A: 'a', B: 'b', C: 'c', D: 'd' };
+            const optionKeys = ['A', 'B', 'C', 'D'];
 
-            optionsGridEl.innerHTML = (state.options || []).map(opt => {
+            // For dictionary questions, we need to map numeric correctOptionKey to letters
+            let correctKey = state.correctOptionKey;
+            if (isDictionaryQuestion && correctKey !== null && correctKey !== undefined) {
+                const correctIndex = parseInt(correctKey);
+                if (!isNaN(correctIndex) && correctIndex >= 0 && correctIndex <= 3) {
+                    correctKey = optionKeys[correctIndex];
+                }
+            }
+
+            // Check if we're in reveal phase to show avatars
+            const isRevealPhase = state.phase === 3 || state.phase === 'Reveal';
+            
+            // Group players by selected option for avatar bubbles
+            const grouped = { A: [], B: [], C: [], D: [] };
+            if (isRevealPhase && state.scoreboard) {
+                state.scoreboard.forEach(player => {
+                    if (player.selectedOption) {
+                        let option = player.selectedOption;
+                        // Convert numeric options to letters for dictionary
+                        if (isDictionaryQuestion && !isNaN(option)) {
+                            option = optionKeys[parseInt(option)];
+                        }
+                        if (grouped[option]) {
+                            grouped[option].push(player);
+                        }
+                    }
+                });
+            }
+
+            optionsGridEl.innerHTML = (state.options || []).map((opt, index) => {
+                // For dictionary, use index-based mapping to A/B/C/D
+                const optionKey = isDictionaryQuestion ? optionKeys[index] : opt.key;
+                const colorClass = optionColors[optionKey];
+                
                 let classes = 'option-card', indicator = '';
-                if (state.correctOptionKey) {
-                    if (opt.key === state.correctOptionKey) { classes += ' correct'; indicator = '✓'; }
-                    else { classes += ' incorrect'; }
+                if (correctKey) {
+                    if (optionKey === correctKey) { 
+                        classes += ' correct'; 
+                        indicator = '✓'; 
+                    } else { 
+                        classes += ' incorrect'; 
+                    }
                 }
                 const escapedText = escapeHtml(opt.text);
-                return `<div class="${classes}"><div class="option-key ${optionColors[opt.key]}">${opt.key}</div><div class="option-text">${escapedText}</div><div class="option-indicator">${indicator}</div></div>`;
+                
+                // Render avatar bubbles if in reveal phase
+                const avatarBubblesHtml = isRevealPhase && grouped[optionKey] && grouped[optionKey].length > 0
+                    ? `<div class="answer-bubbles">${renderAvatarBubbles(grouped[optionKey], optionKey === correctKey)}</div>`
+                    : '';
+                
+                return `<div class="${classes}">
+                    <div class="option-key ${colorClass}">${optionKey}</div>
+                    <div class="option-text">${escapedText}</div>
+                    <div class="option-indicator">${indicator}</div>
+                    ${avatarBubblesHtml}
+                </div>`;
             }).join('');
+
+            // Animate avatar bubbles if present
+            if (isRevealPhase && typeof gsap !== 'undefined') {
+                setTimeout(() => {
+                    gsap.from('.answer-bubbles img', {
+                        opacity: 0,
+                        scale: 0.8,
+                        stagger: 0.05,
+                        duration: 0.3,
+                        ease: 'back.out(1.7)'
+                    });
+                }, 100);
+            }
 
             // Update explanation card
             const escapedExplanation = escapeHtml(state.explanation || '');
             explanationTextEl.innerHTML = escapedExplanation;
             explanationCardEl.classList.toggle('visible', !!state.explanation);
+        }
+
+        /**
+         * Render avatar bubbles for players who selected this option
+         */
+        function renderAvatarBubbles(players, isCorrect) {
+            return players.map(player => {
+                const avatarSrc = getAvatarSrc(player);
+                const classes = ['animate'];
+                if (isCorrect) classes.push('correct');
+                else classes.push('incorrect');
+                
+                return `<img src="${avatarSrc}" 
+                            alt="${escapeHtml(player.displayName)}" 
+                            title="${escapeHtml(player.displayName)}"
+                            class="${classes.join(' ')}"
+                            onerror="this.style.display='none'">`;
+            }).join('');
+        }
+
+        /**
+         * Get avatar source URL for a player
+         */
+        function getAvatarSrc(player) {
+            // AvatarKind: 0 = Preset, 1 = Uploaded
+            if (player.avatarKind === 0 && player.avatarPresetId) {
+                // Preset avatar - use SVG from assets
+                return `/assets/avatars/jelly/${player.avatarPresetId}.svg`;
+            } else if (player.avatarKind === 1 && player.avatarUrl) {
+                // Uploaded avatar - use URL
+                return player.avatarUrl;
+            } else {
+                // Fallback - use colored circle with initials (data URI)
+                const initials = GameUtils.getInitials(player.displayName);
+                const colors = [
+                    '#e74c3c', // Red
+                    '#3498db', // Blue
+                    '#2ecc71', // Green
+                    '#f39c12', // Orange
+                    '#9b59b6', // Purple
+                    '#1abc9c', // Turquoise
+                    '#e67e22', // Carrot
+                    '#16a085'  // Green Sea
+                ];
+                const color = colors[Math.abs(hashCode(player.playerId)) % colors.length];
+                
+                return `data:image/svg+xml,${encodeURIComponent(`
+                    <svg width="96" height="96" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="48" cy="48" r="48" fill="${color}"/>
+                        <text x="48" y="64" font-size="36" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">${initials}</text>
+                    </svg>
+                `)}`;
+            }
+        }
+
+        /**
+         * Simple hash function for consistent color assignment
+         */
+        function hashCode(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return hash;
         }
 
         function showScoreboard(state, isEntering) {
@@ -1801,19 +1984,20 @@
 
             questionTextEl.textContent = state.questionText || `What does "${state.dictionaryWord || 'the word'}" mean?`;
             
-            // FIX #4: Dictionary options met kleur + letter (A/B/C/D)
+            // Dictionary options with A/B/C/D styling (same as standard quiz)
             optionsGridEl.className = 'options-grid'; // Reset to standard grid
-            const optionColors = { '0': 'a', '1': 'b', '2': 'c', '3': 'd' };
+            const optionColors = { 0: 'a', 1: 'b', 2: 'c', 3: 'd' };
             const optionKeys = ['A', 'B', 'C', 'D'];
             
             optionsGridEl.innerHTML = (state.options || []).map((opt, index) => {
                 let classes = 'option-card', indicator = '';
                 const optionKey = optionKeys[index];
-                const colorClass = optionColors[index.toString()];
+                const colorClass = optionColors[index];
                 
-                if (state.correctOptionKey) {
-                    // correctOptionKey for dictionary is numeric string "0", "1", "2", "3"
-                    if (opt.key === state.correctOptionKey || index.toString() === state.correctOptionKey) {
+                if (state.correctOptionKey !== undefined && state.correctOptionKey !== null) {
+                    // correctOptionKey for dictionary is numeric: 0, 1, 2, 3
+                    const correctIndex = parseInt(state.correctOptionKey);
+                    if (index === correctIndex) {
                         classes += ' correct';
                         indicator = '✓';
                     } else {

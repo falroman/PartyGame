@@ -57,7 +57,11 @@ public class QuizGameEngine : IQuizGameEngine
                     PlayerId = p.PlayerId,
                     DisplayName = p.DisplayName,
                     Score = 0,
-                    Position = idx + 1
+                    Position = idx + 1,
+                    // Copy avatar information from player
+                    AvatarPresetId = p.AvatarPresetId,
+                    AvatarUrl = p.AvatarUrl,
+                    AvatarKind = p.AvatarKind
                 })
                 .ToList()
         };

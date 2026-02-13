@@ -35,11 +35,8 @@ Each player receives **one random booster** at the start of the game. Boosters a
 | **Position Switch** | ?? | Reveal | Yes | Steal points if you were wrong & target was right |
 | **Late Lock** | ? | Answering | No | Gives you +5 extra seconds to answer |
 | **Mirror** | ?? | Answering | Yes | Copies target's answer when they submit |
-| **Jury Duty** | ?? | Reveal | Yes | Gives +20 bonus to a correct answerer of your choice |
-| **Chaos Mode** | ?? | Question | No | Shuffles answer order on everyone else's phones |
+| **Chaos Mode** | ??? | Question | No | Shuffles answer order on everyone else's phones |
 | **Shield** | ??? | Passive | No | Automatically blocks one negative booster targeting you |
-| **Wildcard** | ?? | Answering | No | Allows changing your answer once after submitting |
-| **Spotlight** | ?? | Reveal | No | Your answer is revealed first with dramatic effect |
 
 ## Shield Behavior
 
@@ -54,7 +51,7 @@ When blocked, both booster users see a notification, and the attacker's booster 
 
 ### Public vs Private State Updates
 
-Boosters like 50/50, Nope, ChaosMode, LateLock, Wildcard, and Mirror have **private effects** that should only be visible to the affected player. This prevents cheating where players could inspect network traffic to see which options were removed for another player.
+Boosters like 50/50, Nope, ChaosMode, LateLock, and Mirror have **private effects** that should only be visible to the affected player. This prevents cheating where players could inspect network traffic to see which options were removed for another player.
 
 **Public data** (sent to everyone):
 - Phase, question, options, scores, round info
@@ -86,7 +83,6 @@ This is implemented by iterating through `room.Players.Values` and sending a cus
 | Nope | `IsNoped` | Server rejects all answers from noped player |
 | ChaosMode | `ShuffledOptionOrder` | Options reordered on client, keys unchanged |
 | LateLock | `ExtendedDeadline` | Server accepts late answers until extended deadline |
-| Wildcard | `CanChangeAnswer` | Server allows one answer overwrite |
 | Mirror | `MirrorTargetId` | Server copies target's answer to activator |
 
 ### Testing Boosters
@@ -96,7 +92,6 @@ This is implemented by iterating through `room.Players.Values` and sending a cus
 - Per-player DTO mapping: player A sees 50/50 disabled options, player B doesn't
 - Nope: target gets `IsNoped=true`, server rejects their answers
 - LateLock: activator can submit after normal deadline
-- Wildcard: activator can submit twice, others can't
 - ChaosMode: mapping differs per player, submissions remain correct
 
 **Manual testing**:
@@ -375,7 +370,7 @@ Each podium card shows:
 
 Lightweight stats cards showing:
 - **Top Scorer**: Player with highest score (??)
-- **Strong Finish**: 2nd place (??)
+- **Strong Finish**: 2nd place (???)
 - **Great Effort**: Last place with > 0 score (??)
 
 Future enhancement: Track per-question stats for:
@@ -530,14 +525,3 @@ All effects tested and working in:
 - ? Edge 120+
 
 **Mobile browsers**: Finale shows but effects may be less performant (intentional degradation).
-
----
-
-## Iteration 17 – Future Work
-
-Potential future iterations:
-- **Multiplayer improvements**: Spectator mode, rejoin after disconnect
-- **More game modes**: Pictionary, Taboo, Charades integration
-- **Leaderboards**: Global/friend leaderboards across games
-- **Achievements**: Unlock badges for special accomplishments
-- **Customization**: Theme colors, avatars, custom questions

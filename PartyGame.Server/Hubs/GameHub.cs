@@ -100,12 +100,12 @@ public class GameHub : Hub
     /// <summary>
     /// Player joins a room with their playerId and display name.
     /// </summary>
-    public async Task JoinRoom(string roomCode, Guid playerId, string displayName)
+    public async Task JoinRoom(string roomCode, Guid playerId, string displayName, string? avatarPresetId = null)
     {
-        _logger.LogInformation("JoinRoom called for room {RoomCode} by player {PlayerId} ({DisplayName})", 
-            roomCode, playerId, displayName);
+        _logger.LogInformation("JoinRoom called for room {RoomCode} by player {PlayerId} ({DisplayName}) with avatar {AvatarId}", 
+            roomCode, playerId, displayName, avatarPresetId ?? "random");
 
-        var (success, error) = await _lobbyService.JoinRoomAsync(roomCode, playerId, displayName, Context.ConnectionId);
+        var (success, error) = await _lobbyService.JoinRoomAsync(roomCode, playerId, displayName, Context.ConnectionId, avatarPresetId);
 
         if (!success && error != null)
         {
@@ -563,7 +563,11 @@ public class GameHub : Hub
                     showCorrectAnswer ? p.PointsEarned : 0,
                     showCorrectAnswer && p.GotSpeedBonus,
                     showCorrectAnswer && p.IsRankingStar,
-                    showCorrectAnswer ? p.RankingVotesReceived : 0
+                    showCorrectAnswer ? p.RankingVotesReceived : 0,
+                    0, // Rank
+                    p.AvatarPresetId,
+                    p.AvatarUrl,
+                    p.AvatarKind
                 ))
                 .OrderBy(p => p.Position)
                 .ToList(),

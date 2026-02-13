@@ -342,4 +342,19 @@ public class PlayerScoreState
     /// Number of votes received in Ranking Stars.
     /// </summary>
     public int RankingVotesReceived { get; set; } = 0;
+
+    /// <summary>
+    /// Avatar preset ID (e.g., "jelly_01"). Null for uploaded avatars.
+    /// </summary>
+    public string? AvatarPresetId { get; set; }
+
+    /// <summary>
+    /// Avatar URL for uploaded avatars. Null for preset avatars.
+    /// </summary>
+    public string? AvatarUrl { get; set; }
+
+    /// <summary>
+    /// Type of avatar being used.
+    /// </summary>
+    public AvatarKind AvatarKind { get; set; } = AvatarKind.Preset;
 }

@@ -117,7 +117,7 @@ class GameClient {
     /**
      * Join a room as a player
      */
-    async joinRoom(roomCode, playerId, displayName) {
+    async joinRoom(roomCode, playerId, displayName, avatarPresetId = null) {
         if (!this.connection) {
             throw new Error('Not connected');
         }
@@ -127,8 +127,11 @@ class GameClient {
         
         // Store for reconnection
         localStorage.setItem('partyGame_displayName', displayName);
+        if (avatarPresetId) {
+            localStorage.setItem('partyGame_avatarPresetId', avatarPresetId);
+        }
         
-        await this.connection.invoke('JoinRoom', this.roomCode, playerId, displayName);
+        await this.connection.invoke('JoinRoom', this.roomCode, playerId, displayName, avatarPresetId);
     }
 
     /**
@@ -498,11 +501,8 @@ const GameUtils = {
         PositionSwitch: 4,
         LateLock: 5,
         Mirror: 6,
-        JuryDuty: 7,
         ChaosMode: 8,
-        Shield: 9,
-        Wildcard: 10,
-        Spotlight: 11
+        Shield: 9
     },
 
     /**
@@ -517,11 +517,8 @@ const GameUtils = {
             4: '??', // PositionSwitch
             5: '?', // LateLock
             6: '??', // Mirror
-            7: '??', // JuryDuty
-            8: '??', // ChaosMode
-            9: '???', // Shield
-            10: '??', // Wildcard
-            11: '??'  // Spotlight
+            8: '???', // ChaosMode
+            9: '???'  // Shield
         };
         return emojis[boosterType] || '??';
     }

@@ -1,0 +1,3 @@
+# Avatar upload folder
+# This folder stores user-uploaded avatar images
+# Structure: <ROOMCODE>/<PLAYERID>.jpg

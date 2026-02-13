@@ -455,8 +455,7 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
 
     #endregion
 
-    #region Category Quiz Flow
-
+    #region Category Quiz Flow z
     private async Task StartNextQuestionAsync(string roomCode)
     {
         if (!_gameStates.TryGetValue(roomCode, out var state))
@@ -974,7 +973,11 @@ public class QuizGameOrchestrator : IQuizGameOrchestrator
                     showCorrectAnswer ? p.PointsEarned : 0,
                     showCorrectAnswer && p.GotSpeedBonus,
                     showCorrectAnswer && p.IsRankingStar,
-                    showCorrectAnswer ? p.RankingVotesReceived : 0
+                    showCorrectAnswer ? p.RankingVotesReceived : 0,
+                    0, // Rank - not yet implemented
+                    p.AvatarPresetId,
+                    p.AvatarUrl,
+                    p.AvatarKind
                 ))
                 .OrderBy(p => p.Position)
                 .ToList(),

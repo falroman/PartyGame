@@ -1,0 +1,34 @@
+﻿{
+  "packs": [
+    {
+      "id": "jelly",
+      "name": "Jelly Squash",
+      "items": [
+        {
+          "id": "jelly_01",
+          "src": "/assets/avatars/jelly/jelly_01.png"
+        },
+        {
+          "id": "jelly_02",
+          "src": "/assets/avatars/jelly/jelly_02.png"
+        },
+        {
+          "id": "jelly_03",
+          "src": "/assets/avatars/jelly/jelly_03.png"
+        },
+        {
+          "id": "jelly_04",
+          "src": "/assets/avatars/jelly/jelly_04.png"
+        },
+        {
+          "id": "jelly_05",
+          "src": "/assets/avatars/jelly/jelly_05.png"
+        },
+        {
+          "id": "jelly_06",
+          "src": "/assets/avatars/jelly/jelly_06.png"
+        }
+      ]
+    }
+  ]
+}

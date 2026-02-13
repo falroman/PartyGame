@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PartyGame - Scoreboard Animations Module
  * TV-worthy animations for scoreboard updates using GSAP + Flip
  * 
@@ -192,16 +192,25 @@ class ScoreboardAnimations {
         else if (player.position === 2) row.classList.add('second');
         else if (player.position === 3) row.classList.add('third');
 
-        const positionEmoji = player.position === 1 ? '??' : 
-                             player.position === 2 ? '??' : 
-                             player.position === 3 ? '??' : `#${player.position}`;
+        // Use Unicode escape sequences to ensure proper emoji rendering
+        const positionEmoji = player.position === 1 ? '\u{1F451}' : // 👑 crown
+                             player.position === 2 ? '\u{1F948}' : // 🥈 silver medal
+                             player.position === 3 ? '\u{1F949}' : // 🥉 bronze medal
+                             `#${player.position}`;
 
+        const avatarSrc = this._getPlayerAvatarSrc(player);
         const initials = this._getInitials(player.displayName);
 
         row.innerHTML = `
             <div class="scoreboard-position">${positionEmoji}</div>
             <div class="scoreboard-player">
-                <div class="player-avatar">${initials}</div>
+                <div class="player-avatar">
+                    <img src="${avatarSrc}" 
+                         alt="${this._escapeHtml(player.displayName)}"
+                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <span style="display: none;">${initials}</span>
+                </div>
                 <div class="scoreboard-name">${this._escapeHtml(player.displayName)}</div>
             </div>
             <div class="score-value" data-score="${player.score}">${player.score}</div>
@@ -364,6 +373,47 @@ class ScoreboardAnimations {
             return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
         }
         return name.substring(0, 2).toUpperCase();
+    }
+
+    /**
+     * Utility: Get avatar source URL for a player
+     */
+    _getPlayerAvatarSrc(player) {
+        // AvatarKind: 0 = Preset, 1 = Uploaded
+        if (player.avatarKind === 0 && player.avatarPresetId) {
+            // Preset avatar - use SVG from assets
+            return `/assets/avatars/jelly/${player.avatarPresetId}.svg`;
+        } else if (player.avatarKind === 1 && player.avatarUrl) {
+            // Uploaded avatar - use URL
+            return player.avatarUrl;
+        } else {
+            // Fallback - use colored circle with initials (data URI)
+            const initials = this._getInitials(player.displayName);
+            const colors = [
+                '#e74c3c', '#3498db', '#2ecc71', '#f39c12', 
+                '#9b59b6', '#1abc9c', '#e67e22', '#16a085'
+            ];
+            const color = colors[Math.abs(this._hashCode(player.playerId)) % colors.length];
+            
+            return `data:image/svg+xml,${encodeURIComponent(`
+                <svg width="96" height="96" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="48" cy="48" r="48" fill="${color}"/>
+                    <text x="48" y="64" font-size="36" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">${initials}</text>
+                </svg>
+            `)}`;
+        }
+    }
+
+    /**
+     * Utility: Hash code for consistent color assignment
+     */
+    _hashCode(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        return hash;
     }
 
     /**

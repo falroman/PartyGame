@@ -40,6 +40,139 @@
             border-radius: 20px;
             font-weight: 500;
         }
+
+        /* Avatar Grid Styles */
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .avatar-option {
+            aspect-ratio: 1;
+            border: 3px solid transparent;
+            border-radius: 12px;
+            background: var(--bg-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .avatar-option:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.05);
+        }
+
+        .avatar-option.selected {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px var(--primary-color);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        .avatar-option img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .avatar-loading {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 24px;
+            color: var(--text-light);
+        }
+
+        .avatar-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        /* Avatar Upload Styles */
+        .upload-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--bg-color);
+        }
+
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .upload-btn {
+            border: 2px dashed #667eea;
+            color: #667eea;
+            background-color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .upload-btn:hover {
+            background-color: #f8f9ff;
+            border-color: #5568d3;
+        }
+
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .upload-preview {
+            margin-top: 12px;
+            text-align: center;
+            display: none;
+        }
+
+        .upload-preview.visible {
+            display: block;
+        }
+
+        .upload-preview img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary-color);
+        }
+
+        .upload-preview-text {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .upload-hint {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -90,6 +223,31 @@
                         autocomplete="off"
                         required
                     >
+                </div>
+
+                <!-- Avatar Selection -->
+                <div class="input-group">
+                    <label>Choose Your Avatar</label>
+                    <div id="avatarGrid" class="avatar-grid">
+                        <!-- Avatars will be loaded here -->
+                        <div class="avatar-loading">Loading avatars...</div>
+                    </div>
+                    
+                    <!-- Upload section -->
+                    <div class="upload-section">
+                        <div class="upload-btn-wrapper">
+                            <button type="button" class="upload-btn">
+                                <span>📤</span>
+                                <span>Upload Your Own Photo</span>
+                            </button>
+                            <input type="file" id="avatarUpload" accept="image/*" />
+                        </div>
+                        <div id="uploadPreview" class="upload-preview">
+                            <img id="uploadPreviewImg" src="" alt="Preview">
+                            <div class="upload-preview-text">✓ Photo uploaded</div>
+                        </div>
+                        <div class="upload-hint">Max 2MB • JPEG, PNG or WebP</div>
+                    </div>
                 </div>
 
                 <button type="submit" id="joinBtn" class="btn btn-primary btn-large" style="width: 100%;" disabled>
@@ -179,6 +337,10 @@
         const currentPhase = document.getElementById('currentPhase');
         const gamePlayerName = document.getElementById('gamePlayerName');
         const gameRoomCode = document.getElementById('gameRoomCode');
+        const avatarGrid = document.getElementById('avatarGrid');
+        const avatarUpload = document.getElementById('avatarUpload');
+        const uploadPreview = document.getElementById('uploadPreview');
+        const uploadPreviewImg = document.getElementById('uploadPreviewImg');
 
         // ===========================================
         // State variables
@@ -187,6 +349,10 @@
         let playerId = null;
         let hasJoined = false;
         let currentRoomStatus = 'Lobby';
+        let selectedAvatarId = null;
+        let avatarManifest = null;
+        let uploadedAvatarFile = null;
+        let uploadedAvatarUrl = null;
         
         // Get server URL
         const SERVER_URL = GameConfig.getServerUrl();
@@ -195,6 +361,85 @@
         // ===========================================
         // Helper functions
         // ===========================================
+        async function loadAvatarManifest() {
+            try {
+                const response = await fetch('/assets/avatars/manifest.json');
+                if (!response.ok) {
+                    throw new Error('Failed to load avatar manifest');
+                }
+                avatarManifest = await response.json();
+                renderAvatarGrid();
+            } catch (error) {
+                console.error('Failed to load avatars:', error);
+                document.getElementById('avatarGrid').innerHTML = '<div class="avatar-loading">Avatars not available</div>';
+            }
+        }
+
+        function renderAvatarGrid() {
+            const avatarGrid = document.getElementById('avatarGrid');
+            if (!avatarManifest || !avatarManifest.packs || avatarManifest.packs.length === 0) {
+                avatarGrid.innerHTML = '<div class="avatar-loading">No avatars available</div>';
+                return;
+            }
+
+            const pack = avatarManifest.packs[0]; // Use first pack (jelly)
+            avatarGrid.innerHTML = '';
+
+            pack.items.forEach(avatar => {
+                const option = document.createElement('div');
+                option.className = 'avatar-option';
+                option.dataset.avatarId = avatar.id;
+                
+                // Try to load image, fallback to emoji
+                const img = document.createElement('img');
+                img.src = avatar.src;
+                img.alt = avatar.id;
+                img.onerror = () => {
+                    // Fallback to emoji placeholder if image fails to load
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'avatar-placeholder';
+                    placeholder.textContent = getAvatarEmoji(avatar.id);
+                    option.innerHTML = '';
+                    option.appendChild(placeholder);
+                };
+                option.appendChild(img);
+
+                option.addEventListener('click', () => selectAvatar(avatar.id));
+                avatarGrid.appendChild(option);
+            });
+
+            // Auto-select first avatar or previously selected
+            const storedAvatar = localStorage.getItem('partyGame_avatarPresetId');
+            const firstAvatar = pack.items[0].id;
+            selectAvatar(storedAvatar && pack.items.some(a => a.id === storedAvatar) ? storedAvatar : firstAvatar);
+        }
+
+        function selectAvatar(avatarId) {
+            selectedAvatarId = avatarId;
+            
+            // Update UI
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                if (option.dataset.avatarId === avatarId) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+        }
+
+        function getAvatarEmoji(avatarId) {
+            // Simple emoji mapping for jelly avatars
+            const emojiMap = {
+                'jelly_01': '🟣',
+                'jelly_02': '🔵',
+                'jelly_03': '🟢',
+                'jelly_04': '🟡',
+                'jelly_05': '🔴',
+                'jelly_06': '🟠'
+            };
+            return emojiMap[avatarId] || '⭐';
+        }
+
         function updateDebug(message) {
             console.log('[DEBUG]', message);
             debugStatus.textContent = message;
@@ -213,6 +458,33 @@
             const path = window.location.pathname;
             const match = path.match(/\/join\/([A-Za-z0-9]{4})/);
             return match ? match[1].toUpperCase() : null;
+        }
+
+        function loadAvatars() {
+            // For now, use placeholder avatars - later we will load from server
+            const placeholderAvatars = [
+                'https://ui-avatars.com/api/?name=Avatar1&background=random',
+                'https://ui-avatars.com/api/?name=Avatar2&background=random',
+                'https://ui-avatars.com/api/?name=Avatar3&background=random',
+                'https://ui-avatars.com/api/?name=Avatar4&background=random',
+            ];
+            
+            placeholderAvatars.forEach((src, index) => {
+                const avatarEl = document.createElement('div');
+                avatarEl.className = 'avatar-item';
+                avatarEl.dataset.value = `Avatar${index+1}`;
+                avatarEl.innerHTML = `<img src="${src}" class="avatar-image" alt="Avatar ${index+1}">`;
+                
+                // Select handler
+                avatarEl.addEventListener('click', () => {
+                    document.querySelectorAll('.avatar-item').forEach(item => item.classList.remove('selected'));
+                    avatarEl.classList.add('selected');
+                    selectedAvatar = avatarEl.dataset.value;
+                    updateDebug('Selected avatar: ' + selectedAvatar);
+                });
+                
+                avatarGrid.appendChild(avatarEl);
+            });
         }
 
         // ===========================================
@@ -326,6 +598,9 @@
             updateDebug('Initializing...');
             
             try {
+                // Load avatar manifest first
+                await loadAvatarManifest();
+
                 // Check if SignalR is loaded
                 if (typeof signalR === 'undefined') {
                     updateDebug('ERROR: SignalR not loaded!');
@@ -414,13 +689,29 @@
             hideError();
             joinBtn.disabled = true;
             joinBtn.textContent = 'Joining...';
-            updateDebug('Joining room ' + roomCode + '...');
+            updateDebug('Joining room ' + roomCode + ' with avatar ' + (selectedAvatarId || uploadedAvatarFile?.name || 'none') + '...');
 
             try {
-                await client.joinRoom(roomCode, playerId, displayName);
+                // First, join the room
+                await client.joinRoom(roomCode, playerId, displayName, selectedAvatarId);
                 GameUtils.setStoredRoomCode(roomCode);
+                
+                // Then, if we have an uploaded file, upload it
+                if (uploadedAvatarFile) {
+                    joinBtn.textContent = 'Uploading photo...';
+                    await uploadAvatar(roomCode, playerId);
+                }
             } catch (error) {
                 console.error('Join failed:', error);
+                console.error('Error details:', {
+                    roomCode,
+                    playerId,
+                    displayName,
+                    selectedAvatarId,
+                    hasUploadedFile: !!uploadedAvatarFile,
+                    errorMessage: error.message,
+                    errorStack: error.stack
+                });
                 updateDebug('Join failed: ' + (error.message || error));
                 showError('Failed to join room. Please try again.');
                 joinBtn.disabled = false;
@@ -449,6 +740,83 @@
         roomCodeInput.addEventListener('input', (e) => {
             e.target.value = e.target.value.toUpperCase();
         });
+
+        // Avatar upload handler
+        document.getElementById('avatarUpload').addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            // Validate file
+            if (file.size > 2 * 1024 * 1024) {
+                showError('Image file is too large. Maximum size is 2MB.');
+                e.target.value = '';
+                return;
+            }
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                showError('Invalid file type. Please upload a JPEG, PNG, or WebP image.');
+                e.target.value = '';
+                return;
+            }
+
+            // Store file for upload after joining
+            uploadedAvatarFile = file;
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = document.getElementById('uploadPreviewImg');
+                img.src = event.target.result;
+                document.getElementById('uploadPreview').classList.add('visible');
+                
+                // Deselect preset avatars
+                document.querySelectorAll('.avatar-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                selectedAvatarId = null;
+                
+                updateDebug('Photo selected for upload: ' + file.name);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        /**
+         * Upload avatar after joining room
+         */
+        async function uploadAvatar(roomCode, playerId) {
+            if (!uploadedAvatarFile) return null;
+
+            updateDebug('Uploading avatar...');
+            
+            const formData = new FormData();
+            formData.append('file', uploadedAvatarFile);
+
+            try {
+                const response = await fetch(
+                    (SERVER_URL || '') + `/api/rooms/${roomCode}/players/${playerId}/avatar`,
+                    {
+                        method: 'POST',
+                        body: formData
+                    }
+                );
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Upload failed');
+                }
+
+                const data = await response.json();
+                uploadedAvatarUrl = data.avatarUrl;
+                updateDebug('Avatar uploaded: ' + data.avatarUrl);
+                return data.avatarUrl;
+            } catch (error) {
+                console.error('Avatar upload failed:', error);
+                updateDebug('Avatar upload failed: ' + error.message);
+                // Don't fail the join, just log the error
+                return null;
+            }
+        }
 
         // ===========================================
         // Start the app when DOM is ready

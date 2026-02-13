@@ -28,11 +28,8 @@ public class BoosterServiceTests
             new PositionSwitchHandler(),
             new LateLockHandler(),
             new MirrorHandler(),
-            new JuryDutyHandler(),
             new ChaosModeHandler(),
-            new ShieldHandler(),
-            new WildcardHandler(),
-            new SpotlightHandler()
+            new ShieldHandler()
         };
 
         _sut = new BoosterService(handlers, NullLogger<BoosterService>.Instance);
@@ -388,30 +385,6 @@ public class BoosterServiceTests
     }
 
     [Fact]
-    public void JuryDuty_RequiresMultipleCorrectAnswers()
-    {
-        // Arrange
-        var state = CreateTestState(3);
-        state.Phase = QuizPhase.Reveal;
-        var activatorId = state.Scoreboard[0].PlayerId;
-        var targetId = state.Scoreboard[1].PlayerId;
-        
-        // Only 1 correct answer
-        state.Scoreboard[0].AnsweredCorrectly = true;
-        state.Scoreboard[1].AnsweredCorrectly = false;
-        state.Scoreboard[2].AnsweredCorrectly = false;
-        
-        _sut.AssignBooster(state, activatorId, BoosterType.JuryDuty);
-
-        // Act
-        var (canActivate, errorCode, _) = _sut.CanActivateBooster(state, activatorId, BoosterType.JuryDuty, targetId);
-
-        // Assert
-        canActivate.Should().BeFalse();
-        errorCode.Should().Be("BOOSTER_INVALID");
-    }
-
-    [Fact]
     public void Shield_CannotBeManuallyActivated()
     {
         // Arrange
@@ -519,31 +492,6 @@ public class BoosterServiceTests
         // Assert
         effects[activatorId].MirrorTargetId.Should().Be(targetId);
         effects[targetId].MirrorTargetId.Should().BeNull();
-    }
-
-    [Fact]
-    public void GetAnsweringEffects_WildcardPlayer_HasCanChangeAnswer()
-    {
-        // Arrange
-        var state = CreateTestState(1);
-        state.Phase = QuizPhase.Answering;
-        state.QuestionNumber = 1;
-        state.Options = new List<QuizOptionState>
-        {
-            new() { Key = "A", Text = "Option A" },
-            new() { Key = "B", Text = "Option B" }
-        };
-        var playerId = state.Scoreboard[0].PlayerId;
-        state.Answers[playerId] = "A"; // Player must have answered first
-        
-        _sut.AssignBooster(state, playerId, BoosterType.Wildcard);
-        _sut.ActivateBooster(state, playerId, BoosterType.Wildcard, null);
-
-        // Act
-        var effects = _sut.GetAnsweringEffects(state);
-
-        // Assert
-        effects[playerId].CanChangeAnswer.Should().BeTrue();
     }
 
     [Fact]

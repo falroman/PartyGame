@@ -759,8 +759,6 @@
         const scoreboardTitleEl = document.getElementById('scoreboardTitle');
         const scoreboardListEl = document.getElementById('scoreboardList');
         const finishedStateEl = document.getElementById('finishedState');
-        const finishedTitleEl = document.getElementById('finishedTitle');
-        const finishedSubtitleEl = document.getElementById('finishedSubtitle');
         const targetModalEl = document.getElementById('targetModal');
         const targetModalTitleEl = document.getElementById('targetModalTitle');
         const targetModalSubtitleEl = document.getElementById('targetModalSubtitle');
@@ -1265,21 +1263,45 @@
             questionCardEl.classList.remove('hidden');
             answerButtonsEl.classList.remove('hidden');
 
-            // Check for 50/50 effect
+            // Check for effects
             const removedOptions = state.myAnsweringEffects?.removedOptions || [];
+            const shuffledOrder = state.myAnsweringEffects?.shuffledOptionOrder;
 
-            // Reset and show all buttons
-            answerBtns.forEach(btn => {
+            // Get options in the correct order
+            let optionsToDisplay = state.options || [];
+            
+            // If we have a shuffled order from ChaosMode, reorder the options
+            if (shuffledOrder && shuffledOrder.length > 0) {
+                optionsToDisplay = shuffledOrder.map(key => 
+                    state.options?.find(opt => opt.key === key)
+                ).filter(opt => opt !== undefined);
+            }
+
+            // Map options to buttons (A, B, C, D)
+            const buttonKeys = ['A', 'B', 'C', 'D'];
+            answerBtns.forEach((btn, index) => {
                 btn.style.display = 'flex';
                 btn.disabled = false;
                 btn.classList.remove('selected', 'correct', 'incorrect', 'removed');
                 
-                // Apply 50/50 effect
-                if (removedOptions.includes(btn.dataset.key)) {
-                    btn.classList.add('removed');
-                    btn.disabled = true;
+                // Get the option for this button position
+                const option = optionsToDisplay[index];
+                if (option) {
+                    // Update button text
+                    const textEl = document.getElementById('option' + buttonKeys[index]);
+                    if (textEl) textEl.textContent = option.text;
+                    
+                    // Store the actual option key (not the button key!) for submission
+                    btn.dataset.actualKey = option.key;
+                    
+                    // Apply 50/50 effect
+                    if (removedOptions.includes(option.key)) {
+                        btn.classList.add('removed');
+                        btn.disabled = true;
+                    }
                 }
             });
+            
             selectedAnswer = null;
         }
 
@@ -1298,6 +1320,7 @@
             // Check if this is a Ranking Stars round (roundType=1 or phase=10)
             const roundType = state.roundType;
             const isRankingStars = roundType === 'RankingStars' || roundType === 1 || currentPhase === 10;
+            const isDictionary = roundType === 'DictionaryGame' || roundType === 2;
 
             const wasCorrect = myScoreData?.answeredCorrectly === true;
             const pointsEarned = myScoreData?.pointsEarned || 0;
@@ -1338,15 +1361,35 @@
             } else {
                 // Standard reveal - show correct answer with A/B/C/D buttons
                 answerButtonsEl.classList.remove('hidden');
+                
+                // For dictionary questions, convert numeric correctOptionKey to letter
+                let correctKey = state.correctOptionKey;
+                const optionKeys = ['A', 'B', 'C', 'D'];
+                if (isDictionary && correctKey !== null && correctKey !== undefined) {
+                    const correctIndex = parseInt(correctKey);
+                    if (!isNaN(correctIndex) && correctIndex >= 0 && correctIndex <= 3) {
+                        correctKey = optionKeys[correctIndex];
+                    }
+                }
+                
+                // For dictionary, also convert selectedOption from number to letter
+                let mySelectedKey = myScoreData?.selectedOption;
+                if (isDictionary && mySelectedKey !== null && mySelectedKey !== undefined) {
+                    const selectedIndex = parseInt(mySelectedKey);
+                    if (!isNaN(selectedIndex) && selectedIndex >= 0 && selectedIndex <= 3) {
+                        mySelectedKey = optionKeys[selectedIndex];
+                    }
+                }
+                
                 answerBtns.forEach(btn => {
                     btn.disabled = true;
                     btn.style.display = 'flex';
                     const key = btn.dataset.key;
                     btn.classList.remove('selected', 'removed');
                     
-                    if (key === state.correctOptionKey) {
+                    if (key === correctKey) {
                         btn.classList.add('correct');
-                    } else if (key === myScoreData?.selectedOption) {
+                    } else if (key === mySelectedKey) {
                         btn.classList.add('incorrect');
                     }
                 });
@@ -1416,7 +1459,11 @@
 
             const isDictionaryAnswering = currentPhase === 7;
 
-            selectedAnswer = key;
+            // Get the button that was clicked to find the actual key
+            const clickedBtn = answerBtns[key.charCodeAt(0) - 65]; // A=0, B=1, C=2, D=3
+            const actualKey = clickedBtn?.dataset.actualKey || key;
+            
+            selectedAnswer = actualKey;
             
             answerBtns.forEach(btn => {
                 btn.disabled = true;
@@ -1427,11 +1474,11 @@
 
             try {
                 if (isDictionaryAnswering) {
-                    // Dictionary uses numeric index (0-3), convert from A/B/C/D
-                    const optionIndex = key.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+                    // Dictionary uses numeric index (0-3), convert from actual key
+                    const optionIndex = actualKey.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
                     await client.submitDictionaryAnswer(optionIndex);
                 } else {
-                    await client.submitAnswer(key);
+                    await client.submitAnswer(actualKey);
                 }
                 showSubmitted();
             } catch (error) {

@@ -45,11 +45,18 @@ builder.Services.Configure<RoomCleanupOptions>(
 builder.Services.Configure<AutoplayOptions>(
     builder.Configuration.GetSection(AutoplayOptions.SectionName));
 
+// Configure avatar upload options
+builder.Services.Configure<AvatarUploadOptions>(
+    builder.Configuration.GetSection(AvatarUploadOptions.SectionName));
+
 // Add game services
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IRoomCodeGenerator, RoomCodeGenerator>();
 builder.Services.AddSingleton<IRoomStore, InMemoryRoomStore>();
 builder.Services.AddSingleton<IConnectionIndex, ConnectionIndex>();
+
+// Add avatar upload service
+builder.Services.AddSingleton<IAvatarUploadService, AvatarUploadService>();
 
 // Add quiz question bank
 builder.Services.AddSingleton<IQuizQuestionBank, JsonQuizQuestionBank>();
@@ -71,11 +78,8 @@ builder.Services.AddSingleton<IBoosterHandler, NopeHandler>();
 builder.Services.AddSingleton<IBoosterHandler, PositionSwitchHandler>();
 builder.Services.AddSingleton<IBoosterHandler, LateLockHandler>();
 builder.Services.AddSingleton<IBoosterHandler, MirrorHandler>();
-builder.Services.AddSingleton<IBoosterHandler, JuryDutyHandler>();
 builder.Services.AddSingleton<IBoosterHandler, ChaosModeHandler>();
 builder.Services.AddSingleton<IBoosterHandler, ShieldHandler>();
-builder.Services.AddSingleton<IBoosterHandler, WildcardHandler>();
-builder.Services.AddSingleton<IBoosterHandler, SpotlightHandler>();
 
 // Add booster service
 builder.Services.AddSingleton<IBoosterService, BoosterService>();
@@ -102,6 +106,22 @@ if (app.Environment.IsDevelopment())
 
 // Use CORS before other middleware
 app.UseCors();
+
+// Serve uploaded avatar files
+var uploadPath = Path.Combine(app.Environment.ContentRootPath, "App_Data", "uploads", "avatars");
+Directory.CreateDirectory(uploadPath); // Ensure directory exists
+
+app.UseStaticFiles(new Microsoft.AspNetCore.Builder.StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadPath),
+    RequestPath = "/uploads/avatars",
+    ServeUnknownFileTypes = false,
+    OnPrepareResponse = ctx =>
+    {
+        // Set cache headers for uploaded avatars
+        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=300"); // 5 minutes
+    }
+});
 
 // Only use HTTPS redirection in production
 // In development/LAN mode, we use HTTP to avoid certificate issues

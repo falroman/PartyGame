@@ -205,36 +205,6 @@ public class MirrorHandler : BoosterHandlerBase
 }
 
 /// <summary>
-/// JuryDuty: Awards +20 bonus to a player among correct answerers.
-/// </summary>
-public class JuryDutyHandler : BoosterHandlerBase
-{
-    public override BoosterType Type => BoosterType.JuryDuty;
-    public override string Name => "Jury Duty";
-    public override string Description => "Awards +20 bonus points to a player of your choice among correct answerers.";
-    public override bool RequiresTarget => true;
-    public override QuizPhase[] ValidPhases => [QuizPhase.Reveal];
-
-    public override string? Validate(QuizGameState state, Guid activatorId, Guid? targetId)
-    {
-        var baseError = base.Validate(state, activatorId, targetId);
-        if (baseError != null) return baseError;
-
-        // Need at least 2 correct answerers
-        var correctCount = state.Scoreboard.Count(p => p.AnsweredCorrectly == true);
-        if (correctCount < 2)
-            return "Jury Duty requires at least 2 correct answers.";
-
-        // Target must have answered correctly
-        var target = targetId.HasValue ? GetPlayer(state, targetId.Value) : null;
-        if (target?.AnsweredCorrectly != true)
-            return "Target must have answered correctly.";
-
-        return null;
-    }
-}
-
-/// <summary>
 /// ChaosMode: Shuffles answer order for everyone except activator.
 /// </summary>
 public class ChaosModeHandler : BoosterHandlerBase
@@ -242,7 +212,7 @@ public class ChaosModeHandler : BoosterHandlerBase
     public override BoosterType Type => BoosterType.ChaosMode;
     public override string Name => "Chaos Mode";
     public override string Description => "Shuffles the answer order on everyone else's phones.";
-    public override QuizPhase[] ValidPhases => [QuizPhase.Question];
+    public override QuizPhase[] ValidPhases => [QuizPhase.Question, QuizPhase.Answering];
 
     public override ActiveBoosterEffect Apply(QuizGameState state, Guid activatorId, Guid? targetId)
     {
@@ -282,42 +252,4 @@ public class ShieldHandler : BoosterHandlerBase
     {
         return "Shield is a passive booster and cannot be manually activated.";
     }
-}
-
-/// <summary>
-/// Wildcard: Allows changing answer once after submitting.
-/// </summary>
-public class WildcardHandler : BoosterHandlerBase
-{
-    public override BoosterType Type => BoosterType.Wildcard;
-    public override string Name => "Wildcard";
-    public override string Description => "Allows you to change your answer once after submitting.";
-    public override QuizPhase[] ValidPhases => [QuizPhase.Answering, QuizPhase.DictionaryAnswering];
-
-    public override string? Validate(QuizGameState state, Guid activatorId, Guid? targetId)
-    {
-        var baseError = base.Validate(state, activatorId, targetId);
-        if (baseError != null) return baseError;
-
-        // Must have already submitted an answer
-        var hasAnswered = state.CurrentRound?.Type == RoundType.DictionaryGame
-            ? state.DictionaryAnswers.TryGetValue(activatorId, out var da) && da != null
-            : state.Answers.TryGetValue(activatorId, out var a) && a != null;
-
-        if (!hasAnswered)
-            return "Must submit an answer before using Wildcard.";
-
-        return null;
-    }
-}
-
-/// <summary>
-/// Spotlight: Your answer is revealed first with dramatic effect.
-/// </summary>
-public class SpotlightHandler : BoosterHandlerBase
-{
-    public override BoosterType Type => BoosterType.Spotlight;
-    public override string Name => "Spotlight";
-    public override string Description => "Your answer is revealed first on the TV with dramatic effect.";
-    public override QuizPhase[] ValidPhases => [QuizPhase.Reveal];
 }

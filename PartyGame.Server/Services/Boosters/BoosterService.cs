@@ -24,11 +24,8 @@ public class BoosterService : IBoosterService
         BoosterType.PositionSwitch,
         BoosterType.LateLock,
         BoosterType.Mirror,
-        BoosterType.JuryDuty,
         BoosterType.ChaosMode,
-        BoosterType.Shield,
-        BoosterType.Wildcard,
-        BoosterType.Spotlight
+        BoosterType.Shield
     ];
 
     public BoosterService(IEnumerable<IBoosterHandler> handlers, ILogger<BoosterService> logger)
@@ -261,13 +258,6 @@ public class BoosterService : IBoosterService
                         effects[effect.ActivatorPlayerId].MirrorTargetId = effect.TargetPlayerId;
                     }
                     break;
-
-                case BoosterType.Wildcard:
-                    if (effects.ContainsKey(effect.ActivatorPlayerId))
-                    {
-                        effects[effect.ActivatorPlayerId].CanChangeAnswer = true;
-                    }
-                    break;
             }
         }
 
@@ -291,10 +281,6 @@ public class BoosterService : IBoosterService
 
                 case BoosterType.BackToZero:
                     ApplyBackToZero(state, effect);
-                    break;
-
-                case BoosterType.JuryDuty:
-                    ApplyJuryDuty(effect, results);
                     break;
             }
 
@@ -388,18 +374,6 @@ public class BoosterService : IBoosterService
                 targetPlayer.Score -= roundPoints;
                 state.RoundPoints[effect.TargetPlayerId.Value] = 0;
             }
-        }
-    }
-
-    private static void ApplyJuryDuty(ActiveBoosterEffect effect, List<QuestionScoreResult> results)
-    {
-        if (!effect.TargetPlayerId.HasValue)
-            return;
-
-        var targetResult = results.FirstOrDefault(r => r.PlayerId == effect.TargetPlayerId.Value);
-        if (targetResult != null && targetResult.IsCorrect)
-        {
-            targetResult.BonusPoints += 20;
         }
     }
 

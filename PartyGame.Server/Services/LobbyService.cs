@@ -21,6 +21,11 @@ public class LobbyService : ILobbyService
         "Yak", "Bison", "Meerkat", "Pelican", "Wombat", "Narwhal", "Ocelot", "Quokka"
     ];
 
+    private static readonly string[] AvailableAvatarPresets =
+    [
+        "jelly_01", "jelly_02", "jelly_03", "jelly_04", "jelly_05", "jelly_06"
+    ];
+
     private readonly IRoomStore _roomStore;
     private readonly IConnectionIndex _connectionIndex;
     private readonly IClock _clock;
@@ -89,7 +94,7 @@ public class LobbyService : ILobbyService
     }
 
     /// <inheritdoc />
-    public async Task<(bool Success, ErrorDto? Error)> JoinRoomAsync(string roomCode, Guid playerId, string displayName, string connectionId)
+    public async Task<(bool Success, ErrorDto? Error)> JoinRoomAsync(string roomCode, Guid playerId, string displayName, string connectionId, string? avatarPresetId = null)
     {
         var normalizedCode = roomCode.ToUpperInvariant();
 
@@ -102,6 +107,21 @@ public class LobbyService : ILobbyService
         if (trimmedName.Length > 20)
         {
             return (false, new ErrorDto(ErrorCodes.NameInvalid, "Display name cannot exceed 20 characters."));
+        }
+
+        // Validate avatar preset ID if provided
+        string? validatedAvatarId = null;
+        if (!string.IsNullOrWhiteSpace(avatarPresetId))
+        {
+            var trimmedAvatarId = avatarPresetId.Trim();
+            if (AvailableAvatarPresets.Contains(trimmedAvatarId))
+            {
+                validatedAvatarId = trimmedAvatarId;
+            }
+            else
+            {
+                _logger.LogWarning("Invalid avatar preset ID '{AvatarId}' provided for player {PlayerId}", trimmedAvatarId, playerId);
+            }
         }
 
         // Check if room exists
@@ -152,7 +172,9 @@ public class LobbyService : ILobbyService
         }
         else
         {
-            // New player
+            // New player - use provided avatar or assign random one
+            var selectedAvatarId = validatedAvatarId ?? AvailableAvatarPresets[Random.Shared.Next(AvailableAvatarPresets.Length)];
+            
             var player = new Player
             {
                 PlayerId = playerId,
@@ -160,12 +182,14 @@ public class LobbyService : ILobbyService
                 ConnectionId = connectionId,
                 IsConnected = true,
                 LastSeenUtc = _clock.UtcNow,
-                Score = 0
+                Score = 0,
+                AvatarKind = AvatarKind.Preset,
+                AvatarPresetId = selectedAvatarId
             };
             room.Players[playerId] = player;
 
-            _logger.LogInformation("Player {PlayerId} ({DisplayName}) joined room {RoomCode}",
-                playerId, trimmedName, normalizedCode);
+            _logger.LogInformation("Player {PlayerId} ({DisplayName}) joined room {RoomCode} with avatar {Avatar}",
+                playerId, trimmedName, normalizedCode, selectedAvatarId);
         }
 
         _roomStore.Update(room);
@@ -269,7 +293,9 @@ public class LobbyService : ILobbyService
                 LastSeenUtc = now,
                 Score = 0,
                 IsBot = true,
-                BotSkill = botSkill
+                BotSkill = botSkill,
+                AvatarKind = AvatarKind.Preset,
+                AvatarPresetId = AvailableAvatarPresets[Random.Shared.Next(AvailableAvatarPresets.Length)]
             };
 
             room.Players[playerId] = player;
@@ -402,7 +428,15 @@ public class LobbyService : ILobbyService
         }
 
         var players = room.Players.Values
-            .Select(p => new PlayerDto(p.PlayerId, p.DisplayName, p.IsConnected, p.Score))
+            .Select(p => new PlayerDto(
+                p.PlayerId, 
+                p.DisplayName, 
+                p.IsConnected, 
+                p.Score,
+                p.AvatarPresetId,
+                p.AvatarUrl,
+                p.AvatarKind
+            ))
             .OrderBy(p => p.DisplayName)
             .ToList();
 

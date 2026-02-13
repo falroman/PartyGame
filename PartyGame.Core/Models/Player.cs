@@ -44,4 +44,28 @@ public class Player
     /// Bot skill level from 0 to 100 (higher = more accurate).
     /// </summary>
     public int BotSkill { get; set; }
+
+    /// <summary>
+    /// Avatar preset ID (e.g., "jelly_01"). Null for uploaded avatars.
+    /// </summary>
+    public string? AvatarPresetId { get; set; }
+
+    /// <summary>
+    /// Avatar URL for uploaded avatars. Null for preset avatars.
+    /// </summary>
+    public string? AvatarUrl { get; set; }
+
+    /// <summary>
+    /// Type of avatar being used.
+    /// </summary>
+    public AvatarKind AvatarKind { get; set; } = AvatarKind.Preset;
+}
+
+/// <summary>
+/// Type of avatar
+/// </summary>
+public enum AvatarKind
+{
+    Preset = 0,
+    Uploaded = 1
 }

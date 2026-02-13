@@ -57,7 +57,15 @@ public class RoomsController : ControllerBase
         }
 
         var players = room.Players.Values
-            .Select(p => new PlayerDto(p.PlayerId, p.DisplayName, p.IsConnected, p.Score))
+            .Select(p => new PlayerDto(
+                p.PlayerId, 
+                p.DisplayName, 
+                p.IsConnected, 
+                p.Score,
+                p.AvatarPresetId,
+                p.AvatarUrl,
+                p.AvatarKind
+            ))
             .ToList();
 
         var response = new RoomStateDto(

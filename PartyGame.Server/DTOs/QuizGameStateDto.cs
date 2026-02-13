@@ -1,4 +1,5 @@
 using PartyGame.Core.Enums;
+using PartyGame.Core.Models;
 
 namespace PartyGame.Server.DTOs;
 
@@ -75,7 +76,10 @@ public record PlayerScoreDto(
     bool GotSpeedBonus = false,
     bool IsRankingStar = false,
     int RankingVotesReceived = 0,
-    int Rank = 0  // Rank for current question (1 = fastest correct)
+    int Rank = 0,  // Rank for current question (1 = fastest correct)
+    string? AvatarPresetId = null,
+    string? AvatarUrl = null,
+    AvatarKind AvatarKind = AvatarKind.Preset
 );
 
 /// <summary>

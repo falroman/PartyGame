@@ -24,8 +24,9 @@ public interface ILobbyService
     /// <param name="playerId">The player's unique ID.</param>
     /// <param name="displayName">The player's display name.</param>
     /// <param name="connectionId">The player's SignalR connection ID.</param>
+    /// <param name="avatarPresetId">Optional avatar preset ID selected by the player.</param>
     /// <returns>Success if join succeeded, error details otherwise.</returns>
-    Task<(bool Success, ErrorDto? Error)> JoinRoomAsync(string roomCode, Guid playerId, string displayName, string connectionId);
+    Task<(bool Success, ErrorDto? Error)> JoinRoomAsync(string roomCode, Guid playerId, string displayName, string connectionId, string? avatarPresetId = null);
 
     /// <summary>
     /// Handles a player leaving a room voluntarily.

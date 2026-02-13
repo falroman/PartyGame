@@ -50,12 +50,6 @@ public enum BoosterType
     Mirror = 6,
 
     /// <summary>
-    /// Grants +20 bonus points to a player of your choice among correct answerers.
-    /// Activate during Reveal phase when 2+ players are correct.
-    /// </summary>
-    JuryDuty = 7,
-
-    /// <summary>
     /// Shuffles answer order on all other players' phones.
     /// Activate during Question phase (before Answering).
     /// </summary>
@@ -65,17 +59,5 @@ public enum BoosterType
     /// Passive: blocks one negative booster (BackToZero/Nope/PositionSwitch).
     /// Automatically consumed when targeted.
     /// </summary>
-    Shield = 9,
-
-    /// <summary>
-    /// Allows changing your submitted answer once before reveal.
-    /// Activate during Answering phase after submitting.
-    /// </summary>
-    Wildcard = 10,
-
-    /// <summary>
-    /// Your answer is revealed first on TV with dramatic effect.
-    /// Activate during Reveal phase. No scoring impact.
-    /// </summary>
-    Spotlight = 11
+    Shield = 9
 }
