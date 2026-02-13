@@ -921,4 +921,180 @@ public class QuizGameEngineTests
     }
 
     #endregion
+
+    #region Adaptive Difficulty Tests
+
+    [Fact]
+    public void StartNewQuestion_EarlyGame_UsesRandomDifficulty()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom(2);
+        var question = CreateTestQuestion();
+        SetupQuestionBankMock(question);
+        SetupCategoryMock("Math");
+        var roundPlan = CreateSimpleRoundPlan(1);
+
+        var state = _sut.InitializeGame(room, "nl-BE", roundPlan);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
+
+        // Act - First question
+        _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
+
+        // Assert - Should NOT filter by difficulty (null passed)
+        _questionBank.Received().GetRandom(
+            "nl-BE",
+            "Math",
+            Arg.Is<int?>(d => d == null),
+            Arg.Any<IEnumerable<string>?>(),
+            Arg.Any<IEnumerable<string>?>());
+    }
+
+    [Fact]
+    public void StartNewQuestion_TightRace_SelectsHarderQuestions()
+    {
+        // Arrange
+        var (room, playerIds) = CreateTestRoom(3);
+        var question = CreateTestQuestion();
+        SetupQuestionBankMock(question);
+        SetupCategoryMock("Math");
+        var roundPlan = CreateSimpleRoundPlan(2);
+
+        var state = _sut.InitializeGame(room, "nl-BE", roundPlan);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
+        
+        // Simulate tight race: all players close together (100, 105, 110)
+        state.Scoreboard.First(p => p.PlayerId == playerIds[0]).Score = 100;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[1]).Score = 105;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[2]).Score = 110;
+        
+        // Skip first 2 questions to get past early game
+        state.QuestionNumber = 2;
+
+        // Act
+        _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
+
+        // Assert - Should request difficulty 4 (gap = 10, avg = 105, relative = 9.5% < 15%)
+        _questionBank.Received().GetRandom(
+            "nl-BE",
+            "Math",
+            4, // Hard difficulty for tight race
+            Arg.Any<IEnumerable<string>?>(),
+            Arg.Any<IEnumerable<string>?>());
+    }
+
+    [Fact]
+    public void StartNewQuestion_LargeGap_SelectsModerateThenEasierQuestions()
+    {
+        // Arrange
+        var (room, playerIds) = CreateTestRoom(3);
+        var question = CreateTestQuestion();
+        SetupQuestionBankMock(question);
+        SetupCategoryMock("Math");
+        var roundPlan = CreateSimpleRoundPlan(2);
+
+        var state = _sut.InitializeGame(room, "nl-BE", roundPlan);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
+        
+        // Simulate large gap: runaway leader (50, 100, 300)
+        state.Scoreboard.First(p => p.PlayerId == playerIds[0]).Score = 50;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[1]).Score = 100;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[2]).Score = 300;
+        
+        // Skip first 2 questions
+        state.QuestionNumber = 2;
+
+        // Act
+        _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
+
+        // Assert - Should request difficulty 1 (gap = 250, avg = 150, relative = 166% > 100%)
+        _questionBank.Received().GetRandom(
+            "nl-BE",
+            "Math",
+            1, // Easy difficulty to help catch-up
+            Arg.Any<IEnumerable<string>?>(),
+            Arg.Any<IEnumerable<string>?>());
+    }
+
+    [Fact]
+    public void StartNewQuestion_ModerateSpread_SelectsModerateDifficulty()
+    {
+        // Arrange
+        var (room, playerIds) = CreateTestRoom(3);
+        var question = CreateTestQuestion();
+        SetupQuestionBankMock(question);
+        SetupCategoryMock("Math");
+        var roundPlan = CreateSimpleRoundPlan(2);
+
+        var state = _sut.InitializeGame(room, "nl-BE", roundPlan);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
+        
+        // Simulate moderate spread (100, 150, 200)
+        state.Scoreboard.First(p => p.PlayerId == playerIds[0]).Score = 100;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[1]).Score = 150;
+        state.Scoreboard.First(p => p.PlayerId == playerIds[2]).Score = 200;
+        
+        state.QuestionNumber = 2;
+
+        // Act
+        _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
+
+        // Assert - Should request difficulty 2-3 (gap = 100, avg = 150, relative = 66%)
+        _questionBank.Received().GetRandom(
+            "nl-BE",
+            "Math",
+            2, // Moderate difficulty
+            Arg.Any<IEnumerable<string>?>(),
+            Arg.Any<IEnumerable<string>?>());
+    }
+
+    [Fact]
+    public void StartNewQuestion_FallbackWhenNoDifficultyMatch()
+    {
+        // Arrange
+        var (room, _) = CreateTestRoom(2);
+        var question = CreateTestQuestion();
+        
+        // First call with difficulty returns null, second call without difficulty returns question
+        _questionBank.GetRandom(
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Is<int?>(d => d != null),
+            Arg.Any<IEnumerable<string>?>(),
+            Arg.Any<IEnumerable<string>?>())
+            .Returns((QuizQuestion?)null);
+        
+        _questionBank.GetRandom(
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Is<int?>(d => d == null),
+            Arg.Any<IEnumerable<string>?>(),
+            Arg.Any<IEnumerable<string>?>())
+            .Returns(question);
+        
+        SetupCategoryMock("Math");
+        var roundPlan = CreateSimpleRoundPlan(1);
+
+        var state = _sut.InitializeGame(room, "nl-BE", roundPlan);
+        _sut.StartNewRound(state, 30, DateTime.UtcNow);
+        _sut.SetRoundCategory(state, "Math");
+        state.QuestionNumber = 2; // Past early game
+
+        // Act
+        var result = _sut.StartNewQuestion(state, 15, DateTime.UtcNow);
+
+        // Assert - Should fallback and get a question without difficulty filter
+        result.Should().NotBeNull();
+        _questionBank.Received(2).GetRandom(
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<int?>(),
+            Arg.Any<IEnumerable<string>?>(),
+            Arg.Any<IEnumerable<string>?>());
+    }
+
+    #endregion
 }

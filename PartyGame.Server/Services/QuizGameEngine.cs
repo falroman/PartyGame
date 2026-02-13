@@ -203,11 +203,24 @@ public class QuizGameEngine : IQuizGameEngine
         ArgumentNullException.ThrowIfNull(state);
 
         string? categoryFilter = state.CurrentRound?.Category;
+        
+        // Calculate adaptive difficulty based on score distribution
+        int? targetDifficulty = CalculateAdaptiveDifficulty(state);
 
         var question = _questionBank.GetRandom(
             locale: state.Locale,
             category: categoryFilter,
+            difficulty: targetDifficulty,
             excludeIds: state.UsedQuestionIds);
+
+        if (question == null)
+        {
+            // If no question found with target difficulty, try without difficulty filter
+            question = _questionBank.GetRandom(
+                locale: state.Locale,
+                category: categoryFilter,
+                excludeIds: state.UsedQuestionIds);
+        }
 
         if (question == null)
             return null;
@@ -233,6 +246,57 @@ public class QuizGameEngine : IQuizGameEngine
         ResetScoreboardStatus(state);
 
         return state;
+    }
+
+    /// <summary>
+    /// Calculates adaptive difficulty based on score distribution.
+    /// Returns difficulty level 1-5, or null if early game (let it be random).
+    /// 
+    /// Strategy:
+    /// - Small score gap (tight race) ? harder questions to create differentiation
+    /// - Large score gap (runaway leader) ? easier questions to give catch-up opportunity
+    /// - Early game (Q1-2) ? random difficulty (no pattern yet)
+    /// </summary>
+    private int? CalculateAdaptiveDifficulty(QuizGameState state)
+    {
+        // Early game: use random difficulty for first 2 questions
+        if (state.QuestionNumber < 2)
+            return null;
+
+        // Need at least 2 players to calculate spread
+        if (state.Scoreboard.Count < 2)
+            return 2; // Default to medium
+
+        var scores = state.Scoreboard.Select(p => p.Score).OrderBy(s => s).ToList();
+        var minScore = scores.First();
+        var maxScore = scores.Last();
+        var scoreGap = maxScore - minScore;
+        var averageScore = scores.Average();
+
+        // Calculate relative gap as percentage of average score
+        // (avoids issue where late-game has naturally higher absolute gaps)
+        double relativeGap = averageScore > 0 ? (double)scoreGap / averageScore : 0;
+
+        // Difficulty mapping based on relative gap:
+        // - Very tight race (< 15% gap) ? Difficulty 4 (harder to create separation)
+        // - Tight race (15-30% gap) ? Difficulty 3 (moderate-hard)
+        // - Normal spread (30-60% gap) ? Difficulty 2 (moderate)
+        // - Large spread (60-100% gap) ? Difficulty 2 (moderate, give catch-up chance)
+        // - Huge spread (> 100% gap) ? Difficulty 1 (easy, strong catch-up)
+
+        if (relativeGap < 0.15)
+            return 4; // Very tight race - make it harder
+        else if (relativeGap < 0.30)
+            return 3; // Tight race - moderate-hard
+        else if (relativeGap < 0.60)
+            return 2; // Normal spread - moderate
+        else if (relativeGap < 1.00)
+            return 2; // Large spread - keep moderate (not too easy)
+        else
+            return 1; // Huge spread - easier to help underdogs
+
+        // Note: We rarely give difficulty 5 to avoid frustration
+        // Difficulty 4 is the hardest we go, and only in very competitive games
     }
 
     /// <inheritdoc />

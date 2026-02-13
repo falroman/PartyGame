@@ -1498,6 +1498,31 @@
             return div.innerHTML;
         }
 
+        function getAvatarSrc(player) {
+            // AvatarKind: 0 = Preset, 1 = Uploaded
+            if (player.avatarKind === 0 && player.avatarPresetId) {
+                // Preset avatar - use PNG from assets
+                return `/assets/avatars/jelly/${player.avatarPresetId}.png`;
+            } else if (player.avatarKind === 1 && player.avatarUrl) {
+                // Uploaded avatar - use URL
+                return player.avatarUrl;
+            } else {
+                // Fallback - use colored circle with initials (data URI)
+                const initials = GameUtils.getInitials(player.displayName);
+                const colors = [
+                    '#e74c3c', '#3498db', '#2ecc71', '#f39c12', 
+                    '#9b59b6', '#1abc9c', '#e67e22', '#16a085'
+                ];
+                const color = colors[Math.abs(hashCode(player.playerId)) % colors.length];
+                
+                return `data:image/svg+xml,${encodeURIComponent(`
+                    <svg width="96" height="96" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="48" cy="48" r="48" fill="${color}"/>
+                        <text x="48" y="64" font-size="36" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">${initials}</text>
+                    </svg>
+                `)}`;
+            }
+        }
         init();
     </script>
 </body>

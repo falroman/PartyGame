@@ -382,7 +382,7 @@ class ScoreboardAnimations {
         // AvatarKind: 0 = Preset, 1 = Uploaded
         if (player.avatarKind === 0 && player.avatarPresetId) {
             // Preset avatar - use SVG from assets
-            return `/assets/avatars/jelly/${player.avatarPresetId}.svg`;
+            return `/assets/avatars/jelly/${player.avatarPresetId}.png`;
         } else if (player.avatarKind === 1 && player.avatarUrl) {
             // Uploaded avatar - use URL
             return player.avatarUrl;

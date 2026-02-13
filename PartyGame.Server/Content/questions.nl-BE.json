@@ -1,7 +1,7 @@
 ﻿{
     "schemaVersion":  1,
     "packId":  "general-knowledge-nl-be",
-    "title":  "Algemene Kennis - Belgi \u0026 Wereld",
+    "title":  "Algemene Kennis - België Wereld",
     "locale":  "nl-BE",
     "tags":  [
                  "general",
@@ -33,7 +33,7 @@
         }
       ],
       "correctOptionKey": "B",
-      "explanation": "Brussel is de hoofdstad van Belgi en tevens de zetel van de Europese Unie.",
+      "explanation": "Brussel is de hoofdstad van Belgie en tevens de zetel van de Europese Unie.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -48,7 +48,7 @@
       "id": "geo-002",
       "category": "Geografie",
       "difficulty": 2,
-      "question": "Hoeveel provincies heeft Belgi?",
+      "question": "Hoeveel provincies heeft Belgie?",
       "options": [
         {
           "key": "A",
@@ -68,7 +68,7 @@
         }
       ],
       "correctOptionKey": "C",
-      "explanation": "Belgi heeft 10 provincies: 5 in Vlaanderen en 5 in Walloni.",
+      "explanation": "Belgie heeft 10 provincies: 5 in Vlaanderen en 5 in Wallonie.",
       "shuffleOptions": true,
       "tags": [
         "belgium",
@@ -423,7 +423,7 @@
     },
     {
       "id": "food-001",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 1,
       "question": "Welk gerecht wordt traditioneel in Belgi met frieten gegeten?",
       "options": [
@@ -794,7 +794,7 @@
       "id": "classicquiz-economie-0008",
       "category": "Economie",
       "difficulty": 2,
-      "question": "In welk jaar werd de euro de officiÃ«le munteenheid van Nederland?",
+      "question": "In welk jaar werd de euro de officiële munteenheid van Nederland?",
       "options": [
         {
           "key": "A",
@@ -984,7 +984,7 @@
       "id": "classicquiz-economie-0014",
       "category": "Economie",
       "difficulty": 2,
-      "question": "Wat is een belangrijke functie van financiÃ«le markten?",
+      "question": "Wat is een belangrijke functie van financiële markten?",
       "options": [
         {
           "key": "A",
@@ -992,7 +992,7 @@
         },
         {
           "key": "B",
-          "text": "Het vergemakkelijken van handel in financiÃ«le activa"
+          "text": "Het vergemakkelijken van handel in financiële activa"
         },
         {
           "key": "C",
@@ -1004,7 +1004,7 @@
         }
       ],
       "correctOptionKey": "B",
-      "explanation": "Het juiste antwoord is: Het vergemakkelijken van handel in financiÃ«le activa.",
+      "explanation": "Het juiste antwoord is: Het vergemakkelijken van handel in financiële activa.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -1400,7 +1400,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0001",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Hoeveel hamburgers verkoopt Mc Donalds per seconde?",
       "options": [
@@ -1438,7 +1438,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0002",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Onder welke hoek moet je een fles champagne openmaken zonder dat het er uit spuit?",
       "options": [
@@ -1476,7 +1476,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0003",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Welk land produceert na Nederland de meeste drop?",
       "options": [
@@ -1514,7 +1514,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0005",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Waarvan is \"hummus\" gemaakt?",
       "options": [
@@ -1552,7 +1552,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0006",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Uit welk land komt de cocktail Mojito?",
       "options": [
@@ -1590,7 +1590,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0007",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "In de Japanse keuken vormt rauwe vis ofwel sashimi een typerend gerecht, met welke vis wordt Fugu bedoeld?",
       "options": [
@@ -1628,7 +1628,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0010",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Wat is de heetste peper ter wereld?",
       "options": [
@@ -1666,7 +1666,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0012",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Uit welk land is het gerecht ravioli afkomstig?",
       "options": [
@@ -1704,7 +1704,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0014",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Bouillabaisse, is een typisch gerecht uit Marseille (vissoep), uit hoeveel soorten vis bestaat deze soep?",
       "options": [
@@ -1742,7 +1742,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0015",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Wat zijn de voordelen van het toevoegen van groente en fruit in de voeding?",
       "options": [
@@ -1780,7 +1780,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0016",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Hoeveel trappistenbrouwerijen zijn er wereldwijd en hoeveel daarvan zijn gevestigd in NL?",
       "options": [
@@ -1818,7 +1818,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0017",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Wat is het minmum alcoholgehalte bij likeur?",
       "options": [
@@ -1856,7 +1856,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0018",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Een stamppot gemaakt van aardappelen, sperziebonen en witte bonen noemen we?",
       "options": [
@@ -1894,9 +1894,9 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0019",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
-      "question": "Vergeten ingrediÃ«nt. Wat zijn schorseneren",
+      "question": "Vergeten ingrediënt. Wat zijn schorseneren",
       "options": [
         {
           "key": "A",
@@ -1932,7 +1932,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0020",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Overschenken van wijn in een glazen karaf wordt gedaan om het bezinksel van de wijn te scheiden of om bij oude wijn lucht bij de wijn te laten komen. De juiste term?",
       "options": [
@@ -1970,7 +1970,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0021",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Hoe wordt het grillgerecht genoemd dat bestaat uit friet bedekt met shoarma en daar overheen een laag kaas?",
       "options": [
@@ -2008,7 +2008,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0022",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Fles grootte champagne, normale fles heeft een inhoud van 0,75 liter, hoeveel liter bevat een zgn. Nebuchadnezar.",
       "options": [
@@ -2046,7 +2046,7 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0023",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
       "question": "Hoe wordt geroosterd brood met ham en kaas ertussen genoemd?",
       "options": [
@@ -2084,9 +2084,9 @@
     },
     {
       "id": "classicquiz-eten-en-drinken-0024",
-      "category": "Eten \u0026 Drinken",
+      "category": "Eten & Drinken",
       "difficulty": 2,
-      "question": "Wat is het hoofdingrediÃ«nt van bier?",
+      "question": "Wat is het hoofdingrediënt van bier?",
       "options": [
         {
           "key": "A",
@@ -2212,11 +2212,11 @@
         },
         {
           "key": "C",
-          "text": "ItaliÃ«"
+          "text": "Italië"
         },
         {
           "key": "D",
-          "text": "KroatiÃ«"
+          "text": "Kroatië"
         }
       ],
       "correctOptionKey": "A",
@@ -3188,7 +3188,7 @@
       "id": "classicquiz-aardrijkskunde-0013",
       "category": "Geografie",
       "difficulty": 2,
-      "question": "Zoals je weet ligt SloveniÃ« gekneld tussen Oostenrijk, ItaliÃ«, KroatiÃ« en Hongarije. Maar ken je ook de hoofdstad van SloveniÃ«?",
+      "question": "Zoals je weet ligt Slovenië gekneld tussen Oostenrijk, Italië, Kroatië en Hongarije. Maar ken je ook de hoofdstad van Slovenië?",
       "options": [
         {
           "key": "A",
@@ -3374,44 +3374,7 @@
         "url": "https://classicquiz.com/nl/quizvragen/aardrijkskunde/"
       }
     },
-    {
-      "id": "classicquiz-aardrijkskunde-0020",
-      "category": "Geografie",
-      "difficulty": 2,
-      "question": "Aan hoeveel meren grenst de plaats Almere?",
-      "options": [
-        {
-          "key": "A",
-          "text": "2"
-        },
-        {
-          "key": "B",
-          "text": "1"
-        },
-        {
-          "key": "C",
-          "text": "4"
-        },
-        {
-          "key": "D",
-          "text": "5"
-        }
-      ],
-      "correctOptionKey": "D",
-      "explanation": "Het juiste antwoord is: 5.",
-      "timeLimitSeconds": 15,
-      "shuffleOptions": true,
-      "tags": [
-        "classicquiz",
-        "aardrijkskunde",
-        "meerkeuze"
-      ],
-      "source": {
-        "type": "import",
-        "reference": "aardrijkskunde.html",
-        "url": "https://classicquiz.com/nl/quizvragen/aardrijkskunde/"
-      }
-    },
+    
     {
       "id": "classicquiz-aardrijkskunde-0021",
       "category": "Geografie",
@@ -3458,23 +3421,23 @@
       "options": [
         {
           "key": "A",
-          "text": "-15Â°C"
+          "text": "-15°C"
         },
         {
           "key": "B",
-          "text": "-30Â°C"
+          "text": "-30°C"
         },
         {
           "key": "C",
-          "text": "-45Â°C"
+          "text": "-45°C"
         },
         {
           "key": "D",
-          "text": "-60Â°C"
+          "text": "-60°C"
         }
       ],
       "correctOptionKey": "B",
-      "explanation": "Het juiste antwoord is: -30Â°C.",
+      "explanation": "Het juiste antwoord is: -30°C.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -3500,7 +3463,7 @@
         },
         {
           "key": "B",
-          "text": "IndonesiÃ«"
+          "text": "Indonesie"
         },
         {
           "key": "C",
@@ -3530,7 +3493,7 @@
       "id": "classicquiz-aardrijkskunde-0024",
       "category": "Geografie",
       "difficulty": 2,
-      "question": "Welke bergketen scheidt Europa en AziÃ«?",
+      "question": "Welke bergketen scheidt Europa en Azie?",
       "options": [
         {
           "key": "A",
@@ -3542,7 +3505,7 @@
         },
         {
           "key": "C",
-          "text": "De PyreneeÃ«n"
+          "text": "De Pyreneeën"
         },
         {
           "key": "D",
@@ -3736,11 +3699,11 @@
         },
         {
           "key": "D",
-          "text": "MoldaviÃ«"
+          "text": "Moldavië"
         }
       ],
       "correctOptionKey": "D",
-      "explanation": "Het juiste antwoord is: MoldaviÃ«.",
+      "explanation": "Het juiste antwoord is: Moldavië.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -4834,7 +4797,7 @@
         },
         {
           "key": "C",
-          "text": "Het ZoniÃ«nwoud"
+          "text": "Het Zoniënwoud"
         },
         {
           "key": "D",
@@ -5050,7 +5013,7 @@
       "id": "classicquiz-belgie-0021",
       "category": "België",
       "difficulty": 2,
-      "question": "Welk ingrediÃ«nt zorgt voor de binding in de vulling van een garnalenkroket?",
+      "question": "Welk ingrediënt zorgt voor de binding in de vulling van een garnalenkroket?",
       "options": [
         {
           "key": "A",
@@ -6168,7 +6131,7 @@
         },
         {
           "key": "D",
-          "text": "CalorieÃ«n"
+          "text": "Calorieën"
         }
       ],
       "correctOptionKey": "B",
@@ -6498,7 +6461,7 @@
       "options": [
         {
           "key": "A",
-          "text": "BraziliÃ«"
+          "text": "Brazilië"
         },
         {
           "key": "B",
@@ -6730,11 +6693,11 @@
         },
         {
           "key": "B",
-          "text": "SloveniÃ«"
+          "text": "Slovenië"
         },
         {
           "key": "C",
-          "text": "ItaliÃ«"
+          "text": "Italië"
         },
         {
           "key": "D",
@@ -6802,11 +6765,11 @@
       "options": [
         {
           "key": "A",
-          "text": "ArgentiniÃ«"
+          "text": "Argentinië"
         },
         {
           "key": "B",
-          "text": "ItaliÃ«"
+          "text": "Italië"
         },
         {
           "key": "C",
@@ -6818,7 +6781,7 @@
         }
       ],
       "correctOptionKey": "A",
-      "explanation": "Het juiste antwoord is: ArgentiniÃ«.",
+      "explanation": "Het juiste antwoord is: Argentinië.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -7338,7 +7301,7 @@
         },
         {
           "key": "B",
-          "text": "ArgentiniÃ«"
+          "text": "Argentinië"
         },
         {
           "key": "C",
@@ -7350,7 +7313,7 @@
         }
       ],
       "correctOptionKey": "B",
-      "explanation": "Het juiste antwoord is: ArgentiniÃ«.",
+      "explanation": "Het juiste antwoord is: Argentinië.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -7406,7 +7369,7 @@
       "id": "classicquiz-cultuur-0031",
       "category": "Cultuur",
       "difficulty": 2,
-      "question": "Wat is de naam van het traditionele vechtsportdansen uit BraziliÃ«?",
+      "question": "Wat is de naam van het traditionele vechtsportdansen uit Brazilië?",
       "options": [
         {
           "key": "A",
@@ -7562,7 +7525,7 @@
       "options": [
         {
           "key": "A",
-          "text": "ItaliÃ«"
+          "text": "Italië"
         },
         {
           "key": "B",
@@ -8166,7 +8129,7 @@
       "id": "classicquiz-dieren-0015",
       "category": "Dieren",
       "difficulty": 2,
-      "question": "Welk dier wordt geassocieerd met AustraliÃ« en heeft een buidel?",
+      "question": "Welk dier wordt geassocieerd met Australië en heeft een buidel?",
       "options": [
         {
           "key": "A",
@@ -8394,7 +8357,7 @@
       "id": "classicquiz-dieren-0023",
       "category": "Dieren",
       "difficulty": 2,
-      "question": "Wat is het nationale dier van AustraliÃ«?",
+      "question": "Wat is het nationale dier van Australië?",
       "options": [
         {
           "key": "A",
@@ -8862,7 +8825,7 @@
         },
         {
           "key": "C",
-          "text": "AriÃ«l"
+          "text": "Ariël"
         },
         {
           "key": "D",
@@ -8870,7 +8833,7 @@
         }
       ],
       "correctOptionKey": "C",
-      "explanation": "Het juiste antwoord is: AriÃ«l.",
+      "explanation": "Het juiste antwoord is: Ariël.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -9304,7 +9267,7 @@
       "options": [
         {
           "key": "A",
-          "text": "IndiÃ«"
+          "text": "Indië"
         },
         {
           "key": "B",
@@ -9316,11 +9279,11 @@
         },
         {
           "key": "D",
-          "text": "AustraliÃ«"
+          "text": "Australië"
         }
       ],
       "correctOptionKey": "A",
-      "explanation": "Het juiste antwoord is IndiÃ«.",
+      "explanation": "Het juiste antwoord is Indië.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -9456,7 +9419,7 @@
         },
         {
           "key": "C",
-          "text": "Een culturele renaissance in AziÃ«"
+          "text": "Een culturele renaissance in Azië"
         },
         {
           "key": "D",
@@ -10108,7 +10071,7 @@
         },
         {
           "key": "D",
-          "text": "Sarcastische symfonieÃ«n"
+          "text": "Sarcastische symfonieën"
         }
       ],
       "correctOptionKey": "A",
@@ -11064,7 +11027,7 @@
       "id": "cq-harry-potter-0013",
       "category": "Harry Potter",
       "difficulty": 2,
-      "question": "Welk ingrediÃ«nt is cruciaal voor de Wisseldrank, naast de haren van de persoon in wie je wilt veranderen?",
+      "question": "Welk ingrediënt is cruciaal voor de Wisseldrank, naast de haren van de persoon in wie je wilt veranderen?",
       "options": [
         {
           "key": "A",
@@ -11100,7 +11063,7 @@
       "id": "cq-harry-potter-0014",
       "category": "Harry Potter",
       "difficulty": 2,
-      "question": "Welk specifiek ingrediÃ«nt gebruikte professor Anderling (McGonagall) om haar katvorm aan te nemen als Animagus, volgens Pottermore?",
+      "question": "Welk specifiek ingrediënt gebruikte professor Anderling (McGonagall) om haar katvorm aan te nemen als Animagus, volgens Pottermore?",
       "options": [
         {
           "key": "A",
@@ -11144,7 +11107,7 @@
         },
         {
           "key": "B",
-          "text": "Kwik \u0026 Kladderiek"
+          "text": "Kwik & Kladderiek"
         },
         {
           "key": "C",
@@ -11172,7 +11135,7 @@
       "id": "cq-harry-potter-0016",
       "category": "Harry Potter",
       "difficulty": 2,
-      "question": "Welke spreuk gebruikte Hermelien om de Dooddoeners te verwarren in het Departement van MysteriÃ«n, waardoor ze dachten dat er meer mensen waren?",
+      "question": "Welke spreuk gebruikte Hermelien om de Dooddoeners te verwarren in het Departement van Mysteriën, waardoor ze dachten dat er meer mensen waren?",
       "options": [
         {
           "key": "A",
@@ -11332,7 +11295,7 @@
         },
         {
           "key": "D",
-          "text": "Braakbals \u0026 Babbelaars"
+          "text": "Braakbals & Babbelaars"
         }
       ],
       "correctOptionKey": "B",
@@ -12933,7 +12896,7 @@
       "id": "cq-inschattingsvragen-0034",
       "category": "Inschattingsvragen",
       "difficulty": 3,
-      "question": "Hoeveel officiÃ«le talen kent Zwitserland?",
+      "question": "Hoeveel officiële talen kent Zwitserland?",
       "options": [
         {
           "key": "A",
@@ -13155,7 +13118,7 @@
       "id": "cq-inschattingsvragen-0040",
       "category": "Inschattingsvragen",
       "difficulty": 3,
-      "question": "Hoeveel gram weegt een officiÃ«le basketbal voor heren?",
+      "question": "Hoeveel gram weegt een officiële basketbal voor heren?",
       "options": [
         {
           "key": "A",
@@ -13568,11 +13531,11 @@
         },
         {
           "key": "D",
-          "text": "AziÃ«"
+          "text": "Azië"
         }
       ],
       "correctOptionKey": "D",
-      "explanation": "Het juiste antwoord is AziÃ«.",
+      "explanation": "Het juiste antwoord is Azië.",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -13624,7 +13587,7 @@
       "id": "cq-kinderen-0013",
       "category": "Kinderen",
       "difficulty": 2,
-      "question": "Welke taal wordt gesproken in BraziliÃ«?",
+      "question": "Welke taal wordt gesproken in Brazilië?",
       "options": [
         {
           "key": "A",
@@ -13920,11 +13883,11 @@
         },
         {
           "key": "B",
-          "text": "BraziliÃ«"
+          "text": "Brazilië"
         },
         {
           "key": "C",
-          "text": "IndonesiÃ«"
+          "text": "Indonesië"
         },
         {
           "key": "D",
@@ -14896,11 +14859,11 @@
         },
         {
           "key": "C",
-          "text": "Emily BrontÃ«"
+          "text": "Emily Brontë"
         },
         {
           "key": "D",
-          "text": "Charlotte BrontÃ«"
+          "text": "Charlotte Brontë"
         }
       ],
       "correctOptionKey": "A",
@@ -16976,7 +16939,7 @@
       "options": [
         {
           "key": "A",
-          "text": "De CitroÃ«n 2CV (lelijke eend)"
+          "text": "De Citroën 2CV (lelijke eend)"
         },
         {
           "key": "B",
@@ -18588,23 +18551,23 @@
       "options": [
         {
           "key": "A",
-          "text": "Marc Randolph \u0026 Reed Hastings"
+          "text": "Marc Randolph & Reed Hastings"
         },
         {
           "key": "B",
-          "text": "Larry PageÂ \u0026Â Sergey Brin"
+          "text": "Larry PageÂ &Â Sergey Brin"
         },
         {
           "key": "C",
-          "text": "Jeffrey Bezos \u0026 Steve WoÅºniak"
+          "text": "Jeffrey Bezos & Steve WoÅºniak"
         },
         {
           "key": "D",
-          "text": "Reid Hoffman \u0026 Ryan Roslansky"
+          "text": "Reid Hoffman & Ryan Roslansky"
         }
       ],
       "correctOptionKey": "A",
-      "explanation": "Het juiste antwoord is: Marc Randolph \u0026 Reed Hastings. ",
+      "explanation": "Het juiste antwoord is: Marc Randolph & Reed Hastings. ",
       "timeLimitSeconds": 15,
       "shuffleOptions": true,
       "tags": [
@@ -19086,7 +19049,7 @@
         },
         {
           "key": "B",
-          "text": "TsjechiÃ«"
+          "text": "Tsjechië"
         },
         {
           "key": "C",
@@ -19496,7 +19459,7 @@
       "id": "classicquiz-wiskunde-0006",
       "category": "Wiskunde",
       "difficulty": 2,
-      "question": "Hoeveel zijden heeft een dodecaÃ«der?",
+      "question": "Hoeveel zijden heeft een dodecaëder?",
       "options": [
         {
           "key": "A",
@@ -20180,7 +20143,7 @@
       "id": "classicquiz-sport-0002",
       "category": "Sport",
       "difficulty": 2,
-      "question": "Hoelang duurt een officiÃ«le voetbalwedstrijd zonder verlenging?",
+      "question": "Hoelang duurt een officiële voetbalwedstrijd zonder verlenging?",
       "options": [
         {
           "key": "A",
@@ -20840,7 +20803,7 @@
         },
         {
           "key": "C",
-          "text": "ItaliÃ«"
+          "text": "Italië"
         },
         {
           "key": "D",
@@ -24263,20 +24226,7 @@
       "shuffleOptions": true,
       "tags": [ "technologie", "software" ],
       "source": { "type": "original" }
-    },
-    "Hier",
-    "komen",
-    "de",
-    "resterende",
-    40,
-    "vragen",
-    "volledig",
-    "in",
-    "hetzelfde",
-    "JSON-formaat",
-    :,
-
-    [
+    }, 
       {
         "id": "hist-014",
         "category": "Geschiedenis",
@@ -24857,41 +24807,7 @@
         "tags": [ "eten", "wijn", "italië" ],
         "source": { "type": "original" }
       },
-      "Perfect",
-      "—",
-      "hieronder",
-      "krijg",
-      "je",
-      "per",
-      "categorie",
-      5,
-      "extra",
-      "moeilijke",
-      "vragen",
-      "(difficulty",
-      "4–5)",
-      "met",
-      "valkuilopties",
-      "en",
-      "nuanceverschillen.",
-      "Allemaal",
-      "in",
-      "hetzelfde",
-      "JSON-formaat.",
-
-      "Dit",
-      "zijn",
-      12,
-      "categorieën",
-      "×",
-      5,
-      "vragen",
-      "=",
-      60,
-      "moeilijke",
-      "vragen.",
-
-      [
+       
         {
           "id": "hist-017",
           "category": "Geschiedenis",
@@ -27044,6 +26960,876 @@
           "explanation": "'Flowers and Trees' (1932) was de eerste volledig in Technicolor geproduceerde Disney-cartoon.",
           "shuffleOptions": true,
           "tags": [ "disney", "filmgeschiedenis" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-001",
+          "category": "Literatuur",
+          "difficulty": 2,
+          "question": "Hoe heet de school waar Harry Potter tovenaarsopleiding volgt?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Beauxbatons"
+            },
+            {
+              "key": "B",
+              "text": "Durmstrang"
+            },
+            {
+              "key": "C",
+              "text": "Hogwarts"
+            },
+            {
+              "key": "D",
+              "text": "Ilvermorny"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "Hogwarts School of Witchcraft and Wizardry is de Britse toverschool waar Harry en zijn vrienden studeren.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "literatuur" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-002",
+          "category": "Film",
+          "difficulty": 2,
+          "question": "Tot welk huis behoort Harry Potter?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Slytherin"
+            },
+            {
+              "key": "B",
+              "text": "Gryffindor"
+            },
+            {
+              "key": "C",
+              "text": "Ravenclaw"
+            },
+            {
+              "key": "D",
+              "text": "Hufflepuff"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Harry wordt door de Sorteerhoed ingedeeld bij Gryffindor, net als Ron en Hermelien.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "huizen" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-003",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wat is de naam van Harry’s uil?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Errol"
+            },
+            {
+              "key": "B",
+              "text": "Hedwig"
+            },
+            {
+              "key": "C",
+              "text": "Crookshanks"
+            },
+            {
+              "key": "D",
+              "text": "Scabbers"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Hedwig is Harry’s sneeuwuil. Ze speelt een belangrijke rol in de eerste boeken.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "personages" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-004",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wie is de halfreus die als jachtopziener op Hogwarts werkt?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Sirius Black"
+            },
+            {
+              "key": "B",
+              "text": "Remus Lupin"
+            },
+            {
+              "key": "C",
+              "text": "Rubeus Hagrid"
+            },
+            {
+              "key": "D",
+              "text": "Horace Slughorn"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "Rubeus Hagrid is de jachtopziener van Hogwarts en later leraar Verzorging van Fabeldieren.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-005",
+          "category": "Film",
+          "difficulty": 3,
+          "question": "Welke spreuk wordt gebruikt om iemand te ontwapenen?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Expelliarmus"
+            },
+            {
+              "key": "B",
+              "text": "Expecto Patronum"
+            },
+            {
+              "key": "C",
+              "text": "Avada Kedavra"
+            },
+            {
+              "key": "D",
+              "text": "Crucio"
+            }
+          ],
+          "correctOptionKey": "A",
+          "explanation": "Expelliarmus is de ontwapeningsspreuk en wordt vaak door Harry gebruikt in duels.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "spreuken" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-006",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wie is de auteur van de Harry Potter-boeken?",
+          "options": [
+            {
+              "key": "A",
+              "text": "J.R.R. Tolkien"
+            },
+            {
+              "key": "B",
+              "text": "Suzanne Collins"
+            },
+            {
+              "key": "C",
+              "text": "J.K. Rowling"
+            },
+            {
+              "key": "D",
+              "text": "Philip Pullman"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "J.K. Rowling publiceerde het eerste boek in 1997. De reeks groeide uit tot een wereldwijd fenomeen.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "auteurs" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-007",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wat is de naam van de tovenaarsgevangenis?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Azkaban"
+            },
+            {
+              "key": "B",
+              "text": "Nurmengard"
+            },
+            {
+              "key": "C",
+              "text": "Gringotts"
+            },
+            {
+              "key": "D",
+              "text": "Durmstrang"
+            }
+          ],
+          "correctOptionKey": "A",
+          "explanation": "Azkaban is de beruchte gevangenis bewaakt door Dementors.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-008",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Hoe heet de sport die op bezems wordt gespeeld?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Bludgerball"
+            },
+            {
+              "key": "B",
+              "text": "Quidditch"
+            },
+            {
+              "key": "C",
+              "text": "Gobstone"
+            },
+            {
+              "key": "D",
+              "text": "Wizard Chess"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Quidditch wordt gespeeld met drie soorten ballen en zeven spelers per team.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-009",
+          "category": "Film",
+          "difficulty": 3,
+          "question": "Welke acteur vertolkte Severus Sneep in de films?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Ralph Fiennes"
+            },
+            {
+              "key": "B",
+              "text": "Alan Rickman"
+            },
+            {
+              "key": "C",
+              "text": "Gary Oldman"
+            },
+            {
+              "key": "D",
+              "text": "Jason Isaacs"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Alan Rickman speelde Severus Snape in alle acht films.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "film" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-010",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wat is de naam van Voldemorts slang?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Nagini"
+            },
+            {
+              "key": "B",
+              "text": "Aragog"
+            },
+            {
+              "key": "C",
+              "text": "Fang"
+            },
+            {
+              "key": "D",
+              "text": "Norberta"
+            }
+          ],
+          "correctOptionKey": "A",
+          "explanation": "Nagini is een van Voldemorts horcruxes en speelt een belangrijke rol in het laatste boek.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-011",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wat is het beroep van Harry’s ouders vóór hun dood?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Aurors"
+            },
+            {
+              "key": "B",
+              "text": "Professoren op Hogwarts"
+            },
+            {
+              "key": "C",
+              "text": "Leden van het Ministerie van Toverkunst"
+            },
+            {
+              "key": "D",
+              "text": "Dooddoeners"
+            }
+          ],
+          "correctOptionKey": "A",
+          "explanation": "James en Lily Potter waren lid van de Orde van de Feniks en werkten als Aurors in de strijd tegen Voldemort.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "personages" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-012",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wat is de echte naam van Voldemort?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Tom Marvolo Riddle"
+            },
+            {
+              "key": "B",
+              "text": "Tom Morfin Gaunt"
+            },
+            {
+              "key": "C",
+              "text": "Marvolo Gaunt"
+            },
+            {
+              "key": "D",
+              "text": "Thomas Riddle Jr."
+            }
+          ],
+          "correctOptionKey": "A",
+          "explanation": "Tom Marvolo Riddle herschikte de letters van zijn naam tot 'I am Lord Voldemort'.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "voldemort" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-013",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wie wordt in 'De Gevangene van Azkaban' leraar Verweer tegen de Zwarte Kunsten?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Severus Sneep"
+            },
+            {
+              "key": "B",
+              "text": "Dolores Umbridge"
+            },
+            {
+              "key": "C",
+              "text": "Remus Lupin"
+            },
+            {
+              "key": "D",
+              "text": "Alastor Moody"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "Remus Lupin wordt leraar in Harry’s derde jaar. Hij blijkt later een weerwolf te zijn.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "hogwarts" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-014",
+          "category": "Film",
+          "difficulty": 3,
+          "question": "Wie vertolkt Voldemort in de laatste films?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Alan Rickman"
+            },
+            {
+              "key": "B",
+              "text": "Ralph Fiennes"
+            },
+            {
+              "key": "C",
+              "text": "Helena Bonham Carter"
+            },
+            {
+              "key": "D",
+              "text": "David Thewlis"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Ralph Fiennes speelde Voldemort in de latere Harry Potter-films.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "film" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-015",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wat is de naam van de huiself die de familie Malfidus dient?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Kreacher"
+            },
+            {
+              "key": "B",
+              "text": "Winky"
+            },
+            {
+              "key": "C",
+              "text": "Dobby"
+            },
+            {
+              "key": "D",
+              "text": "Hokey"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "Dobby is aanvankelijk de huiself van de familie Malfidus en helpt later Harry.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-016",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Welke voorwerp kan herinneringen tonen wanneer ze erin worden geplaatst?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Een Tijdverdrijver"
+            },
+            {
+              "key": "B",
+              "text": "Een Denkbekken (Pensieve)"
+            },
+            {
+              "key": "C",
+              "text": "Een Spiegel van Neregeb"
+            },
+            {
+              "key": "D",
+              "text": "Een Sneakoscoop"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Het Denkbekken (Pensieve) laat toe om herinneringen opnieuw te beleven.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "magische-objecten" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-017",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Welke draak moet Harry verslaan tijdens het Toverschool Toernooi?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Hongaarse Hoornstaart"
+            },
+            {
+              "key": "B",
+              "text": "Zweedse Kortsnuit"
+            },
+            {
+              "key": "C",
+              "text": "Chinese Vuurbol"
+            },
+            {
+              "key": "D",
+              "text": "Oekraïense IJzerbuik"
+            }
+          ],
+          "correctOptionKey": "A",
+          "explanation": "Harry krijgt de Hongaarse Hoornstaart toegewezen tijdens de eerste proef van het Toverschool Toernooi.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "toverschool-toernooi" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-018",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wie is het hoofd van het huis Slytherin tijdens Harry’s eerste jaren?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Minerva Anderling"
+            },
+            {
+              "key": "B",
+              "text": "Severus Sneep"
+            },
+            {
+              "key": "C",
+              "text": "Horace Slughorn"
+            },
+            {
+              "key": "D",
+              "text": "Filius Banning"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Severus Sneep is hoofd van Slytherin tot Slughorn terugkeert in deel 6.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "hogwarts" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-019",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Wat is de naam van de bank voor tovenaars in Wegisweg?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Gringotts"
+            },
+            {
+              "key": "B",
+              "text": "Ollivanders"
+            },
+            {
+              "key": "C",
+              "text": "Flourish & Blotts"
+            },
+            {
+              "key": "D",
+              "text": "Borgin & Burkes"
+            }
+          ],
+          "correctOptionKey": "A",
+          "explanation": "Gringotts Wizarding Bank wordt gerund door kobolden en bewaart magische kluizen.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-020",
+          "category": "Literatuur",
+          "difficulty": 3,
+          "question": "Welke Reliek van de Dood maakt de drager onzichtbaar?",
+          "options": [
+            {
+              "key": "A",
+              "text": "De Zegevlier"
+            },
+            {
+              "key": "B",
+              "text": "De Steen van Wederkeer"
+            },
+            {
+              "key": "C",
+              "text": "De Onzichtbaarheidsmantel"
+            },
+            {
+              "key": "D",
+              "text": "De Marauderskaart"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "De Onzichtbaarheidsmantel is een van de drie Relieken van de Dood.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "relieken" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-021",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Hoeveel horcruxes creëerde Voldemort bewust?",
+          "options": [
+            {
+              "key": "A",
+              "text": "5"
+            },
+            {
+              "key": "B",
+              "text": "6"
+            },
+            {
+              "key": "C",
+              "text": "7"
+            },
+            {
+              "key": "D",
+              "text": "8"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Voldemort creëerde bewust zes horcruxes om zijn ziel in zeven delen te splitsen. Harry werd onbedoeld een zevende horcrux.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "horcruxes" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-022",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Wie vernietigt uiteindelijk de slang Nagini?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Harry Potter"
+            },
+            {
+              "key": "B",
+              "text": "Hermelien Griffel"
+            },
+            {
+              "key": "C",
+              "text": "Neville Longbottom"
+            },
+            {
+              "key": "D",
+              "text": "Ron Wemel"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "Neville Longbottom doodt Nagini met het Zwaard van Griffoendor tijdens de Slag om Zweinstein.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "finale" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-023",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Wat is de volledige naam van Perkamentus?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Albus Percival Wulfric Brian Dumbledore"
+            },
+            {
+              "key": "B",
+              "text": "Albus Wulfric Percival Brian Dumbledore"
+            },
+            {
+              "key": "C",
+              "text": "Albus Brian Percival Wulfric Dumbledore"
+            },
+            {
+              "key": "D",
+              "text": "Albus Wulfric Brian Percival Dumbledore"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Zijn volledige naam is Albus Wulfric Percival Brian Dumbledore.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "personages" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-024",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Wie is de Halfbloed Prins?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Tom Riddle"
+            },
+            {
+              "key": "B",
+              "text": "Draco Malfidus"
+            },
+            {
+              "key": "C",
+              "text": "Severus Sneep"
+            },
+            {
+              "key": "D",
+              "text": "Horace Slughorn"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "Severus Sneep noemde zichzelf de Halfbloed Prins, een verwijzing naar zijn moeder Eileen Prince.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-025",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Welke vorm neemt Harry’s Patronus aan?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Wolf"
+            },
+            {
+              "key": "B",
+              "text": "Hert"
+            },
+            {
+              "key": "C",
+              "text": "Haas"
+            },
+            {
+              "key": "D",
+              "text": "Feniks"
+            }
+          ],
+          "correctOptionKey": "B",
+          "explanation": "Harry’s Patronus is een hert, net als die van zijn vader James Potter.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "spreuken" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-026",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Wie was de eigenaar van het dagboek dat als eerste horcrux werd vernietigd?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Salazar Slytherin"
+            },
+            {
+              "key": "B",
+              "text": "Lucius Malfidus"
+            },
+            {
+              "key": "C",
+              "text": "Tom Riddle"
+            },
+            {
+              "key": "D",
+              "text": "Bellatrix van Detta"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "Het dagboek bevatte een deel van de ziel van Tom Riddle en werd vernietigd door Harry met een basiliskhoektand.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "horcruxes" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-027",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Welke professor gaf les in Toverdranken vóór Sneep?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Horace Slughorn"
+            },
+            {
+              "key": "B",
+              "text": "Minerva Anderling"
+            },
+            {
+              "key": "C",
+              "text": "Filius Banning"
+            },
+            {
+              "key": "D",
+              "text": "Armando Dippet"
+            }
+          ],
+          "correctOptionKey": "A",
+          "explanation": "Horace Slughorn was eerder professor Toverdranken voordat Sneep de functie overnam.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "hogwarts" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-028",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Welke van deze personages behoort NIET tot de Marauders?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Remus Lupin"
+            },
+            {
+              "key": "B",
+              "text": "Sirius Black"
+            },
+            {
+              "key": "C",
+              "text": "Peter Pippeling"
+            },
+            {
+              "key": "D",
+              "text": "Severus Sneep"
+            }
+          ],
+          "correctOptionKey": "D",
+          "explanation": "De Marauders waren James Potter, Sirius Black, Remus Lupin en Peter Pippeling. Sneep maakte geen deel uit van hun groep.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-029",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Welke Reliek van de Dood was oorspronkelijk in bezit van Antiochus Peverell?",
+          "options": [
+            {
+              "key": "A",
+              "text": "De Onzichtbaarheidsmantel"
+            },
+            {
+              "key": "B",
+              "text": "De Steen van Wederkeer"
+            },
+            {
+              "key": "C",
+              "text": "De Zegevlier"
+            },
+            {
+              "key": "D",
+              "text": "Het Zwaard van Griffoendor"
+            }
+          ],
+          "correctOptionKey": "C",
+          "explanation": "Antiochus Peverell was de oorspronkelijke eigenaar van de Zegevlier.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "relieken" ],
+          "source": { "type": "original" }
+        },
+        {
+          "id": "hp-030",
+          "category": "Literatuur",
+          "difficulty": 4,
+          "question": "Wie werd Minister van Toverkunst na Rufus Schobbejak?",
+          "options": [
+            {
+              "key": "A",
+              "text": "Kingsley Shacklebolt"
+            },
+            {
+              "key": "B",
+              "text": "Dolores Umbridge"
+            },
+            {
+              "key": "C",
+              "text": "Cornelis Droebel"
+            },
+            {
+              "key": "D",
+              "text": "Pius Thicknesse"
+            }
+          ],
+          "correctOptionKey": "D",
+          "explanation": "Na de dood van Rufus Schobbejak werd Pius Thicknesse minister, onder invloed van Voldemort.",
+          "shuffleOptions": true,
+          "tags": [ "harry-potter", "ministerie" ],
           "source": { "type": "original" }
         }
       ]

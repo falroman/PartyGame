@@ -1473,6 +1473,15 @@
             else if (state.remainingSeconds !== undefined) phaseEndsUtc = Date.now() + (state.remainingSeconds * 1000);
             updateTimerDisplay();
 
+            if (state.questionNumber === 1) {
+                document.title = `PartyGame - Round ${state.roundNumber} | Quiz`;
+            }
+
+            if (state.roundLeaderPlayerId) {
+                const isRoundLeader = state.roundLeaderPlayerId === client.getPlayerId();
+                document.body.classList.toggle('round-leader', isRoundLeader);
+            }
+
             if (phase === 0 && previousPhase !== 0) categoryAnimationPlayed = false;
 
             handlePhaseTransition(previousPhase, phase, state);
@@ -1482,6 +1491,14 @@
             const isFirstQuestion = state.questionNumber === 1 && state.roundNumber === 1;
             const isEnteringQuestion = (phase === 1 || phase === 2) && (previousPhase === null || previousPhase === 0);
             
+            // If this is a dictionary reveal phase, show dictionary-specific reveal view
+            const isDictionaryReveal = isDictionary && (phase === 3 || phase === 'Reveal');
+            if (isDictionaryReveal) {
+                showDictionaryReveal(state);
+                previousPhase = phase;
+                return;
+            }
+
             if (isFirstQuestion && isEnteringQuestion && !introDone && !isIntroRunning) {
                 showIntroSplashThenQuestion(state, phase, isRankingPhase, isDictionaryPhase);
             } else {
@@ -1492,29 +1509,107 @@
             previousPhase = phase;
         }
 
-        // FIX #1: Intro splash gate - show splash, wait, then show question
-        async function showIntroSplashThenQuestion(state, phase, isRankingPhase, isDictionaryPhase) {
+        // Show intro splash once before first question, then show question
+        function showIntroSplashThenQuestion(state, phase, isRankingPhase, isDictionaryPhase) {
+            if (isIntroRunning) return;
             isIntroRunning = true;
-            
-            // Hide all views first
-            hideAllViews();
-            
-            // Show splash effect
-            effects.playSplash('QuizStart');
-            if (audioEnabled) audio.playSplash();
-            
-            // Wait 2 seconds for splash to display
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Mark intro as done
-            introDone = true;
-            isIntroRunning = false;
-            
-            // Now show the question view
-            routeToView(state, phase, false, isRankingPhase, isDictionaryPhase);
+
+            // Try to play splash effect (degrade-safe)
+            try {
+                if (typeof effects !== 'undefined' && typeof effects.playSplash === 'function') {
+                    effects.playSplash('QuizStart');
+                }
+            } catch (e) {
+                console.warn('Failed to play splash effect:', e);
+            }
+
+            try {
+                if (audioEnabled && typeof audio !== 'undefined' && typeof audio.playSplash === 'function') {
+                    audio.playSplash();
+                }
+            } catch (e) {
+                // ignore audio failures
+            }
+
+            // Duration: 1500ms (match splash length). After that, show question view.
+            setTimeout(() => {
+                introDone = true;
+                isIntroRunning = false;
+
+                const isEnteringScoreboard = phase === 4 && previousPhase !== 4;
+                routeToView(state, phase, isEnteringScoreboard, isRankingPhase, isDictionaryPhase);
+            }, 1500);
         }
 
-        // FIX #1: Extracted routing logic
+        // New: Show dictionary reveal with avatar bubbles grouped per option
+        function showDictionaryReveal(state) {
+            hideAllViews();
+            questionViewEl.classList.remove('hidden');
+
+            currentCategoryBannerEl.textContent = '📖 Dictionary Game';
+            currentCategoryBannerEl.style.display = 'inline-block';
+
+            questionTextEl.textContent = state.questionText || state.dictionaryWord || 'Loading word...';
+
+            // Build grouping of players by selected option (dictionary uses numeric indices 0-3)
+            const grouped = [[], [], [], []];
+            (state.scoreboard || []).forEach(player => {
+                const sel = player.selectedOption;
+                if (sel === null || sel === undefined) return;
+                // selectedOption may be number or string
+                const idx = typeof sel === 'number' ? sel : parseInt(String(sel));
+                if (!isNaN(idx) && idx >= 0 && idx < 4) grouped[idx].push(player);
+            });
+
+            const optionKeys = ['A','B','C','D'];
+            const correctIndex = state.correctOptionKey !== undefined && state.correctOptionKey !== null
+                ? parseInt(String(state.correctOptionKey))
+                : null;
+
+            // Render options with avatar bubbles under each option
+            optionsGridEl.className = 'options-grid';
+            optionsGridEl.innerHTML = (state.options || []).map((opt, index) => {
+                const optionKey = optionKeys[index] || '?';
+                const isCorrect = correctIndex !== null && index === correctIndex;
+                const escapedText = escapeHtml(opt.text || opt);
+
+                const avatarsHtml = (grouped[index] || []).map(p => {
+                    const avatarSrc = getPlayerAvatarSrc(p);
+                    return `<img src="${avatarSrc}" title="${escapeHtml(p.displayName)}" alt="${escapeHtml(p.displayName)}" class="${isCorrect ? 'correct' : 'incorrect'}" onerror="this.style.display='none'">`;
+                }).join('');
+
+                const avatarBubbles = avatarsHtml ? `<div class="answer-bubbles">${avatarsHtml}</div>` : '';
+
+                return `
+                    <div class="option-card ${isCorrect ? 'correct' : ''}">
+                        <div class="option-key ${optionKey.toLowerCase()}">${optionKey}</div>
+                        <div class="option-text">${escapedText}</div>
+                        <div class="option-indicator">${isCorrect ? '✓' : ''}</div>
+                        ${avatarBubbles}
+                    </div>
+                `;
+            }).join('');
+
+            // Animate avatar bubbles if present
+            if (typeof gsap !== 'undefined') {
+                setTimeout(() => {
+                    gsap.from('.answer-bubbles img', {
+                        opacity: 0,
+                        scale: 0.8,
+                        stagger: 0.05,
+                        duration: 0.3,
+                        ease: 'back.out(1.7)'
+                    });
+                }, 100);
+            }
+
+            // Update explanation card
+            const escapedExplanation = escapeHtml(state.explanation || '');
+            explanationTextEl.innerHTML = escapedExplanation;
+            explanationCardEl.classList.toggle('visible', !!state.explanation);
+        }
+
+        /* FIX #1: Extracted routing logic */
         function routeToView(state, phase, isEnteringScoreboard, isRankingPhase, isDictionaryPhase) {
             if (phase === 5) {
                 showFinished(state);
@@ -1661,7 +1756,7 @@
                 const avatarBubblesHtml = isRevealPhase && grouped[optionKey] && grouped[optionKey].length > 0
                     ? `<div class="answer-bubbles">${renderAvatarBubbles(grouped[optionKey], optionKey === correctKey)}</div>`
                     : '';
-                
+
                 return `<div class="${classes}">
                     <div class="option-key ${colorClass}">${optionKey}</div>
                     <div class="option-text">${escapedText}</div>
@@ -1713,8 +1808,8 @@
         function getAvatarSrc(player) {
             // AvatarKind: 0 = Preset, 1 = Uploaded
             if (player.avatarKind === 0 && player.avatarPresetId) {
-                // Preset avatar - use SVG from assets
-                return `/assets/avatars/jelly/${player.avatarPresetId}.svg`;
+                // Preset avatar - use PNG from assets
+                return `/assets/avatars/jelly/${player.avatarPresetId}.png`;
             } else if (player.avatarKind === 1 && player.avatarUrl) {
                 // Uploaded avatar - use URL
                 return player.avatarUrl;
